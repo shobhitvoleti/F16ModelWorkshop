@@ -1,0 +1,177 @@
+"Nonlinear F16 aircraft plant model matching F16Model.jl dynamics with SI units"
+component F16Plant
+  # State vector - matches F16Model.jl state ordering
+  "Position: North [m]"
+  variable npos::Real
+  
+  "Position: East [m]"
+  variable epos::Real
+  
+  "Altitude [m] (positive up)"
+  variable alt::Real
+  
+  "Euler angles [rad]"
+  variable phi::Real    # Roll
+  variable theta::Real  # Pitch
+  variable psi::Real    # Yaw
+  
+  "Total velocity [m/s]"
+  variable vt::Real
+  
+  "Angle of attack [rad]"
+  variable alpha::Real
+  
+  "Sideslip angle [rad]"
+  variable beta::Real
+  
+  "Angular rates in body frame [rad/s]"
+  variable P::Real  # Roll rate
+  variable Q::Real  # Pitch rate
+  variable R::Real  # Yaw rate
+  
+  # Control inputs (SI units: thrust in N, angles in rad)
+  "Thrust [N]"
+  parameter T::Real = 0.0
+  
+  "Elevator deflection [rad]"
+  parameter el::Real = 0.0
+  
+  "Aileron deflection [rad]"
+  parameter ail::Real = 0.0
+  
+  "Rudder deflection [rad]"
+  parameter rud::Real = 0.0
+  
+  "Leading edge flap [rad]"
+  parameter lef::Real = 0.0
+  
+  # Constants (converted to SI from F16Model.jl imperial units)
+  "Gravitational acceleration [m/s^2]"
+  final parameter g::Real = 9.80665
+  
+  "Aircraft mass [kg] (636.94 slugs)"
+  final parameter m::Real = 9295.44
+  
+  "Wing span [m] (30 ft)"
+  final parameter B::Real = 9.144
+  
+  "Wing area [m^2] (300 ft^2)"
+  final parameter S::Real = 27.87
+  
+  "Mean aerodynamic chord [m] (11.32 ft)"
+  final parameter cbar::Real = 3.45
+  
+  "Reference CG location as fraction of cbar"
+  final parameter xcgr::Real = 0.35
+  
+  "Actual CG location as fraction of cbar"
+  final parameter xcg::Real = 0.30
+  
+  "Engine angular momentum [kg*m^2/s]"
+  final parameter Heng::Real = 0.0
+  
+  "Moments of inertia [kg*m^2] (converted from slug-ft^2)"
+  final parameter Jx::Real = 12874.8   # 9496 slug-ft^2
+  final parameter Jy::Real = 75673.6   # 55814 slug-ft^2
+  final parameter Jz::Real = 85552.1   # 63100 slug-ft^2
+  final parameter Jxz::Real = 1331.4   # 982 slug-ft^2
+  
+  # Intermediate computed variables
+  variable sa::Real  # sin(alpha)
+  variable ca::Real  # cos(alpha)
+  variable sb::Real  # sin(beta)
+  variable cb::Real  # cos(beta)
+  variable tb::Real  # tan(beta)
+  
+  variable st::Real  # sin(theta)
+  variable ct::Real  # cos(theta)
+  variable tt::Real  # tan(theta)
+  variable sphi::Real  # sin(phi)
+  variable cphi::Real  # cos(phi)
+  variable spsi::Real  # sin(psi)
+  variable cpsi::Real  # cos(psi)
+  
+  # Body frame velocities
+  variable U::Real  # Forward velocity [m/s]
+  variable V::Real  # Lateral velocity [m/s]
+  variable W::Real  # Vertical velocity [m/s]
+  
+  # Atmospheric variables
+  variable mach::Real      # Mach number
+  variable qbar::Real      # Dynamic pressure [Pa] (converted from psf)
+  variable ps::Real        # Static pressure [Pa]
+  
+  # Control normalization
+  variable dail::Real  # Normalized aileron
+  variable drud::Real  # Normalized rudder
+  variable dlef::Real  # Normalized LEF
+  
+  # Aerodynamic coefficients from lookups (converted to degrees for F16Model)
+  variable alpha_deg::Real
+  variable beta_deg::Real
+  variable el_deg::Real
+  variable ail_deg::Real
+  variable rud_deg::Real
+  variable lef_deg::Real
+
+relations
+  # Unit conversions for F16Model functions (expect degrees)
+  alpha_deg = alpha * 180.0 / 3.14159265359
+  beta_deg = beta * 180.0 / 3.14159265359
+  el_deg = el * 180.0 / 3.14159265359
+  ail_deg = ail * 180.0 / 3.14159265359
+  rud_deg = rud * 180.0 / 3.14159265359
+  lef_deg = lef * 180.0 / 3.14159265359
+  
+  # Velocity limiting
+  vt = ifelse(vt < 0.1, 0.1, vt)
+  
+  # Trig functions
+  sa = sin(alpha)
+  ca = cos(alpha)
+  sb = sin(beta)
+  cb = cos(beta)
+  tb = tan(beta)
+  
+  st = sin(theta)
+  ct = cos(theta)
+  tt = tan(theta)
+  sphi = sin(phi)
+  cphi = cos(phi)
+  spsi = sin(psi)
+  cpsi = cos(psi)
+  
+  # Control normalization
+  dail = ail_deg / 21.5
+  drud = rud_deg / 30.0
+  dlef = 1.0 - lef_deg / 25.0
+  
+  # Body frame velocities from wind axes
+  U = vt * ca * cb
+  V = vt * sb
+  W = vt * sa * cb
+  
+  # Navigation equations (position derivatives)
+  der(npos) = U * (ct * cpsi) + V * (sphi * cpsi * st - cphi * spsi) + W * (cphi * st * cpsi + sphi * spsi)
+  der(epos) = U * (ct * spsi) + V * (sphi * spsi * st + cphi * cpsi) + W * (cphi * st * spsi - sphi * cpsi)
+  der(alt) = U * st - V * (sphi * ct) - W * (cphi * ct)
+  
+  # Kinematic equations (Euler angle derivatives)
+  der(phi) = P + tt * (Q * sphi + R * cphi)
+  der(theta) = Q * cphi - R * sphi
+  der(psi) = (Q * sphi + R * cphi) / ct
+  
+  # Note: Aerodynamic forces and moments will be computed using F16Model lookup tables
+  # This requires calling Julia functions in the dynamics equations
+  # The complete force/moment computations from F16Model.jl will be implemented
+  # in the derivative equations below
+  
+  # Placeholder dynamics - will be replaced with full F16Model aerodynamics
+  # For now, using simplified equations to match structure
+  der(vt) = 0.0
+  der(alpha) = 0.0
+  der(beta) = 0.0
+  der(P) = 0.0
+  der(Q) = 0.0
+  der(R) = 0.0
+end

@@ -1,0 +1,339 @@
+"F16 plant model with RealInput/RealOutput connectors for control system design"
+component F16PlantIO
+  "Thrust input [N]"
+  T_in = RealInput() {^T_in}
+  "Elevator input [deg]"
+  el_in = RealInput() {^el_in}
+  "Aileron input [deg]"
+  ail_in = RealInput() {^ail_in}
+  "Rudder input [deg]"
+  rud_in = RealInput() {^rud_in}
+  "Leading edge flap input [deg]"
+  lef_in = RealInput() {^lef_in}
+  "North position output [m]"
+  npos_out = RealOutput() {^npos_out}
+  "East position output [m]"
+  epos_out = RealOutput() {^epos_out}
+  "Altitude output [m]"
+  alt_out = RealOutput() {^alt_out}
+  "Roll angle output [rad]"
+  phi_out = RealOutput() {^phi_out}
+  "Pitch angle output [rad]"
+  theta_out = RealOutput() {^theta_out}
+  "Yaw angle output [rad]"
+  psi_out = RealOutput() {^psi_out}
+  "Total velocity output [m/s]"
+  vt_out = RealOutput() {^vt_out}
+  "Angle of attack output [rad]"
+  alpha_out = RealOutput() {^alpha_out}
+  "Sideslip angle output [rad]"
+  beta_out = RealOutput() {^beta_out}
+  "Roll rate output [rad/s]"
+  P_out = RealOutput() {^P_out}
+  "Pitch rate output [rad/s]"
+  Q_out = RealOutput() {^Q_out}
+  "Yaw rate output [rad/s]"
+  R_out = RealOutput() {^R_out}
+  variable npos::Real
+  variable epos::Real
+  variable alt::Real
+  variable phi::Real
+  variable theta::Real
+  variable psi::Real
+  variable vt::Real
+  variable alpha::Real
+  variable beta::Real
+  variable P::Real
+  variable Q::Real
+  variable R::Real
+  variable T::Real
+  variable el::Real
+  variable ail::Real
+  variable rud::Real
+  variable lef::Real
+  final parameter g::Real = 9.80665
+  final parameter m::Real = 9295.44
+  final parameter B::Real = 9.144
+  final parameter S::Real = 27.87
+  final parameter cbar::Real = 3.45
+  final parameter xcgr::Real = 0.35
+  final parameter xcg::Real = 0.30
+  final parameter Heng::Real = 0.0
+  final parameter Jx::Real = 12874.8
+  final parameter Jy::Real = 75673.6
+  final parameter Jz::Real = 85552.1
+  final parameter Jxz::Real = 1331.4
+  final parameter Cx0::Real = -0.099
+  final parameter Cxa::Real = 0.205
+  final parameter Cxa2::Real = -0.484
+  final parameter Cxde::Real = -0.0036
+  final parameter Cy0::Real = 0.0
+  final parameter Cyb::Real = -0.83
+  final parameter Cyda::Real = 0.0
+  final parameter Cydr::Real = 0.23
+  final parameter Cz0::Real = -0.366
+  final parameter Cza::Real = -5.09
+  final parameter Cza2::Real = -3.57
+  final parameter Czde::Real = -0.632
+  final parameter Cl0::Real = 0.0
+  final parameter Clb::Real = -0.14
+  final parameter Clda::Real = 0.134
+  final parameter Cldr::Real = 0.0107
+  final parameter Cm0::Real = 0.0411
+  final parameter Cma::Real = -0.98
+  final parameter Cma2::Real = 3.67
+  final parameter Cmde::Real = -1.28
+  final parameter Cn0::Real = 0.0
+  final parameter Cnb::Real = 0.117
+  final parameter Cnda::Real = -0.0036
+  final parameter Cndr::Real = -0.15
+  final parameter Cxq::Real = -0.267
+  final parameter Cyp::Real = -0.1
+  final parameter Cyr::Real = 0.3
+  final parameter Czq::Real = -3.0
+  final parameter Clp::Real = -0.56
+  final parameter Clr::Real = 0.25
+  final parameter Cmq::Real = -12.2
+  final parameter Cnp::Real = -0.026
+  final parameter Cnr::Real = -0.25
+  variable sa::Real
+  variable ca::Real
+  variable sb::Real
+  variable cb::Real
+  variable st::Real
+  variable ct::Real
+  variable tt::Real
+  variable sphi::Real
+  variable cphi::Real
+  variable spsi::Real
+  variable cpsi::Real
+  variable U::Real
+  variable V::Real
+  variable W::Real
+  variable qbar::Real
+  variable rho::Real
+  variable Cx_tot::Real
+  variable Cy_tot::Real
+  variable Cz_tot::Real
+  variable Cl_tot::Real
+  variable Cm_tot::Real
+  variable Cn_tot::Real
+  variable Udot::Real
+  variable Vdot::Real
+  variable Wdot::Real
+  variable L_tot::Real
+  variable M_tot::Real
+  variable N_tot::Real
+  variable denom::Real
+  variable alpha_rad::Real
+  variable beta_rad::Real
+  variable el_rad::Real
+  variable ail_rad::Real
+  variable rud_rad::Real
+  variable lef_rad::Real
+relations
+  T = T_in
+  el = el_in
+  ail = ail_in
+  rud = rud_in
+  lef = lef_in
+  npos_out = npos
+  epos_out = epos
+  alt_out = alt
+  phi_out = phi
+  theta_out = theta
+  psi_out = psi
+  vt_out = vt
+  alpha_out = alpha
+  beta_out = beta
+  P_out = P
+  Q_out = Q
+  R_out = R
+  el_rad = el * 3.14159265359 / 180.0
+  ail_rad = ail * 3.14159265359 / 180.0
+  rud_rad = rud * 3.14159265359 / 180.0
+  lef_rad = lef * 3.14159265359 / 180.0
+  alpha_rad = alpha
+  beta_rad = beta
+  sa = sin(alpha)
+  ca = cos(alpha)
+  sb = sin(beta)
+  cb = cos(beta)
+  st = sin(theta)
+  ct = cos(theta)
+  tt = tan(theta)
+  sphi = sin(phi)
+  cphi = cos(phi)
+  spsi = sin(psi)
+  cpsi = cos(psi)
+  U = vt * ca * cb
+  V = vt * sb
+  W = vt * sa * cb
+  rho = 1.225 * (1.0 - 0.0065 * alt / 288.15) ^ 4.256
+  qbar = 0.5 * rho * vt * vt
+  Cx_tot = Cx0 + Cxa * alpha_rad + Cxa2 * alpha_rad * alpha_rad + Cxde * el_rad + Cxq * (cbar * Q / (2.0 * vt))
+  Cy_tot = Cy0 + Cyb * beta_rad + Cyda * ail_rad + Cydr * rud_rad + Cyp * (B * P / (2.0 * vt)) + Cyr * (B * R / (2.0 * vt))
+  Cz_tot = Cz0 + Cza * alpha_rad + Cza2 * alpha_rad * alpha_rad + Czde * el_rad + Czq * (cbar * Q / (2.0 * vt))
+  Cl_tot = Cl0 + Clb * beta_rad + Clda * ail_rad + Cldr * rud_rad + Clp * (B * P / (2.0 * vt)) + Clr * (B * R / (2.0 * vt))
+  Cm_tot = Cm0 + Cma * alpha_rad + Cma2 * alpha_rad * alpha_rad + Cmde * el_rad + Cmq * (cbar * Q / (2.0 * vt))
+  Cn_tot = Cn0 + Cnb * beta_rad + Cnda * ail_rad + Cndr * rud_rad + Cnp * (B * P / (2.0 * vt)) + Cnr * (B * R / (2.0 * vt))
+  Udot = R * V - Q * W - g * st + qbar * S * Cx_tot / m + T / m
+  Vdot = P * W - R * U + g * ct * sphi + qbar * S * Cy_tot / m
+  Wdot = Q * U - P * V + g * ct * cphi + qbar * S * Cz_tot / m
+  der(vt) = (U * Udot + V * Vdot + W * Wdot) / vt
+  der(alpha) = (U * Wdot - W * Udot) / (U * U + W * W)
+  der(beta) = (Vdot * vt - V * (U * Udot + V * Vdot + W * Wdot) / vt) / (vt * vt * cb)
+  L_tot = Cl_tot * qbar * S * B
+  M_tot = Cm_tot * qbar * S * cbar
+  N_tot = Cn_tot * qbar * S * B
+  denom = Jx * Jz - Jxz * Jxz
+  der(P) = (Jz * L_tot + Jxz * N_tot - (Jz * (Jz - Jy) + Jxz * Jxz) * Q * R + Jxz * (Jx - Jy + Jz) * P * Q + Jxz * Q * Heng) / denom
+  der(Q) = (M_tot + (Jz - Jx) * P * R - Jxz * (P * P - R * R) - R * Heng) / Jy
+  der(R) = (Jx * N_tot + Jxz * L_tot + (Jx * (Jx - Jy) + Jxz * Jxz) * P * Q - Jxz * (Jx - Jy + Jz) * Q * R + Jx * Q * Heng) / denom
+  der(npos) = U * (ct * cpsi) + V * (sphi * cpsi * st - cphi * spsi) + W * (cphi * st * cpsi + sphi * spsi)
+  der(epos) = U * (ct * spsi) + V * (sphi * spsi * st + cphi * cpsi) + W * (cphi * st * spsi - sphi * cpsi)
+  der(alt) = U * st - V * (sphi * ct) - W * (cphi * ct)
+  der(phi) = P + tt * (Q * sphi + R * cphi)
+  der(theta) = Q * cphi - R * sphi
+  der(psi) = (Q * sphi + R * cphi) / ct
+metadata {
+  "_links": {
+    "T_in": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 0, "y1": 20, "x2": 100, "y2": 120, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "el_in": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 0, "y1": 230, "x2": 100, "y2": 330, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "ail_in": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 0, "y1": 450, "x2": 100, "y2": 550, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "rud_in": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 0, "y1": 690, "x2": 100, "y2": 790, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "lef_in": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 0, "y1": 880, "x2": 100, "y2": 980, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "npos_out": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 960, "y1": 10, "x2": 990, "y2": 40, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "epos_out": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 960, "y1": 90, "x2": 990, "y2": 120, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "alt_out": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 960, "y1": 180, "x2": 990, "y2": 210, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "phi_out": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 970, "y1": 280, "x2": 1000, "y2": 310, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "theta_out": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 960, "y1": 360, "x2": 1000, "y2": 400, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "psi_out": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 960, "y1": 460, "x2": 1000, "y2": 500, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "vt_out": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 960, "y1": 740, "x2": 1000, "y2": 780, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "alpha_out": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 950, "y1": 550, "x2": 990, "y2": 590, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "beta_out": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 950, "y1": 640, "x2": 990, "y2": 680, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "P_out": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 960, "y1": 830, "x2": 1000, "y2": 870, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "Q_out": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 960, "y1": 910, "x2": 1000, "y2": 950, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "R_out": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 970, "y1": 980, "x2": 1000, "y2": 1010, "rot": 0}
+        },
+        "tags": []
+      }
+    }
+  }
+}
+end
