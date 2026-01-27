@@ -1,0 +1,116 @@
+"""
+F16 Trim Analysis - Equivalent to F16Model.Trim(h, V)
+
+This analysis finds trim conditions for level flight at specified altitude and velocity.
+The nonlinear initialization solver finds states and controls where all derivatives = 0.
+
+Required inputs:
+  h: Altitude [m]
+  V: Velocity [m/s]
+
+Optional (defaults for level flight):
+  γ: Flight path angle [rad] = 0 (level flight)
+  ψdot: Yaw rate [rad/s] = 0 (no turn)
+  
+States solved by initialization:
+  - alpha: Angle of attack
+  - theta: Pitch angle (≈ alpha for level flight)
+  - T: Thrust
+  - el: Elevator deflection
+
+States fixed:
+  - phi = 0 (wings level)
+  - beta = 0 (coordinated flight)  
+  - psi = 0 (arbitrary heading)
+  - P = Q = R = 0 (no rotation)
+  - ail = rud = lef = 0 (no lateral/directional control)
+
+The solver finds values where:
+  - Lift balances weight
+  - Thrust balances drag
+  - Pitch moment is zero
+"""
+test component F16TrimModel
+  # F16 plant - controls and some states will be solved by initialization
+  aircraft = F16SimplifiedPlant()
+  
+  # Trim specification parameters
+  "Trim altitude [m]"
+  parameter h::Real = 1000.0
+  
+  "Trim velocity [m/s]"
+  parameter V::Real = 152.4
+  
+  "Flight path angle [rad] (0 = level flight)"
+  parameter gamma::Real = 0.0
+  
+  "Turn rate [rad/s] (0 = straight flight)"
+  parameter psidot::Real = 0.0
+  
+relations
+  # Position states (arbitrary - don't affect trim)
+  initial aircraft.npos = 0.0
+  initial aircraft.epos = 0.0
+  
+  # Trim altitude and velocity (FIXED by user)
+  initial aircraft.alt = h
+  initial aircraft.vt = V
+  
+  # Euler angles for level flight
+  initial aircraft.phi = 0.0
+  initial aircraft.psi = 0.0
+  
+  # Coordinated flight
+  initial aircraft.beta = 0.0
+  
+  # No angular rates
+  initial aircraft.P = 0.0
+  initial aircraft.Q = 0.0
+  initial aircraft.R = 0.0
+  
+  # Fixed controls (not needed for symmetric level flight)
+  initial aircraft.ail = 0.0
+  initial aircraft.rud = 0.0
+  initial aircraft.lef = 0.0
+  
+  # Initial guesses for states/controls to be SOLVED
+  # The initialization solver will adjust these to achieve equilibrium
+  guess aircraft.alpha = 0.05
+  guess aircraft.theta = 0.05
+  guess aircraft.T = 44482.2
+  guess aircraft.el = 0.0
+end
+
+"""
+Trim analysis for level flight at specified altitude and velocity.
+
+Usage:
+  result = F16LevelFlightTrim(h = 1000.0, V = 152.4)
+  
+The trimmed initial conditions will be in result.prob.u0
+Extract trim values using symbolic indexing on the model.
+"""
+analysis F16LevelFlightTrim
+  extends TransientAnalysis(stop = 0.01)
+  
+  model = F16TrimModel(h = altitude, V = velocity)
+  
+  "Trim altitude [m]"
+  parameter altitude::Real = 1000.0
+  
+  "Trim velocity [m/s]"  
+  parameter velocity::Real = 152.4
+end
+
+"Simulation from a trim condition"
+analysis F16FromTrim
+  extends TransientAnalysis(stop = 10.0)
+  
+  model = F16SimplifiedPlant(
+    T = 44482.2,
+    el = 0.0,
+    ail = 0.0,
+    rud = 0.0,
+    lef = 0.0
+  )
+end

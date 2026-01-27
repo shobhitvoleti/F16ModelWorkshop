@@ -10,6 +10,6 @@ end
 
 
 include("F16PlantIO_experiment.jl")
-include("F16Plant_experiment.jl")
 include("F16SimplifiedPlant_experiment.jl")
+include("F16TrimModel_experiment.jl")
 include("Hello_experiment.jl")

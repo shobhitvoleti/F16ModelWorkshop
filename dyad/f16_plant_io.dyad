@@ -197,6 +197,9 @@ relations
   der(theta) = Q * cphi - R * sphi
   der(psi) = (Q * sphi + R * cphi) / ct
 metadata {
+"Dyad": {
+    "icons": {"default": "dyad://F16ModelWorkshop/f16_plant.svg"}
+  },
   "_links": {
     "T_in": {
       "Dyad": {
@@ -241,7 +244,7 @@ metadata {
     "npos_out": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 960, "y1": 10, "x2": 990, "y2": 40, "rot": 0}
+          "diagram": {"iconName": "default", "x1": 970, "y1": 20, "x2": 990, "y2": 40, "rot": 0}
         },
         "tags": []
       }
@@ -249,7 +252,7 @@ metadata {
     "epos_out": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 960, "y1": 90, "x2": 990, "y2": 120, "rot": 0}
+          "diagram": {"iconName": "default", "x1": 970, "y1": 110, "x2": 990, "y2": 130, "rot": 0}
         },
         "tags": []
       }
@@ -257,7 +260,7 @@ metadata {
     "alt_out": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 960, "y1": 180, "x2": 990, "y2": 210, "rot": 0}
+          "diagram": {"iconName": "default", "x1": 970, "y1": 200, "x2": 990, "y2": 220, "rot": 0}
         },
         "tags": []
       }
@@ -265,7 +268,7 @@ metadata {
     "phi_out": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 970, "y1": 280, "x2": 1000, "y2": 310, "rot": 0}
+          "diagram": {"iconName": "default", "x1": 970, "y1": 290, "x2": 990, "y2": 310, "rot": 0}
         },
         "tags": []
       }
@@ -273,7 +276,7 @@ metadata {
     "theta_out": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 960, "y1": 360, "x2": 1000, "y2": 400, "rot": 0}
+          "diagram": {"iconName": "default", "x1": 970, "y1": 380, "x2": 990, "y2": 400, "rot": 0}
         },
         "tags": []
       }
@@ -281,7 +284,7 @@ metadata {
     "psi_out": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 960, "y1": 460, "x2": 1000, "y2": 500, "rot": 0}
+          "diagram": {"iconName": "default", "x1": 970, "y1": 470, "x2": 990, "y2": 490, "rot": 0}
         },
         "tags": []
       }
@@ -289,7 +292,7 @@ metadata {
     "vt_out": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 960, "y1": 740, "x2": 1000, "y2": 780, "rot": 0}
+          "diagram": {"iconName": "default", "x1": 970, "y1": 560, "x2": 990, "y2": 580, "rot": 0}
         },
         "tags": []
       }
@@ -297,7 +300,7 @@ metadata {
     "alpha_out": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 950, "y1": 550, "x2": 990, "y2": 590, "rot": 0}
+          "diagram": {"iconName": "default", "x1": 970, "y1": 650, "x2": 990, "y2": 670, "rot": 0}
         },
         "tags": []
       }
@@ -305,7 +308,7 @@ metadata {
     "beta_out": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 950, "y1": 640, "x2": 990, "y2": 680, "rot": 0}
+          "diagram": {"iconName": "default", "x1": 970, "y1": 740, "x2": 990, "y2": 760, "rot": 0}
         },
         "tags": []
       }
@@ -313,7 +316,7 @@ metadata {
     "P_out": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 960, "y1": 830, "x2": 1000, "y2": 870, "rot": 0}
+          "diagram": {"iconName": "default", "x1": 970, "y1": 830, "x2": 990, "y2": 850, "rot": 0}
         },
         "tags": []
       }
@@ -321,7 +324,7 @@ metadata {
     "Q_out": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 960, "y1": 910, "x2": 1000, "y2": 950, "rot": 0}
+          "diagram": {"iconName": "default", "x1": 970, "y1": 920, "x2": 990, "y2": 940, "rot": 0}
         },
         "tags": []
       }
@@ -329,7 +332,7 @@ metadata {
     "R_out": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 970, "y1": 980, "x2": 1000, "y2": 1010, "rot": 0}
+          "diagram": {"iconName": "default", "x1": 970, "y1": 1010, "x2": 990, "y2": 1030, "rot": 0}
         },
         "tags": []
       }

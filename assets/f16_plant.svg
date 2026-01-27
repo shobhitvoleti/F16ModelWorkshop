@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Define gradient for aircraft body -->
+  <defs>
+    <linearGradient id="bodyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#4a90e2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2c5aa0;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="wingGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#357abd;stop-opacity:0.9" />
+      <stop offset="100%" style="stop-color:#2c5aa0;stop-opacity:0.9" />
+    </linearGradient>
+    
+    <!-- Glow effect -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Motion blur for speed effect -->
+    <filter id="motionBlur">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3,0" />
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="200" height="200" fill="#ffffff"/>
+  
+  <!-- Grid lines (technical background) -->
+  <g opacity="0.15" stroke="#2c5aa0" stroke-width="0.5">
+    <line x1="0" y1="50" x2="200" y2="50"/>
+    <line x1="0" y1="100" x2="200" y2="100"/>
+    <line x1="0" y1="150" x2="200" y2="150"/>
+    <line x1="50" y1="0" x2="50" y2="200"/>
+    <line x1="100" y1="0" x2="100" y2="200"/>
+    <line x1="150" y1="0" x2="150" y2="200"/>
+  </g>
+  
+  <!-- Speed lines (animated) -->
+  <g opacity="0.3">
+    <line x1="20" y1="90" x2="60" y2="90" stroke="#4a90e2" stroke-width="1">
+      <animate attributeName="x1" values="20;-40;20" dur="2s" repeatCount="indefinite"/>
+      <animate attributeName="x2" values="60;0;60" dur="2s" repeatCount="indefinite"/>
+    </line>
+    <line x1="30" y1="100" x2="70" y2="100" stroke="#4a90e2" stroke-width="1">
+      <animate attributeName="x1" values="30;-30;30" dur="1.8s" repeatCount="indefinite"/>
+      <animate attributeName="x2" values="70;10;70" dur="1.8s" repeatCount="indefinite"/>
+    </line>
+    <line x1="25" y1="110" x2="65" y2="110" stroke="#4a90e2" stroke-width="1">
+      <animate attributeName="x1" values="25;-35;25" dur="2.2s" repeatCount="indefinite"/>
+      <animate attributeName="x2" values="65;5;65" dur="2.2s" repeatCount="indefinite"/>
+    </line>
+  </g>
+  
+  <!-- F-16 Aircraft silhouette -->
+  <g transform="translate(100, 100)">
+    <!-- Main fuselage -->
+    <path d="M 40,0 L 30,8 L 20,8 L -35,8 L -40,5 L -40,-5 L -35,-8 L 20,-8 L 30,-8 Z" 
+          fill="url(#bodyGrad)" stroke="#2c5aa0" stroke-width="1" filter="url(#glow)">
+      <animateTransform attributeName="transform" type="translate" 
+                        values="0,0; 2,0; 0,0; -2,0; 0,0" 
+                        dur="4s" repeatCount="indefinite"/>
+    </path>
+    
+    <!-- Cockpit -->
+    <ellipse cx="25" cy="0" rx="8" ry="6" fill="#1a3a5a" stroke="#4a90e2" stroke-width="0.5"/>
+    <ellipse cx="25" cy="0" rx="5" ry="4" fill="#6cb4ff" opacity="0.6">
+      <animate attributeName="opacity" values="0.4;0.8;0.4" dur="3s" repeatCount="indefinite"/>
+    </ellipse>
+    
+    <!-- Main wings -->
+    <path d="M 10,8 L 10,30 L 5,32 L -5,20 L -10,8 Z" 
+          fill="url(#wingGrad)" stroke="#2c5aa0" stroke-width="0.8" opacity="0.95"/>
+    <path d="M 10,-8 L 10,-30 L 5,-32 L -5,-20 L -10,-8 Z" 
+          fill="url(#wingGrad)" stroke="#2c5aa0" stroke-width="0.8" opacity="0.95"/>
+    
+    <!-- Tail fins -->
+    <path d="M -30,0 L -38,15 L -40,15 L -35,8 Z" 
+          fill="url(#wingGrad)" stroke="#2c5aa0" stroke-width="0.8" opacity="0.9"/>
+    <path d="M -30,0 L -38,-15 L -40,-15 L -35,-8 Z" 
+          fill="url(#wingGrad)" stroke="#2c5aa0" stroke-width="0.8" opacity="0.9"/>
+    
+    <!-- Vertical stabilizer -->
+    <path d="M -32,0 L -45,0 L -47,-12 L -42,-14 L -32,-2 Z" 
+          fill="url(#bodyGrad)" stroke="#2c5aa0" stroke-width="0.8" opacity="0.95"/>
+    
+    <!-- Engine exhaust (animated glow) -->
+    <ellipse cx="-40" cy="0" rx="2" ry="3" fill="#ff6b35" opacity="0.8">
+      <animate attributeName="rx" values="2;3;2" dur="0.5s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.8;1;0.8" dur="0.5s" repeatCount="indefinite"/>
+    </ellipse>
+    <ellipse cx="-42" cy="0" rx="3" ry="4" fill="#ff9a3c" opacity="0.5">
+      <animate attributeName="rx" values="3;5;3" dur="0.6s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.5;0.8;0.5" dur="0.6s" repeatCount="indefinite"/>
+    </ellipse>
+  </g>
+  
+  <!-- State vector visualization (animated dots) -->
+  <g opacity="0.6">
+    <circle cx="170" cy="30" r="2" fill="#4a90e2">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="1.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="170" cy="45" r="2" fill="#4a90e2">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="1.5s" begin="0.1s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="170" cy="60" r="2" fill="#4a90e2">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="1.5s" begin="0.2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="170" cy="75" r="2" fill="#4a90e2">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="1.5s" begin="0.3s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="170" cy="90" r="2" fill="#4a90e2">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="1.5s" begin="0.4s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="170" cy="105" r="2" fill="#4a90e2">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="1.5s" begin="0.5s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+  <!-- Control surface indicators (animated) -->
+  <g opacity="0.5">
+    <rect x="15" y="30" width="3" height="15" fill="#ff6b35" rx="1">
+      <animate attributeName="height" values="15;20;15;10;15" dur="3s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="15" y="55" width="3" height="15" fill="#4a90e2" rx="1">
+      <animate attributeName="height" values="15;10;15;20;15" dur="2.5s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="15" y="80" width="3" height="15" fill="#6cb4ff" rx="1">
+      <animate attributeName="height" values="15;18;15;12;15" dur="2.8s" repeatCount="indefinite"/>
+    </rect>
+  </g>
+  
+  <!-- Title -->
+  <text x="100" y="185" font-family="monospace" font-size="12" fill="#2c5aa0" text-anchor="middle" opacity="0.9">
+    F16 Plant
+  </text>
+  
+  <!-- Pulsing border effect -->
+  <rect x="2" y="2" width="196" height="196" fill="none" stroke="#2c5aa0" stroke-width="1.5" rx="4" opacity="0.4">
+    <animate attributeName="opacity" values="0.3;0.6;0.3" dur="2s" repeatCount="indefinite"/>
+  </rect>
+</svg>
