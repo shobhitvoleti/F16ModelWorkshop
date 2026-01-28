@@ -16,6 +16,9 @@ if isfile(joinpath((@__DIR__) |> Base.dirname, "dyad", "definitions.jl"))
   include(joinpath((@__DIR__) |> Base.dirname, "dyad", "definitions.jl"))
 end
 
+import DyadInterface
+import BlockComponents
+import DyadControlSystems
 @doc Markdown.doc"""
 This connector represents an electrical pin with voltage and current as the potential and flow variables, respectively.
 """
@@ -57,7 +60,9 @@ This connector represents a rotational spline with angle and torque as the poten
   return System(Equation[], t, vars, []; name)
 end
 
+include("ClosedLoopModel_definition.jl")
 include("F16FromTrim_definition.jl")
+include("F16LQGControllerAnalysis_definition.jl")
 include("F16LevelFlightTrim_definition.jl")
 include("F16PlantIO_definition.jl")
 include("F16SimplifiedPlant_definition.jl")

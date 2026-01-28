@@ -1,0 +1,335 @@
+component ClosedLoopModel
+  f16plantio = F16ModelWorkshop.F16PlantIO() {^f16plantio}
+  constant1 = BlockComponents.Constant(k = 0) {^constant1}
+  constant2 = BlockComponents.Constant(k = 0) {^constant2}
+  constant3 = BlockComponents.Constant(k = 0) {^constant3}
+  constant4 = BlockComponents.Constant(k = 0) {^constant4}
+  constant5 = BlockComponents.Constant(k = 0.0) {^constant5}
+  terminator = BlockComponents.Terminator() {^terminator}
+  terminator1 = BlockComponents.Terminator() {^terminator1}
+  terminator2 = BlockComponents.Terminator() {^terminator2}
+  terminator3 = BlockComponents.Terminator() {^terminator3}
+  terminator4 = BlockComponents.Terminator() {^terminator4}
+  terminator5 = BlockComponents.Terminator() {^terminator5}
+  terminator6 = BlockComponents.Terminator() {^terminator6}
+  terminator7 = BlockComponents.Terminator() {^terminator7}
+  terminator8 = BlockComponents.Terminator() {^terminator8}
+  terminator9 = BlockComponents.Terminator() {^terminator9}
+  terminator10 = BlockComponents.Terminator() {^terminator10}
+  terminator11 = BlockComponents.Terminator() {^terminator11}
+relations
+  initial f16plantio.npos = 0.0
+  initial f16plantio.epos = 0.0
+  initial f16plantio.alt = 1000.0
+  initial f16plantio.phi = 0.0
+  initial f16plantio.theta = 0.0
+  initial f16plantio.psi = 0.0
+  initial f16plantio.vt = 152.4
+  initial f16plantio.alpha = 0.05
+  initial f16plantio.beta = 0.0
+  initial f16plantio.P = 0.0
+  initial f16plantio.Q = 0.0
+  initial f16plantio.R = 0.0
+  u1: analysis_point(constant1.y, f16plantio.T_in)
+  u2: analysis_point(constant2.y, f16plantio.el_in)
+  u3: analysis_point(constant3.y, f16plantio.ail_in)
+  u4: analysis_point(constant4.y, f16plantio.rud_in)
+  u5: analysis_point(constant5.y, f16plantio.lef_in)
+  y1: analysis_point(f16plantio.npos_out, terminator.u)
+  y2: analysis_point(f16plantio.epos_out, terminator4.u)
+  y3: analysis_point(f16plantio.alt_out, terminator1.u)
+  y4: analysis_point(f16plantio.phi_out, terminator5.u)
+  y5: analysis_point(f16plantio.theta_out, terminator2.u)
+  y6: analysis_point(f16plantio.psi_out, terminator6.u)
+  y7: analysis_point(f16plantio.vt_out, terminator3.u)
+  y8: analysis_point(f16plantio.alpha_out, terminator7.u)
+  y9: analysis_point(f16plantio.beta_out, terminator8.u)
+  y10: analysis_point(f16plantio.P_out, terminator9.u)
+  y11: analysis_point(f16plantio.Q_out, terminator10.u)
+  y12: analysis_point(f16plantio.R_out, terminator11.u)
+  connect(constant1.y, f16plantio.T_in) {^id19}
+  connect(constant2.y, f16plantio.el_in) {^id20}
+  connect(constant3.y, f16plantio.ail_in) {^id21}
+  connect(constant4.y, f16plantio.rud_in) {^id22}
+  connect(constant5.y, f16plantio.lef_in) {^id23}
+  connect(f16plantio.npos_out, terminator.u) {^id24}
+  connect(terminator4.u, f16plantio.epos_out) {^id25}
+  connect(f16plantio.alt_out, terminator1.u) {^id26}
+  connect(f16plantio.phi_out, terminator5.u) {^id27}
+  connect(f16plantio.theta_out, terminator2.u) {^id28}
+  connect(f16plantio.psi_out, terminator6.u) {^id29}
+  connect(f16plantio.vt_out, terminator3.u) {^id30}
+  connect(f16plantio.alpha_out, terminator7.u) {^id31}
+  connect(f16plantio.beta_out, terminator8.u) {^id32}
+  connect(f16plantio.P_out, terminator9.u) {^id33}
+  connect(f16plantio.Q_out, terminator10.u) {^id34}
+  connect(f16plantio.R_out, terminator11.u) {^id35}
+metadata {
+  "_links": {
+    "f16plantio": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 150, "y1": 52, "x2": 750, "y2": 652, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "constant1": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 20, "y1": 44, "x2": 120, "y2": 144, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "constant2": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 20, "y1": 170, "x2": 120, "y2": 270, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "constant3": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 20, "y1": 302, "x2": 120, "y2": 402, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "constant4": {
+      "Dyad": {
+        "placement": {
+          "diagram": {
+            "iconName": "default",
+            "x1": 20,
+            "y1": 445.99999999999994,
+            "x2": 120,
+            "y2": 546,
+            "rot": 0
+          }
+        },
+        "tags": []
+      }
+    },
+    "constant5": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 20, "y1": 566, "x2": 120, "y2": 666, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "terminator": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 898, "y1": 20, "x2": 998, "y2": 120, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "terminator1": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 898, "y1": 260, "x2": 998, "y2": 360, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "terminator2": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 898, "y1": 500, "x2": 998, "y2": 600, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "terminator3": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 898, "y1": 740, "x2": 998, "y2": 840, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "terminator4": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 898, "y1": 140, "x2": 998, "y2": 240, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "terminator5": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 898, "y1": 380, "x2": 998, "y2": 480, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "terminator6": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 898, "y1": 620, "x2": 998, "y2": 720, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "terminator7": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 898, "y1": 860, "x2": 998, "y2": 960, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "terminator8": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 898, "y1": 980, "x2": 998, "y2": 1080, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "terminator9": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 898, "y1": 1100, "x2": 998, "y2": 1200, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "terminator10": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 898, "y1": 1220, "x2": 998, "y2": 1320, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "terminator11": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 898, "y1": 1340, "x2": 998, "y2": 1440, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "id19": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id20": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id21": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id22": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id23": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 140, "y": 616}, {"x": 140, "y": 610}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id24": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id25": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 878, "y": 190}, {"x": 878, "y": 124}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id26": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 868, "y": 178}, {"x": 868, "y": 310}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id27": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 858, "y": 232}, {"x": 858, "y": 430}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id28": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 848, "y": 286}, {"x": 848, "y": 550}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id29": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 838, "y": 340}, {"x": 838, "y": 670}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id30": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 828, "y": 394}, {"x": 828, "y": 790}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id31": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 818, "y": 448}, {"x": 818, "y": 910}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id32": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 808, "y": 502}, {"x": 808, "y": 1030}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id33": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 798, "y": 556}, {"x": 798, "y": 1150}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id34": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 788, "y": 610}, {"x": 788, "y": 1270}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id35": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 778, "y": 664}, {"x": 778, "y": 1390}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    }
+  }
+}
+end
+"""
+Rationale:
+
+y1, y2 (npos, epos): 0.01 - Low priority, position drift acceptable
+y3 (altitude): 100.0 - High priority, maintain altitude
+y4 (phi roll): 10.0 - Medium priority, wings-level important
+y5 (theta pitch): 50.0 - High priority, pitch attitude control critical
+y6 (psi yaw): 1.0 - Low priority, heading less critical
+y7 (velocity): 10.0 - Medium priority, airspeed regulation
+y8 (alpha): 1000.0 - Very high priority, angle of attack safety critical
+y9 (beta): 1000.0 - Very high priority, sideslip should be near zero
+y10 (P roll rate): 10.0 - Medium priority, dampen roll oscillations
+y11 (Q pitch rate): 50.0 - High priority, pitch rate stability critical
+y12 (R yaw rate): 10.0 - Medium priority, yaw damping
+
+Rationale:
+
+u1 (Thrust): 1e-8 - Very low penalty, thrust changes relatively cheap
+u2 (Elevator): 1.0 - Moderate penalty, primary pitch control
+u3 (Aileron): 0.1 - Low penalty, roll control relatively cheap
+u4 (Rudder): 0.1 - Low penalty, yaw control
+u5 (LEF): 10.0 - Higher penalty, LEF slower actuator, use sparingly
+"""
+analysis F16LQGControllerAnalysis
+  extends DyadControlSystems.LQGAnalysis(measurement = ["y1", "y2", "y3", "y4", "y5", "y6", "y7", "y8", "y9", "y10", "y11", "y12"], 
+    controlled_output = ["y1", "y2", "y3", "y4", "y5", "y6", "y7", "y8", "y9", "y10", "y11", "y12"], 
+    control_input = ["u1", "u2", "u3", "u4", "u5"], 
+    loop_openings = [], 
+    q1_diag = [0.01, 0.01, 100.0, 10.0, 50.0, 1.0, 10.0, 1000.0, 1000.0, 10.0, 50.0, 10.0], 
+    q2_diag = [1e-8, 1.0, 0.1, 0.1, 10.0], 
+    r1_diag = [0.01, 0.01, 0.01, 0.01, 0.01], 
+    r2_diag = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01],
+  duration = 50.0
+  )
+  model = ClosedLoopModel()
+end

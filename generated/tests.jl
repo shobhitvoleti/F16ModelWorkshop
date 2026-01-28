@@ -16,6 +16,7 @@ end
 
 
 @testset "`F16ModelWorkshop`" begin
+include("ClosedLoopModel_test.jl")
 include("F16PlantIO_test.jl")
 include("F16SimplifiedPlant_test.jl")
 include("F16TrimModel_test.jl")

@@ -9,6 +9,7 @@ if isfile(joinpath((@__DIR__) |> Base.dirname, "dyad", "experiments.jl"))
 end
 
 
+include("ClosedLoopModel_experiment.jl")
 include("F16PlantIO_experiment.jl")
 include("F16SimplifiedPlant_experiment.jl")
 include("F16TrimModel_experiment.jl")
