@@ -297,6 +297,7 @@ metadata {
   }
 }
 end
+
 """
 Rationale:
 
@@ -321,15 +322,6 @@ u4 (Rudder): 0.1 - Low penalty, yaw control
 u5 (LEF): 10.0 - Higher penalty, LEF slower actuator, use sparingly
 """
 analysis F16LQGControllerAnalysis
-  extends DyadControlSystems.LQGAnalysis(measurement = ["y1", "y2", "y3", "y4", "y5", "y6", "y7", "y8", "y9", "y10", "y11", "y12"], 
-    controlled_output = ["y1", "y2", "y3", "y4", "y5", "y6", "y7", "y8", "y9", "y10", "y11", "y12"], 
-    control_input = ["u1", "u2", "u3", "u4", "u5"], 
-    loop_openings = [], 
-    q1_diag = [0.01, 0.01, 100.0, 10.0, 50.0, 1.0, 10.0, 1000.0, 1000.0, 10.0, 50.0, 10.0], 
-    q2_diag = [1e-8, 1.0, 0.1, 0.1, 10.0], 
-    r1_diag = [0.01, 0.01, 0.01, 0.01, 0.01], 
-    r2_diag = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01],
-  duration = 50.0
-  )
+  extends DyadControlSystems.LQGAnalysis(measurement = ["y1", "y2", "y3", "y4", "y5", "y6", "y7", "y8", "y9", "y10", "y11", "y12"], controlled_output = ["y1", "y2", "y3", "y4", "y5", "y6", "y7", "y8", "y9", "y10", "y11", "y12"], control_input = ["u1", "u2", "u3", "u4", "u5"], loop_openings = [], q1_diag = [0.01, 0.01, 100.0, 10.0, 50.0, 1.0, 10.0, 100.0, 100.0, 10.0, 50.0, 10.0], q2_diag = [0.1, 0.1, 0.1, 0.1, 0.1], r1_diag = [0.01, 0.01, 0.01, 0.01, 0.01], r2_diag = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01], duration = 50.0)
   model = ClosedLoopModel()
 end

@@ -14,8 +14,8 @@ using DyadControlSystems: AbstractLQGAnalysisSpec, LQGAnalysisSpec
   var"control_input"::Array{String, 1} = ["u1", "u2", "u3", "u4", "u5"]
   var"loop_openings"::Array{String, 1} = []
   var"t"::Float64 = 0
-  var"q1_diag"::Array{Float64, 1} = [0.01, 0.01, 100, 10, 50, 1, 10, 1000, 1000, 10, 50, 10]
-  var"q2_diag"::Array{Float64, 1} = [1e-8, 1, 0.1, 0.1, 10]
+  var"q1_diag"::Array{Float64, 1} = [0.01, 0.01, 100, 10, 50, 1, 10, 100, 100, 10, 50, 10]
+  var"q2_diag"::Array{Float64, 1} = [0.1, 0.1, 0.1, 0.1, 0.1]
   var"r1_diag"::Array{Float64, 1} = [0.01, 0.01, 0.01, 0.01, 0.01]
   var"r2_diag"::Array{Float64, 1} = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
   var"qQ"::Float64 = 0
