@@ -12,6 +12,7 @@ using DyadControlSystems: AbstractLQGAnalysisSpec, LQGAnalysisSpec
   var"measurement"::Array{String, 1} = ["y1", "y2", "y3", "y4", "y5", "y6", "y7", "y8", "y9", "y10", "y11", "y12"]
   var"controlled_output"::Array{String, 1} = ["y1", "y2", "y3", "y4", "y5", "y6", "y7", "y8", "y9", "y10", "y11", "y12"]
   var"control_input"::Array{String, 1} = ["u1", "u2", "u3", "u4", "u5"]
+  var"disturbance_inputs"::Array{String, 1} = []
   var"loop_openings"::Array{String, 1} = []
   var"t"::Float64 = 0
   var"q1_diag"::Array{Float64, 1} = [0.01, 0.01, 100, 10, 50, 1, 10, 100, 100, 10, 50, 10]
@@ -34,7 +35,7 @@ end
 function DyadInterface.run_analysis(spec::F16LQGControllerAnalysisSpec)
   spec.model = DyadInterface.update_model(spec.model, (; ))
   base_spec = LQGAnalysisSpec(;
-    name=:LQGAnalysis, measurement=spec.measurement, controlled_output=spec.controlled_output, control_input=spec.control_input, loop_openings=spec.loop_openings, t=spec.t, q1_diag=spec.q1_diag, q2_diag=spec.q2_diag, r1_diag=spec.r1_diag, r2_diag=spec.r2_diag, qQ=spec.qQ, qR=spec.qR, disc=spec.disc, Ts=spec.Ts, integrator_indices=spec.integrator_indices, integrator_r1_diag=spec.integrator_r1_diag, wl=spec.wl, wu=spec.wu, num_frequencies=spec.num_frequencies, duration=spec.duration, model=spec.model
+    name=:LQGAnalysis, measurement=spec.measurement, controlled_output=spec.controlled_output, control_input=spec.control_input, disturbance_inputs=spec.disturbance_inputs, loop_openings=spec.loop_openings, t=spec.t, q1_diag=spec.q1_diag, q2_diag=spec.q2_diag, r1_diag=spec.r1_diag, r2_diag=spec.r2_diag, qQ=spec.qQ, qR=spec.qR, disc=spec.disc, Ts=spec.Ts, integrator_indices=spec.integrator_indices, integrator_r1_diag=spec.integrator_r1_diag, wl=spec.wl, wu=spec.wu, num_frequencies=spec.num_frequencies, duration=spec.duration, model=spec.model
   )
   run_analysis(base_spec)
 end
