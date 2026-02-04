@@ -17,6 +17,13 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
   var"saveat"::Float64 = 0
   var"dtmax"::Float64 = 0
   var"IfLifting"::Bool = false
+  var"nx"::Int = 12
+  var"nu"::Int = 12
+  var"ny"::Int = 5
+  var"A"::Array{Float64, 2} = zeros(nx, nx)
+  var"B"::Array{Float64, 2} = zeros(nx, nu)
+  var"C"::Array{Float64, 2} = zeros(ny, nx)
+  var"D"::Array{Float64, 2} = zeros(ny, nu)
   # Scenario 3: Alpha Protection During Aggressive Pitch Command
   # 
   # Demonstrates LQG controller's ability to protect angle of attack (alpha)
@@ -35,7 +42,7 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
 end
 
 function DyadInterface.run_analysis(spec::Scenario3SimulationSpec)
-  spec.model = DyadInterface.update_model(spec.model, (; ))
+  spec.model = DyadInterface.update_model(spec.model, (; var"A"=spec.var"A", var"B"=spec.var"B", var"C"=spec.var"C", var"D"=spec.var"D"))
   base_spec = TransientAnalysisSpec(;
     name=:TransientAnalysis, alg=spec.alg, start=spec.start, stop=spec.stop, abstol=spec.abstol, reltol=spec.reltol, saveat=spec.saveat, dtmax=spec.dtmax, IfLifting=spec.IfLifting, model=spec.model
   )

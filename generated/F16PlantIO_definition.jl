@@ -86,7 +86,13 @@ F16 plant model with RealInput/RealOutput connectors for control system design
 | `rud_rad`         |                          | --  | 
 | `lef_rad`         |                          | --  | 
 """
-@component function F16PlantIO(; name)
+@component function F16PlantIO(; name = nothing)
+  isnothing(name) && throw(ArgumentError("""
+        The `name` keyword must be provided. Please consider using the `@named` macro,
+        like so:
+
+        @named model = F16PlantIO()
+        """))
   __params = Any[]
   __vars = Any[]
   __systems = System[]

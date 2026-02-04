@@ -7,7 +7,13 @@
 @doc Markdown.doc"""
    ClosedLoopModel(; name)
 """
-@component function ClosedLoopModel(; name)
+@component function ClosedLoopModel(; name = nothing)
+  isnothing(name) && throw(ArgumentError("""
+        The `name` keyword must be provided. Please consider using the `@named` macro,
+        like so:
+
+        @named model = ClosedLoopModel()
+        """))
   __params = Any[]
   __vars = Any[]
   __systems = System[]

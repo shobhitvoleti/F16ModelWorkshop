@@ -22,16 +22,16 @@ Q_trim = result.u0[findfirst(isequal(model.aircraft.Q), unknowns(result.sys))]
 R_trim = result.u0[findfirst(isequal(model.aircraft.R), unknowns(result.sys))]
 
 # Print trim states
-println("Trim States:")
-println("  npos (North position):  ", npos_trim, " m")
-println("  epos (East position):   ", epos_trim, " m")
-println("  alt (Altitude):         ", alt_trim, " m")
-println("  phi (Roll angle):       ", phi_trim, " rad")
-println("  theta (Pitch angle):    ", theta_trim, " rad")
-println("  psi (Yaw angle):        ", psi_trim, " rad")
-println("  vt (Total velocity):    ", vt_trim, " m/s")
-println("  alpha (Angle of attack):", alpha_trim, " rad")
-println("  beta (Sideslip angle):  ", beta_trim, " rad")
-println("  P (Roll rate):          ", P_trim, " rad/s")
-println("  Q (Pitch rate):         ", Q_trim, " rad/s")
-println("  R (Yaw rate):           ", R_trim, " rad/s")
+println("Trim States:");
+println("  npos (North position):  ", npos_trim, " m");
+println("  epos (East position):   ", epos_trim, " m");
+println("  alt (Altitude):         ", alt_trim, " m");
+println("  phi (Roll angle):       ", phi_trim, " rad");
+println("  theta (Pitch angle):    ", theta_trim, " rad");
+println("  psi (Yaw angle):        ", psi_trim, " rad");
+println("  vt (Total velocity):    ", vt_trim, " m/s");
+println("  alpha (Angle of attack):", alpha_trim, " rad");
+println("  beta (Sideslip angle):  ", beta_trim, " rad");
+println("  P (Roll rate):          ", P_trim, " rad/s");
+println("  Q (Pitch rate):         ", Q_trim, " rad/s");
+println("  R (Yaw rate):           ", R_trim, " rad/s");
