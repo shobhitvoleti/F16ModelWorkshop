@@ -22,7 +22,13 @@ Architecture:
 - Trim control offsets (controller outputs deviations from trim)
 - F16 plant (5 inputs, 12 outputs)
 """
-@component function Scenario3AlphaProtection(; name)
+@component function Scenario3AlphaProtection(; name = nothing)
+  isnothing(name) && throw(ArgumentError("""
+        The `name` keyword must be provided. Please consider using the `@named` macro,
+        like so:
+
+        @named model = Scenario3AlphaProtection()
+        """))
   __params = Any[]
   __vars = Any[]
   __systems = System[]
