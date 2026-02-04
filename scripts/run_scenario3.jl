@@ -19,7 +19,9 @@ println()
 println("Running simulation...")
 
 # Run simulation
-result = Scenario3Simulation()
+
+include(joinpath(dirname(@__DIR__), "output.jl"))
+result = Scenario3Simulation(; A = ControllerA, B = ControllerB, C = ControllerC, D = ControllerD)
 
 println("✓ Simulation completed successfully!")
 println()
