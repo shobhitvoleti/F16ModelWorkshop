@@ -9,11 +9,10 @@ if isfile(joinpath((@__DIR__) |> Base.dirname, "dyad", "experiments.jl"))
 end
 
 
-include("ClosedLoopModelLegacy_experiment.jl")
 include("ClosedLoopModel_experiment.jl")
 include("F16ClosedLoopPerturbed_experiment.jl")
 include("F16OpenLoop_experiment.jl")
+include("F16PlantForTrim_experiment.jl")
 include("F16PlantIO_experiment.jl")
-include("F16SimplifiedPlant_experiment.jl")
-include("F16TrimModel_experiment.jl")
+include("F16TrimV2_experiment.jl")
 include("Hello_experiment.jl")

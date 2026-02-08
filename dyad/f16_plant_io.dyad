@@ -55,10 +55,10 @@ component F16PlantIO
   parameter epos_init::Real = 0.0
   parameter alt_init::Real = 1000.0
   parameter phi_init::Real = 0.0
-  parameter theta_init::Real = 0.2245
+  parameter theta_init::Real = -0.0170
   parameter psi_init::Real = 0.0
   parameter vt_init::Real = 152.4
-  parameter alpha_init::Real = 0.05
+  parameter alpha_init::Real = -0.0170
   parameter beta_init::Real = 0.0
   parameter P_init::Real = 0.0
   parameter Q_init::Real = 0.0

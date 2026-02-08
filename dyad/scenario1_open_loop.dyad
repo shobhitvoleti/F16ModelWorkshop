@@ -6,10 +6,10 @@ Both demonstrate LQG controller effectiveness against 10° pitch perturbation.
 """
 component F16OpenLoop
   "F16 with constant trim inputs (no feedback control)"
-  f16plant = F16ModelWorkshop.F16PlantIO() {^f16plant}
+  f16plant = F16ModelWorkshop.F16PlantIO(alt_init = 3000, theta_init = 10 * pi / 180) {^f16plant}
   # Constant trim control inputs
-  T_cmd = BlockComponents.Constant(k = 44482.2) {^T_cmd}
-  el_cmd = BlockComponents.Constant(k = 0.0) {^el_cmd}
+  T_cmd = BlockComponents.Constant(k = 28696.2) {^T_cmd}
+  el_cmd = BlockComponents.Constant(k = 0.0459105) {^el_cmd}
   ail_cmd = BlockComponents.Constant(k = 0.0) {^ail_cmd}
   rud_cmd = BlockComponents.Constant(k = 0.0) {^rud_cmd}
   lef_cmd = BlockComponents.Constant(k = 0.0) {^lef_cmd}

@@ -35,9 +35,9 @@ Both demonstrate LQG controller effectiveness against 10° pitch perturbation.
   __constants = Any[]
 
   ### Components
-  push!(__systems, @named f16plant = F16ModelWorkshop.F16PlantIO())
-  push!(__systems, @named T_cmd = BlockComponents.Constant(k=44482.2))
-  push!(__systems, @named el_cmd = BlockComponents.Constant(k=0))
+  push!(__systems, @named f16plant = F16ModelWorkshop.F16PlantIO(alt_init=3000, theta_init=10 * pi / 180))
+  push!(__systems, @named T_cmd = BlockComponents.Constant(k=28696.2))
+  push!(__systems, @named el_cmd = BlockComponents.Constant(k=0.0459105))
   push!(__systems, @named ail_cmd = BlockComponents.Constant(k=0))
   push!(__systems, @named rud_cmd = BlockComponents.Constant(k=0))
   push!(__systems, @named lef_cmd = BlockComponents.Constant(k=0))

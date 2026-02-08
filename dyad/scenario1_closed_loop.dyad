@@ -3,16 +3,16 @@ Scenario 1: Closed-Loop Model with LQG controller feedback.
 Demonstrates controller stabilization from 10° pitch perturbation.
 """
 component F16ClosedLoopPerturbed
-  f16plant = F16ModelWorkshop.F16PlantIO() {^f16plant}
+  f16plant = F16ModelWorkshop.F16PlantIO(alt_init = 3000, theta_init = 3 * pi / 180) {^f16plant}
   controller = BlockComponents.StateSpace(nx = 12, nu = 12, ny = 5, A = ControllerA, B = ControllerB, C = ControllerC, D = ControllerD, x0 = fill(0.0, 12), u0 = fill(0.0, 12), y0 = fill(0.0, 5)) {^controller}
   ref_npos = BlockComponents.Constant(k = 0) {^ref_npos}
   ref_epos = BlockComponents.Constant(k = 0) {^ref_epos}
-  ref_alt = BlockComponents.Constant(k = 1000) {^ref_alt}
+  ref_alt = BlockComponents.Constant(k = 3000) {^ref_alt}
   ref_phi = BlockComponents.Constant(k = 0) {^ref_phi}
-  ref_theta = BlockComponents.Constant(k = 0.05) {^ref_theta}
+  ref_theta = BlockComponents.Constant(k = -0.0170) {^ref_theta}
   ref_psi = BlockComponents.Constant(k = 0) {^ref_psi}
   ref_vt = BlockComponents.Constant(k = 152.4) {^ref_vt}
-  ref_alpha = BlockComponents.Constant(k = 0.05) {^ref_alpha}
+  ref_alpha = BlockComponents.Constant(k = -0.0170) {^ref_alpha}
   ref_beta = BlockComponents.Constant(k = 0) {^ref_beta}
   ref_P = BlockComponents.Constant(k = 0) {^ref_P}
   ref_Q = BlockComponents.Constant(k = 0) {^ref_Q}
@@ -40,35 +40,23 @@ component F16ClosedLoopPerturbed
   control_rud = BlockComponents.Add(k1 = 1, k2 = 1) {^control_rud}
   control_lef = BlockComponents.Add(k1 = 1, k2 = 1) {^control_lef}
 relations
-  initial f16plant.npos = 0.0
-  initial f16plant.epos = 0.0
-  initial f16plant.alt = 1000.0
-  initial f16plant.phi = 0.0
-  initial f16plant.theta = 0.2245
-  initial f16plant.psi = 0.0
-  initial f16plant.vt = 152.4
-  initial f16plant.alpha = 0.05
-  initial f16plant.beta = 0.0
-  initial f16plant.P = 0.0
-  initial f16plant.Q = 0.0
-  initial f16plant.R = 0.0
   uT: analysis_point(control_T.y, f16plant.T_in)
   uEl: analysis_point(control_el.y, f16plant.el_in)
   uAil: analysis_point(control_ail.y, f16plant.ail_in)
   uRud: analysis_point(control_rud.y, f16plant.rud_in)
   uLef: analysis_point(control_lef.y, f16plant.lef_in)
-  y1: analysis_point(f16plant.npos_out, error1.u2)
-  y2: analysis_point(f16plant.epos_out, error2.u2)
-  y3: analysis_point(f16plant.alt_out, error3.u2)
-  y4: analysis_point(f16plant.phi_out, error4.u2)
-  y5: analysis_point(f16plant.theta_out, error5.u2)
-  y6: analysis_point(f16plant.psi_out, error6.u2)
-  y7: analysis_point(f16plant.vt_out, error7.u2)
-  y8: analysis_point(f16plant.alpha_out, error8.u2)
-  y9: analysis_point(f16plant.beta_out, error9.u2)
-  y10: analysis_point(f16plant.P_out, error10.u2)
-  y11: analysis_point(f16plant.Q_out, error11.u2)
-  y12: analysis_point(f16plant.R_out, error12.u2)
+  yn: analysis_point(f16plant.npos_out, error1.u2)
+  ye: analysis_point(f16plant.epos_out, error2.u2)
+  yalt: analysis_point(f16plant.alt_out, error3.u2)
+  yphi: analysis_point(f16plant.phi_out, error4.u2)
+  ypitch: analysis_point(f16plant.theta_out, error5.u2)
+  ypsi: analysis_point(f16plant.psi_out, error6.u2)
+  yvt: analysis_point(f16plant.vt_out, error7.u2)
+  yalpha: analysis_point(f16plant.alpha_out, error8.u2)
+  ybeta: analysis_point(f16plant.beta_out, error9.u2)
+  yP: analysis_point(f16plant.P_out, error10.u2)
+  yQ: analysis_point(f16plant.Q_out, error11.u2)
+  yR: analysis_point(f16plant.R_out, error12.u2)
   connect(ref_npos.y, error1.u1) {^id37}
   connect(f16plant.npos_out, error1.u2) {^id38}
   connect(ref_epos.y, error2.u1) {^id39}

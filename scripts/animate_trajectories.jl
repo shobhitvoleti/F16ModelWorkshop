@@ -49,22 +49,27 @@ function animate_trajectories(result;
     sys = hasproperty(result, :sys) ? result.sys : result.system
     t_sim = sol.t
     
-    # Auto-detect scenario name
+    # Auto-detect scenario name and loop type
     if title === nothing
         if hasproperty(sys, :f16plant)
             # Check if it has controller (closed-loop)
-            has_controller = any(s -> occursin("controller", string(s)), propertynames(sys))
+            has_controller = any(s -> occursin("controller", string(s)) || occursin("lqg", string(s)), 
+                                propertynames(sys))
             title = has_controller ? "Closed-Loop LQG Response" : "Open-Loop Response"
         else
             title = "F-16 Flight Trajectory"
         end
     end
     
+    # Detect loop type for filename
+    has_controller = any(s -> occursin("controller", string(s)) || occursin("lqg", string(s)), 
+                        propertynames(sys))
+    loop_type = has_controller ? "closed_loop" : "open_loop"
+    
     # Generate filename with timestamp
     if filename === nothing
         timestamp = replace(string(now()), ":" => "-", "." => "-")
-        safe_title = replace(lowercase(title), " " => "_", "-" => "_")
-        filename = joinpath(ANIM_DIR, "$(safe_title)_$(timestamp).mp4")
+        filename = joinpath(ANIM_DIR, "$(loop_type)_$(timestamp).mp4")
     elseif !isabspath(filename)
         filename = joinpath(ANIM_DIR, filename)
     end

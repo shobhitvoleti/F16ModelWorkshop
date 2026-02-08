@@ -17,10 +17,10 @@ F16 plant model with RealInput/RealOutput connectors for control system design
 | `epos_init`         |                          | --  |   0 |
 | `alt_init`         |                          | --  |   1000 |
 | `phi_init`         |                          | --  |   0 |
-| `theta_init`         |                          | --  |   0.2245 |
+| `theta_init`         |                          | --  |   -0.017 |
 | `psi_init`         |                          | --  |   0 |
 | `vt_init`         |                          | --  |   152.4 |
-| `alpha_init`         |                          | --  |   0.05 |
+| `alpha_init`         |                          | --  |   -0.017 |
 | `beta_init`         |                          | --  |   0 |
 | `P_init`         |                          | --  |   0 |
 | `Q_init`         |                          | --  |   0 |
@@ -103,7 +103,7 @@ F16 plant model with RealInput/RealOutput connectors for control system design
 | `rud_rad`         |                          | --  | 
 | `lef_rad`         |                          | --  | 
 """
-@component function F16PlantIO(; name = nothing, npos_init=0, epos_init=0, alt_init=1000, phi_init=0, theta_init=0.2245, psi_init=0, vt_init=152.4, alpha_init=0.05, beta_init=0, P_init=0, Q_init=0, R_init=0)
+@component function F16PlantIO(; name = nothing, npos_init=0, epos_init=0, alt_init=1000, phi_init=0, theta_init=-0.017, psi_init=0, vt_init=152.4, alpha_init=-0.017, beta_init=0, P_init=0, Q_init=0, R_init=0)
   isnothing(name) && throw(ArgumentError("""
         The `name` keyword must be provided. Please consider using the `@named` macro,
         like so:

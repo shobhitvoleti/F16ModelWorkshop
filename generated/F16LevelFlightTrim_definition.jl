@@ -19,39 +19,10 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
   var"IfLifting"::Bool = false
   # Trim altitude [m]
   var"altitude"::Float64 = 1000
-  # Trim velocity [m/s]
+  # Trim airspeed [m/s]
   var"velocity"::Float64 = 152.4
-  # F16 Trim Analysis - Equivalent to F16Model.Trim(h, V)
-  # 
-  # This analysis finds trim conditions for level flight at specified altitude and velocity.
-  # The nonlinear initialization solver finds states and controls where all derivatives = 0.
-  # 
-  # Required inputs:
-  #   h: Altitude [m]
-  #   V: Velocity [m/s]
-  # 
-  # Optional (defaults for level flight):
-  #   γ: Flight path angle [rad] = 0 (level flight)
-  #   ψdot: Yaw rate [rad/s] = 0 (no turn)
-  #   
-  # States solved by initialization:
-  #   - alpha: Angle of attack
-  #   - theta: Pitch angle (≈ alpha for level flight)
-  #   - T: Thrust
-  #   - el: Elevator deflection
-  # 
-  # States fixed:
-  #   - phi = 0 (wings level)
-  #   - beta = 0 (coordinated flight)  
-  #   - psi = 0 (arbitrary heading)
-  #   - P = Q = R = 0 (no rotation)
-  #   - ail = rud = lef = 0 (no lateral/directional control)
-  # 
-  # The solver finds values where:
-  #   - Lift balances weight
-  #   - Thrust balances drag
-  #   - Pitch moment is zero
-  var"model"::Union{Nothing, System} = F16ModelWorkshop.F16TrimModel(; name=:F16TrimModel)
+  # Trim test: 4 decision variables, 4 equilibrium constraints
+  var"model"::Union{Nothing, System} = F16ModelWorkshop.F16TrimV2(; name=:F16TrimV2)
 end
 
 function DyadInterface.run_analysis(spec::F16LevelFlightTrimSpec)

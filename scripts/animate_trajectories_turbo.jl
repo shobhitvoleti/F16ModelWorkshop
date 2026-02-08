@@ -27,8 +27,8 @@ const ANIM_DIR = joinpath(@__DIR__, "..", "animations")
 mkpath(ANIM_DIR)
 
 # Available state variables
-const STATE_VARS = [:npos, :epos, :alt, :phi, :theta, :psi, :vt, :alpha, :beta, :P, :Q, :R]
-const CONTROL_VARS = [:T, :el, :ail, :rud, :lef]
+STATE_VARS = [:npos, :epos, :alt, :phi, :theta, :psi, :vt, :alpha, :beta, :P, :Q, :R]
+CONTROL_VARS = [:T, :el, :ail, :rud, :lef]
 
 """
     animate_trajectories_turbo(result; kwargs...)
@@ -184,7 +184,7 @@ function animate_trajectories_turbo(result;
                  xlabel="East (m)", 
                  ylabel="North (m)", 
                  zlabel="Altitude (m)",
-                 title="F-16 Trajectory (TURBO)",
+                 title="F-16 Trajectory",
                  titlesize=36,
                  xlabelsize=24,
                  ylabelsize=24,
