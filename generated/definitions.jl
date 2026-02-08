@@ -19,6 +19,7 @@ end
 import DyadInterface
 import BlockComponents
 import DyadControlSystems
+import DyadData
 @doc Markdown.doc"""
 This connector represents an electrical pin with voltage and current as the potential and flow variables, respectively.
 """
@@ -60,14 +61,17 @@ This connector represents a rotational spline with angle and torque as the poten
   return System(Equation[], t, vars, []; name)
 end
 
+include("ClosedLoopModelLegacy_definition.jl")
 include("ClosedLoopModel_definition.jl")
+include("F16ClosedLoopPerturbed_definition.jl")
 include("F16FromTrim_definition.jl")
 include("F16LQGControllerAnalysis_definition.jl")
 include("F16LevelFlightTrim_definition.jl")
+include("F16OpenLoop_definition.jl")
 include("F16PlantIO_definition.jl")
 include("F16SimplifiedPlant_definition.jl")
 include("F16TrimModel_definition.jl")
 include("Hello_definition.jl")
-include("Scenario3AlphaProtection_definition.jl")
-include("Scenario3Simulation_definition.jl")
+include("Scenario1ClosedLoop_definition.jl")
+include("Scenario1OpenLoop_definition.jl")
 include("World_definition.jl")

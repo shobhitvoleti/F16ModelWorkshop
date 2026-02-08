@@ -1,0 +1,107 @@
+"""
+Scenario 1: Disturbance Rejection - Open-Loop vs Closed-Loop
+
+Open-loop model in this file. Closed-loop model in scenario2_closed_loop.dyad.
+Both demonstrate LQG controller effectiveness against 10° pitch perturbation.
+"""
+component F16OpenLoop
+  "F16 with constant trim inputs (no feedback control)"
+  f16plant = F16ModelWorkshop.F16PlantIO() {^f16plant}
+  # Constant trim control inputs
+  T_cmd = BlockComponents.Constant(k = 44482.2) {^T_cmd}
+  el_cmd = BlockComponents.Constant(k = 0.0) {^el_cmd}
+  ail_cmd = BlockComponents.Constant(k = 0.0) {^ail_cmd}
+  rud_cmd = BlockComponents.Constant(k = 0.0) {^rud_cmd}
+  lef_cmd = BlockComponents.Constant(k = 0.0) {^lef_cmd}
+relations
+  # Connect constant trim inputs to plant
+  connect(T_cmd.y, f16plant.T_in) {^id7}
+  connect(el_cmd.y, f16plant.el_in) {^id8}
+  connect(ail_cmd.y, f16plant.ail_in) {^id9}
+  connect(rud_cmd.y, f16plant.rud_in) {^id10}
+  connect(lef_cmd.y, f16plant.lef_in) {^id11}
+metadata {
+  "_links": {
+    "f16plant": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 270, "y1": 460, "x2": 470, "y2": 660, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "T_cmd": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 20, "y1": 20, "x2": 220, "y2": 220, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "el_cmd": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 20, "y1": 240, "x2": 220, "y2": 440, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "ail_cmd": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 20, "y1": 460, "x2": 220, "y2": 660, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "rud_cmd": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 20, "y1": 680, "x2": 220, "y2": 880, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "lef_cmd": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 20, "y1": 900, "x2": 220, "y2": 1100, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "id7": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 260, "y": 120}, {"x": 260, "y": 474}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id8": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 250, "y": 340}, {"x": 250, "y": 516}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id9": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id10": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 250, "y": 780}, {"x": 250, "y": 608}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id11": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 260, "y": 1000}, {"x": 260, "y": 646}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    }
+  }
+}
+end
+
+analysis Scenario1OpenLoop
+  "Open-loop response to 10° pitch perturbation"
+  extends TransientAnalysis(stop = 30.0)
+  model = F16OpenLoop()
+relations
+end

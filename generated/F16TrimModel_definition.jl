@@ -47,7 +47,13 @@ The solver finds values where:
 | `gamma`         | Flight path angle [rad] (0 = level flight)                         | --  |   0 |
 | `psidot`         | Turn rate [rad/s] (0 = straight flight)                         | --  |   0 |
 """
-@component function F16TrimModel(; name, h=1000, V=152.4, gamma=0, psidot=0)
+@component function F16TrimModel(; name = nothing, h=1000, V=152.4, gamma=0, psidot=0)
+  isnothing(name) && throw(ArgumentError("""
+        The `name` keyword must be provided. Please consider using the `@named` macro,
+        like so:
+
+        @named model = F16TrimModel()
+        """))
   __params = Any[]
   __vars = Any[]
   __systems = System[]

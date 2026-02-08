@@ -5,9 +5,26 @@
 
 
 @doc Markdown.doc"""
-   F16PlantIO(; name)
+   F16PlantIO(; name, npos_init, epos_init, alt_init, phi_init, theta_init, psi_init, vt_init, alpha_init, beta_init, P_init, Q_init, R_init)
 
 F16 plant model with RealInput/RealOutput connectors for control system design
+
+## Parameters: 
+
+| Name         | Description                         | Units  |   Default value |
+| ------------ | ----------------------------------- | ------ | --------------- |
+| `npos_init`         |                          | --  |   0 |
+| `epos_init`         |                          | --  |   0 |
+| `alt_init`         |                          | --  |   1000 |
+| `phi_init`         |                          | --  |   0 |
+| `theta_init`         |                          | --  |   0.2245 |
+| `psi_init`         |                          | --  |   0 |
+| `vt_init`         |                          | --  |   152.4 |
+| `alpha_init`         |                          | --  |   0.05 |
+| `beta_init`         |                          | --  |   0 |
+| `P_init`         |                          | --  |   0 |
+| `Q_init`         |                          | --  |   0 |
+| `R_init`         |                          | --  |   0 |
 
 ## Connectors
 
@@ -86,7 +103,13 @@ F16 plant model with RealInput/RealOutput connectors for control system design
 | `rud_rad`         |                          | --  | 
 | `lef_rad`         |                          | --  | 
 """
-@component function F16PlantIO(; name)
+@component function F16PlantIO(; name = nothing, npos_init=0, epos_init=0, alt_init=1000, phi_init=0, theta_init=0.2245, psi_init=0, vt_init=152.4, alpha_init=0.05, beta_init=0, P_init=0, Q_init=0, R_init=0)
+  isnothing(name) && throw(ArgumentError("""
+        The `name` keyword must be provided. Please consider using the `@named` macro,
+        like so:
+
+        @named model = F16PlantIO()
+        """))
   __params = Any[]
   __vars = Any[]
   __systems = System[]
@@ -96,6 +119,18 @@ F16 plant model with RealInput/RealOutput connectors for control system design
   __eqs = Equation[]
 
   ### Symbolic Parameters
+  append!(__params, @parameters (npos_init::Real = npos_init))
+  append!(__params, @parameters (epos_init::Real = epos_init))
+  append!(__params, @parameters (alt_init::Real = alt_init))
+  append!(__params, @parameters (phi_init::Real = phi_init))
+  append!(__params, @parameters (theta_init::Real = theta_init))
+  append!(__params, @parameters (psi_init::Real = psi_init))
+  append!(__params, @parameters (vt_init::Real = vt_init))
+  append!(__params, @parameters (alpha_init::Real = alpha_init))
+  append!(__params, @parameters (beta_init::Real = beta_init))
+  append!(__params, @parameters (P_init::Real = P_init))
+  append!(__params, @parameters (Q_init::Real = Q_init))
+  append!(__params, @parameters (R_init::Real = R_init))
   append!(__params, @parameters (g::Real = 9.80665))
   append!(__params, @parameters (m::Real = 9295.44))
   append!(__params, @parameters (B::Real = 9.144))
@@ -221,6 +256,18 @@ F16 plant model with RealInput/RealOutput connectors for control system design
   ### Guesses
 
   ### Defaults
+  __defaults[npos] = (npos_init)
+  __defaults[epos] = (epos_init)
+  __defaults[alt] = (alt_init)
+  __defaults[phi] = (phi_init)
+  __defaults[theta] = (theta_init)
+  __defaults[psi] = (psi_init)
+  __defaults[vt] = (vt_init)
+  __defaults[alpha] = (alpha_init)
+  __defaults[beta] = (beta_init)
+  __defaults[P] = (P_init)
+  __defaults[Q] = (Q_init)
+  __defaults[R] = (R_init)
 
   ### Initialization Equations
 

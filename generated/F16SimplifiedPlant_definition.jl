@@ -65,7 +65,13 @@ F16 plant model with F16Model.jl state space and dynamics structure, simplified 
 | `N_tot`         |                          | --  | 
 | `denom`         |                          | --  | 
 """
-@component function F16SimplifiedPlant(; name, T=44482.2, el=0, ail=0, rud=0, lef=0)
+@component function F16SimplifiedPlant(; name = nothing, T=44482.2, el=0, ail=0, rud=0, lef=0)
+  isnothing(name) && throw(ArgumentError("""
+        The `name` keyword must be provided. Please consider using the `@named` macro,
+        like so:
+
+        @named model = F16SimplifiedPlant()
+        """))
   __params = Any[]
   __vars = Any[]
   __systems = System[]

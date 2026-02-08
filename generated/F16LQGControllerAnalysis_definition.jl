@@ -11,7 +11,7 @@ using DyadControlSystems: AbstractLQGAnalysisSpec, LQGAnalysisSpec
   name::Symbol = :F16LQGControllerAnalysis
   var"measurement"::Array{String, 1} = ["y1", "y2", "y3", "y4", "y5", "y6", "y7", "y8", "y9", "y10", "y11", "y12"]
   var"controlled_output"::Array{String, 1} = ["y1", "y2", "y3", "y4", "y5", "y6", "y7", "y8", "y9", "y10", "y11", "y12"]
-  var"control_input"::Array{String, 1} = ["u1", "u2", "u3", "u4", "u5"]
+  var"control_input"::Array{String, 1} = ["uT", "uEl", "uAil", "uRud", "uLef"]
   var"disturbance_inputs"::Array{String, 1} = []
   var"loop_openings"::Array{String, 1} = []
   var"t"::Float64 = 0

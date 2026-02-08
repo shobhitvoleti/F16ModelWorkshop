@@ -26,7 +26,13 @@ A simple lumped thermal model
 | ------------ | ----------------------------------- | ------ | 
 | `T`         |                          | K  | 
 """
-@component function Hello(; name, T_inf=300, T0=320, h=0.7, A=1, m=0.1, c_p=1.2)
+@component function Hello(; name = nothing, T_inf=300, T0=320, h=0.7, A=1, m=0.1, c_p=1.2)
+  isnothing(name) && throw(ArgumentError("""
+        The `name` keyword must be provided. Please consider using the `@named` macro,
+        like so:
+
+        @named model = Hello()
+        """))
   __params = Any[]
   __vars = Any[]
   __systems = System[]
