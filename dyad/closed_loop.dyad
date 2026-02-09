@@ -590,3 +590,19 @@ analysis F16LQGControllerAnalysis
   model = ClosedLoopModel()
 relations
 end
+
+analysis F16ReducedLQGControllerAnalysis
+  extends DyadControlSystems.LQGAnalysis(
+  measurement = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"], 
+  controlled_output = ["yn", "ye","yalt", "ypitch", "yvt", "yalpha", "yQ"], 
+  control_input = ["uT", "uEl", "uAil", "uRud", "uLef"], 
+  loop_openings = [], 
+  q1_diag = [0.1, 0.1, 100.0, 200.0, 10.0, 1000.0, 50.0], 
+  q2_diag = [0.1, 0.1, 0.1, 0.1, 0.1], 
+  r1_diag = [0.01, 0.01, 0.01, 0.01, 0.01], 
+  r2_diag = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01], 
+  duration = -1.0
+  )
+  model = ClosedLoopModel()
+relations
+end

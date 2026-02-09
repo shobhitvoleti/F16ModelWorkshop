@@ -1,8 +1,6 @@
 using  DyadInterface, F16ModelWorkshop, DyadControlSystems
 
-solution = F16LQGControllerAnalysis()
-L = artifacts(solution, :ControllerGain)
-K = artifacts(solution, :ObserverGain)
+solution = F16ReducedLQGControllerAnalysis()
 
 
 open("src/output.jl", "w") do f
@@ -20,7 +18,7 @@ CONTROL Symbols = :T, :el, :ail, :rud, :lef
 Generates an animation of the F16 trajectory with the specified state and control variables plotted over time. 
 For visual clarity limited to three variables supplied as kwargs.
 """
-animate_trajectories_turbo(result2, duration=10.0;
+fig = animate_trajectories_turbo(result2, duration=10.0;
                             plot1=:alt, 
                             plot2=:theta, 
                             plot3=:vt)

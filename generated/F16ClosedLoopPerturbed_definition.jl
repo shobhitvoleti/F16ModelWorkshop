@@ -33,7 +33,7 @@ Demonstrates controller stabilization from 10° pitch perturbation.
   __constants = Any[]
 
   ### Components
-  push!(__systems, @named f16plant = F16ModelWorkshop.F16PlantIO(alt_init=3000, theta_init=3 * pi / 180))
+  push!(__systems, @named f16plant = F16ModelWorkshop.F16PlantIO(alt_init=3000, theta_init=10 * pi / 180))
   push!(__systems, @named controller = BlockComponents.StateSpace(nx=12, nu=12, ny=5, A=ControllerA, B=ControllerB, C=ControllerC, D=ControllerD, x0=fill(0, 12), u0=fill(0, 12), y0=fill(0, 5)))
   push!(__systems, @named ref_npos = BlockComponents.Constant(k=0))
   push!(__systems, @named ref_epos = BlockComponents.Constant(k=0))

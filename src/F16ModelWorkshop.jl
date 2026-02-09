@@ -6,4 +6,4 @@ include("output.jl")
 
 include("../generated/module.jl")
     
-end # module F16ModelWorkshop
+end

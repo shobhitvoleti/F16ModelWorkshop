@@ -3,7 +3,7 @@
     "julia.NumThreads": "auto",
     "files.autoSave": "off",
     "workbench.secondarySideBar.defaultVisibility": "hidden",
-    "julia.languageServerJuliaupChannel": "dyad-2.1.0-rc7",
-    "julia.executablePath": "julia +dyad-2.1.0-rc7",
+    "julia.languageServerJuliaupChannel": "dyad-2.1.0",
+    "julia.executablePath": "julia +dyad-2.1.0",
     "julia.juliaup.server": "https://juliahub.com/juliabin"
 }
