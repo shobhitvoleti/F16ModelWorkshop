@@ -457,6 +457,7 @@ function launch_lqg_designer(spec::LQGAnalysisSpec)
         on(toggle.active) do v
             state.plugin_enabled[pname][] = v
             rebuild_plots!(state)
+            update_all_plots!(state)
         end
         left_row += 1
     end

@@ -215,7 +215,6 @@ function create_plugin_visuals!(parent, row::Int, ::Type{GangOfFourPlugin}, stat
         ylabel = "Singular value",
         xscale = log10,
         yscale = log10,
-        tellheight = false,
     )
     state.st_ax = st_ax
 
@@ -226,7 +225,6 @@ function create_plugin_visuals!(parent, row::Int, ::Type{GangOfFourPlugin}, stat
         ylabel = "Singular value",
         xscale = log10,
         yscale = log10,
-        tellheight = false,
     )
     state.pscs_ax = pscs_ax
 
@@ -387,7 +385,6 @@ function create_plugin_visuals!(parent, row::Int, ::Type{ControllerBodePlugin}, 
         ylabel = "Singular value",
         xscale = log10,
         yscale = log10,
-        tellheight = false,
     )
     state.ax = ax
 
@@ -530,7 +527,6 @@ function create_plugin_visuals!(parent, row::Int, ::Type{NyquistPlugin}, state::
         xlabel = "Real",
         ylabel = "Imaginary",
         aspect = DataAspect(),
-        tellheight = false,
     )
     state.ax = ax
 
@@ -666,7 +662,6 @@ function create_plugin_visuals!(parent, row::Int, ::Type{LoopTransferPlugin},
         ylabel = "Singular value",
         xscale = log10,
         yscale = log10,
-        tellheight = false,
     )
     state.ax = ax
 
@@ -798,7 +793,6 @@ function create_plugin_visuals!(parent, row::Int, ::Type{StepResponsePlugin},
         title = "Step Response",
         xlabel = "Time (s)",
         ylabel = "Output",
-        tellheight = false,
     )
 
     # Plot lines for each output-input combination
@@ -831,7 +825,6 @@ function create_plugin_visuals!(parent, row::Int, ::Type{StepResponsePlugin},
             title = "Control Signal",
             xlabel = "Time (s)",
             ylabel = "Control",
-            tellheight = false,
         )
         for j in 1:nu
             label = nu > 1 ? state.u_names[j] : ""
@@ -997,7 +990,6 @@ function create_plugin_visuals!(parent, row::Int, ::Type{PZMapPlugin},
         title = "Closed-Loop Poles and Zeros",
         xlabel = "Real",
         ylabel = "Imaginary",
-        tellheight = false,
     )
 
     # Poles as x markers (blue)
