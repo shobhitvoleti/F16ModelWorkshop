@@ -259,7 +259,7 @@ state = launch_lqg_designer(spec)
 """
 function DyadControlSystems.launch_lqg_designer(spec::LQGAnalysisSpec)
     
-    fig = Figure(size=(1920, 1080))
+    fig = Figure(size=(1920, 1080), pt_per_unit = 0.25)
     
     # Shared robustness constraints
     Ms = Observable(1.5)
