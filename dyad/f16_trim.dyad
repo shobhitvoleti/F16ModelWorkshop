@@ -231,7 +231,7 @@ end
 
 "F16 Level Flight Trim Analysis - finds equilibrium for straight and level flight"
 analysis F16LevelFlightTrim
-  extends TransientAnalysis(stop = 0.01)
+  extends TransientAnalysis(stop = 0.1)
   model = F16TrimV2(h = altitude, V = velocity)
   
   "Trim altitude [m]"

@@ -578,10 +578,10 @@ u5 (LEF): 10.0 - Higher penalty, LEF slower actuator, use sparingly
 analysis F16LQGControllerAnalysis
   extends DyadControlSystems.LQGAnalysis(
   measurement = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"], 
-  controlled_output = ["yn", "ye","yalt", "ypitch", "yvt", "yalpha", "yQ"], 
+  controlled_output = ["yn", "ye","yalt", "ypitch", "yvt", "yalpha","ybeta", "yQ"], 
   control_input = ["uT", "uEl", "uAil", "uRud", "uLef"], 
   loop_openings = [], 
-  q1_diag = [0.1, 0.1, 100.0, 200.0, 10.0, 1000.0, 50.0], 
+  q1_diag = [0.1, 0.1, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0], 
   q2_diag = [0.1, 0.1, 0.1, 0.1, 0.1], 
   r1_diag = [0.01, 0.01, 0.01, 0.01, 0.01], 
   r2_diag = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01], 

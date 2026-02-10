@@ -11,7 +11,7 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
   name::Symbol = :F16LevelFlightTrim
   var"alg"::String = "auto"
   var"start"::Float64 = 0
-  var"stop"::Float64 = 0.01
+  var"stop"::Float64 = 0.1
   var"abstol"::Float64 = 0.000001
   var"reltol"::Float64 = 0.000001
   var"saveat"::Float64 = 0

@@ -22,5 +22,4 @@ include("F16OpenLoop_test.jl")
 include("F16PlantForTrim_test.jl")
 include("F16PlantIO_test.jl")
 include("F16TrimV2_test.jl")
-include("Hello_test.jl")
 end

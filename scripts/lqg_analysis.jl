@@ -21,4 +21,5 @@ For visual clarity limited to three variables supplied as kwargs.
 fig = animate_trajectories_turbo(result2, duration=10.0;
                             plot1=:alt, 
                             plot2=:theta, 
-                            plot3=:vt)
+                            plot3=:vt,
+                            filename="closed_loop.mp4")

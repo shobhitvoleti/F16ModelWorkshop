@@ -10,12 +10,12 @@ using DyadControlSystems: AbstractLQGAnalysisSpec, LQGAnalysisSpec
 @kwdef mutable struct F16LQGControllerAnalysisSpec <: AbstractLQGAnalysisSpec
   name::Symbol = :F16LQGControllerAnalysis
   var"measurement"::Array{String, 1} = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"]
-  var"controlled_output"::Array{String, 1} = ["yn", "ye", "yalt", "ypitch", "yvt", "yalpha", "yQ"]
+  var"controlled_output"::Array{String, 1} = ["yn", "ye", "yalt", "ypitch", "yvt", "yalpha", "ybeta", "yQ"]
   var"control_input"::Array{String, 1} = ["uT", "uEl", "uAil", "uRud", "uLef"]
   var"disturbance_inputs"::Array{String, 1} = []
   var"loop_openings"::Array{String, 1} = []
   var"t"::Float64 = 0
-  var"q1_diag"::Array{Float64, 1} = [0.1, 0.1, 100, 200, 10, 1000, 50]
+  var"q1_diag"::Array{Float64, 1} = [0.1, 0.1, 100, 100, 100, 100, 100, 100]
   var"q2_diag"::Array{Float64, 1} = [0.1, 0.1, 0.1, 0.1, 0.1]
   var"r1_diag"::Array{Float64, 1} = [0.01, 0.01, 0.01, 0.01, 0.01]
   var"r2_diag"::Array{Float64, 1} = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]

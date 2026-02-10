@@ -43,7 +43,6 @@ function trim_f16(; altitude::Real=1000.0, velocity::Real=152.4)
     prob = ODEProblem(sys, [], (0.0, 0.01))
     println("✓ Problem created")
     
-    # Solve - the DAE solver will find T and el that satisfy equilibrium
     sol = solve(prob, saveat=0.001)
     
     if !SciMLBase.successful_retcode(sol.retcode)
@@ -123,14 +122,3 @@ function trim_f16(; altitude::Real=1000.0, velocity::Real=152.4)
 end
 
 trim_results = trim_f16(altitude=3000.0, velocity=152.4)
-# Run trim if executed directly
-if abspath(PROGRAM_FILE) == @__FILE__
-    # Default trim at 1000m, 152.4 m/s
-    trim_results = trim_f16(altitude=1000.0, velocity=152.4)
-    
-    println("\n\nExample: Trim at different conditions")
-    println("-"^40)
-    
-    # Trim at higher altitude
-    trim_high = trim_f16(altitude=5000.0, velocity=200.0)
-end

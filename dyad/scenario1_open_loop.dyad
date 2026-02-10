@@ -5,7 +5,6 @@ Open-loop model in this file. Closed-loop model in scenario2_closed_loop.dyad.
 Both demonstrate LQG controller effectiveness against 10° pitch perturbation.
 """
 component F16OpenLoop
-  "F16 with constant trim inputs (no feedback control)"
   f16plant = F16ModelWorkshop.F16PlantIO(alt_init = 3000, theta_init = 10 * pi / 180) {^f16plant}
   # Constant trim control inputs
   T_cmd = BlockComponents.Constant(k = 28696.2) {^T_cmd}
