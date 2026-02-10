@@ -725,6 +725,7 @@ mutable struct StepResponsePluginState
     show_control::Bool                  # Whether to show control signal plot
     y_names::Vector{String}             # Output signal names
     u_names::Vector{String}             # Input signal names
+    legends::Vector{Any}                # Legend objects for explicit cleanup
 end
 
 supports_args(::Type{StepResponsePlugin}, args...; kwargs...) = true
@@ -766,7 +767,8 @@ function init_plugin_state(::Type{StepResponsePlugin}, ny::Int, nu::Int;
         nu,
         show_control,
         collect(String, y_names),
-        collect(String, u_names)
+        collect(String, u_names),
+        Any[]                       # legends
     )
 end
 
@@ -811,9 +813,15 @@ function create_plugin_visuals!(parent, row::Int, ::Type{StepResponsePlugin},
         end
     end
 
+    # Delete old legends and clear the list
+    for l in state.legends
+        delete!(l)
+    end
+    empty!(state.legends)
+
     # Add legend if MIMO
     if ny > 1 || nu > 1
-        GLMakie.Makie.axislegend(state.output_ax, position=:rt)
+        push!(state.legends, GLMakie.Makie.axislegend(state.output_ax, position=:rt))
     end
     hlines!(state.output_ax, [1.0], color=:gray, linestyle=:dash, linewidth=0.5)
 
@@ -832,7 +840,7 @@ function create_plugin_visuals!(parent, row::Int, ::Type{StepResponsePlugin},
                    label=label)
         end
         if nu > 1
-            GLMakie.Makie.axislegend(state.control_ax, position=:rt)
+            push!(state.legends, GLMakie.Makie.axislegend(state.control_ax, position=:rt))
         end
         return (state.output_ax, state.control_ax)
     end
