@@ -1,116 +1,242 @@
-"""
-F16 Trim Analysis - Equivalent to F16Model.Trim(h, V)
-
-This analysis finds trim conditions for level flight at specified altitude and velocity.
-The nonlinear initialization solver finds states and controls where all derivatives = 0.
-
-Required inputs:
-  h: Altitude [m]
-  V: Velocity [m/s]
-
-Optional (defaults for level flight):
-  γ: Flight path angle [rad] = 0 (level flight)
-  ψdot: Yaw rate [rad/s] = 0 (no turn)
+"F16 trim model - controls are algebraic variables determined by equilibrium"
+component F16PlantForTrim
+  # State variables - 12 states
+  variable npos::Real
+  variable epos::Real
+  variable alt::Real
+  variable phi::Real
+  variable theta::Real
+  variable psi::Real
+  variable vt::Real
+  variable alpha::Real
+  variable beta::Real
+  variable P::Real
+  variable Q::Real
+  variable R::Real
   
-States solved by initialization:
-  - alpha: Angle of attack
-  - theta: Pitch angle (≈ alpha for level flight)
-  - T: Thrust
-  - el: Elevator deflection
-
-States fixed:
-  - phi = 0 (wings level)
-  - beta = 0 (coordinated flight)  
-  - psi = 0 (arbitrary heading)
-  - P = Q = R = 0 (no rotation)
-  - ail = rud = lef = 0 (no lateral/directional control)
-
-The solver finds values where:
-  - Lift balances weight
-  - Thrust balances drag
-  - Pitch moment is zero
-"""
-test component F16TrimModel
-  # F16 plant - controls and some states will be solved by initialization
-  aircraft = F16SimplifiedPlant()
+  # Control INPUTS - these are algebraic (no der equation)
+  # They will be determined by equilibrium constraints
+  variable T::Real       # Thrust
+  variable el::Real      # Elevator
   
-  # Trim specification parameters
-  "Trim altitude [m]"
+  # Fixed lateral controls (parameters, not solved)
+  parameter ail::Real = 0.0
+  parameter rud::Real = 0.0
+  parameter lef::Real = 0.0
+  
+  # Aircraft constants
+  final parameter g::Real = 9.80665
+  final parameter m::Real = 9295.44
+  final parameter B::Real = 9.144
+  final parameter S::Real = 27.87
+  final parameter cbar::Real = 3.45
+  final parameter xcgr::Real = 0.35
+  final parameter xcg::Real = 0.30
+  final parameter Heng::Real = 0.0
+  final parameter Jx::Real = 12874.8
+  final parameter Jy::Real = 75673.6
+  final parameter Jz::Real = 85552.1
+  final parameter Jxz::Real = 1331.4
+  
+  # Aero coefficients
+  final parameter Cx0::Real = -0.099
+  final parameter Cxa::Real = 0.205
+  final parameter Cxa2::Real = -0.484
+  final parameter Cxde::Real = -0.0036
+  final parameter Cy0::Real = 0.0
+  final parameter Cyb::Real = -0.83
+  final parameter Cyda::Real = 0.0
+  final parameter Cydr::Real = 0.23
+  final parameter Cz0::Real = -0.366
+  final parameter Cza::Real = -5.09
+  final parameter Cza2::Real = -3.57
+  final parameter Czde::Real = -0.632
+  final parameter Cl0::Real = 0.0
+  final parameter Clb::Real = -0.14
+  final parameter Clda::Real = 0.134
+  final parameter Cldr::Real = 0.0107
+  final parameter Cm0::Real = 0.0411
+  final parameter Cma::Real = -0.98
+  final parameter Cma2::Real = 3.67
+  final parameter Cmde::Real = -1.28
+  final parameter Cn0::Real = 0.0
+  final parameter Cnb::Real = 0.117
+  final parameter Cnda::Real = -0.0036
+  final parameter Cndr::Real = -0.15
+  final parameter Cxq::Real = -0.267
+  final parameter Cyp::Real = -0.1
+  final parameter Cyr::Real = 0.3
+  final parameter Czq::Real = -3.0
+  final parameter Clp::Real = -0.56
+  final parameter Clr::Real = 0.25
+  final parameter Cmq::Real = -12.2
+  final parameter Cnp::Real = -0.026
+  final parameter Cnr::Real = -0.25
+  
+  # Intermediate variables
+  variable sa::Real
+  variable ca::Real
+  variable sb::Real
+  variable cb::Real
+  variable st::Real
+  variable ct::Real
+  variable tt::Real
+  variable sphi::Real
+  variable cphi::Real
+  variable spsi::Real
+  variable cpsi::Real
+  variable U::Real
+  variable V::Real
+  variable W::Real
+  variable qbar::Real
+  variable rho::Real
+  variable Cx_tot::Real
+  variable Cy_tot::Real
+  variable Cz_tot::Real
+  variable Cl_tot::Real
+  variable Cm_tot::Real
+  variable Cn_tot::Real
+  variable Udot::Real
+  variable Vdot::Real
+  variable Wdot::Real
+  variable L_tot::Real
+  variable M_tot::Real
+  variable N_tot::Real
+  variable denom::Real
+
+relations
+  # Trig
+  sa = sin(alpha)
+  ca = cos(alpha)
+  sb = sin(beta)
+  cb = cos(beta)
+  st = sin(theta)
+  ct = cos(theta)
+  tt = tan(theta)
+  sphi = sin(phi)
+  cphi = cos(phi)
+  spsi = sin(psi)
+  cpsi = cos(psi)
+  
+  # Body velocities
+  U = vt * ca * cb
+  V = vt * sb
+  W = vt * sa * cb
+  
+  # Atmosphere
+  rho = 1.225 * (1.0 - 0.0065 * alt / 288.15)^4.256
+  qbar = 0.5 * rho * vt * vt
+  
+  # Aero coefficients
+  Cx_tot = Cx0 + Cxa * alpha + Cxa2 * alpha * alpha + Cxde * el + Cxq * (cbar * Q / (2.0 * vt))
+  Cy_tot = Cy0 + Cyb * beta + Cyda * ail + Cydr * rud + Cyp * (B * P / (2.0 * vt)) + Cyr * (B * R / (2.0 * vt))
+  Cz_tot = Cz0 + Cza * alpha + Cza2 * alpha * alpha + Czde * el + Czq * (cbar * Q / (2.0 * vt))
+  Cl_tot = Cl0 + Clb * beta + Clda * ail + Cldr * rud + Clp * (B * P / (2.0 * vt)) + Clr * (B * R / (2.0 * vt))
+  Cm_tot = Cm0 + Cma * alpha + Cma2 * alpha * alpha + Cmde * el + Cmq * (cbar * Q / (2.0 * vt))
+  Cn_tot = Cn0 + Cnb * beta + Cnda * ail + Cndr * rud + Cnp * (B * P / (2.0 * vt)) + Cnr * (B * R / (2.0 * vt))
+  
+  # Force equations
+  Udot = R * V - Q * W - g * st + qbar * S * Cx_tot / m + T / m
+  Vdot = P * W - R * U + g * ct * sphi + qbar * S * Cy_tot / m
+  Wdot = Q * U - P * V + g * ct * cphi + qbar * S * Cz_tot / m
+  
+  # Moments
+  L_tot = Cl_tot * qbar * S * B
+  M_tot = Cm_tot * qbar * S * cbar
+  N_tot = Cn_tot * qbar * S * B
+  denom = Jx * Jz - Jxz * Jxz
+  
+  # State equations
+  der(vt) = (U * Udot + V * Vdot + W * Wdot) / vt
+  der(alpha) = (U * Wdot - W * Udot) / (U * U + W * W)
+  der(beta) = (Vdot * vt - V * (U * Udot + V * Vdot + W * Wdot) / vt) / (vt * vt * cb)
+  der(P) = (Jz * L_tot + Jxz * N_tot - (Jz * (Jz - Jy) + Jxz * Jxz) * Q * R + Jxz * (Jx - Jy + Jz) * P * Q + Jxz * Q * Heng) / denom
+  der(Q) = (M_tot + (Jz - Jx) * P * R - Jxz * (P * P - R * R) - R * Heng) / Jy
+  der(R) = (Jx * N_tot + Jxz * L_tot + (Jx * (Jx - Jy) + Jxz * Jxz) * P * Q - Jxz * (Jx - Jy + Jz) * Q * R + Jx * Q * Heng) / denom
+  der(npos) = U * (ct * cpsi) + V * (sphi * cpsi * st - cphi * spsi) + W * (cphi * st * cpsi + sphi * spsi)
+  der(epos) = U * (ct * spsi) + V * (sphi * spsi * st + cphi * cpsi) + W * (cphi * st * spsi - sphi * cpsi)
+  der(alt) = U * st - V * (sphi * ct) - W * (cphi * ct)
+  der(phi) = P + tt * (Q * sphi + R * cphi)
+  der(theta) = Q * cphi - R * sphi
+  der(psi) = (Q * sphi + R * cphi) / ct
+  
+  # T and el are determined by EQUILIBRIUM (algebraic constraints)
+  # These make the system DAE with algebraic states T and el
+  # der(vt) = 0 and der(Q) = 0 implicitly define T and el
+  
+  # For the ODE system to be balanced, we need equations for T and el
+  # Use the equilibrium conditions directly:
+  # der(vt) = 0 means: (U*Udot + V*Vdot + W*Wdot)/vt = 0
+  # der(Q) = 0 means: (M_tot + (Jz-Jx)*P*R - Jxz*(P²-R²) - R*Heng)/Jy = 0
+  
+  # Express these as algebraic constraints:
+  0 = (U * Udot + V * Vdot + W * Wdot) / vt   # Defines T (thrust for constant velocity)
+  0 = (M_tot + (Jz - Jx) * P * R - Jxz * (P * P - R * R) - R * Heng) / Jy  # Defines el (elevator for pitch equilibrium)
+end
+
+
+"Trim test: 4 decision variables, 4 equilibrium constraints"
+test component F16TrimV2
+  aircraft = F16PlantForTrim()
+  
   parameter h::Real = 1000.0
-  
-  "Trim velocity [m/s]"
   parameter V::Real = 152.4
   
-  "Flight path angle [rad] (0 = level flight)"
-  parameter gamma::Real = 0.0
-  
-  "Turn rate [rad/s] (0 = straight flight)"
-  parameter psidot::Real = 0.0
-  
 relations
-  # Position states (arbitrary - don't affect trim)
+  # ========================================
+  # FIXED VALUES (these remove DOF)
+  # ========================================
+  # Operating point
+  initial aircraft.vt = V
+  initial aircraft.alt = h
+  
+  # Position (arbitrary)
   initial aircraft.npos = 0.0
   initial aircraft.epos = 0.0
   
-  # Trim altitude and velocity (FIXED by user)
-  initial aircraft.alt = h
-  initial aircraft.vt = V
-  
-  # Euler angles for level flight
+  # Wings level, symmetric flight
   initial aircraft.phi = 0.0
   initial aircraft.psi = 0.0
-  
-  # Coordinated flight
   initial aircraft.beta = 0.0
-  
-  # No angular rates
   initial aircraft.P = 0.0
   initial aircraft.Q = 0.0
   initial aircraft.R = 0.0
   
-  # Fixed controls (not needed for symmetric level flight)
-  initial aircraft.ail = 0.0
-  initial aircraft.rud = 0.0
-  initial aircraft.lef = 0.0
+  # ========================================
+  # EQUILIBRIUM CONSTRAINTS
+  # ========================================
+  # The plant already has algebraic constraints:
+  #   0 = (U*Udot + V*Vdot + W*Wdot)/vt  → T determined by der(vt)=0
+  #   0 = M_tot/Jy                        → el determined by der(Q)=0
+  # So we only need additional constraints for alpha and alt:
+  initial der(aircraft.alpha) = 0.0   # Lift balance
+  initial der(aircraft.alt) = 0.0     # Level flight
   
-  # Initial guesses for states/controls to be SOLVED
-  # The initialization solver will adjust these to achieve equilibrium
-  guess aircraft.alpha = 0.05
-  guess aircraft.theta = 0.05
-  guess aircraft.T = 44482.2
-  guess aircraft.el = 0.0
+  # ========================================
+  # DECISION VARIABLES (4 unknowns)
+  # ========================================
+  # These are solved by NLSQ to satisfy equilibrium
+  guess aircraft.alpha = 0.05         # ~3 degrees
+  guess aircraft.theta = 0.05         # ~3 degrees  
+  guess aircraft.T = 26000.0          # Reasonable thrust guess
+  guess aircraft.el = -2.0            # Small nose-down elevator
+  
+  # Additional guesses to break cyclic dependencies
+  guess aircraft.Udot = 0.0           # Acceleration at trim
+  guess aircraft.Cm_tot = 0.0         # Pitch moment coefficient at trim
+  guess aircraft.Wdot = 0.0           # Vertical acceleration
+  guess aircraft.M_tot = 0.0          # Total pitch moment
 end
 
-"""
-Trim analysis for level flight at specified altitude and velocity.
 
-Usage:
-  result = F16LevelFlightTrim(h = 1000.0, V = 152.4)
-  
-The trimmed initial conditions will be in result.prob.u0
-Extract trim values using symbolic indexing on the model.
-"""
+"F16 Level Flight Trim Analysis - finds equilibrium for straight and level flight"
 analysis F16LevelFlightTrim
   extends TransientAnalysis(stop = 0.01)
-  
-  model = F16TrimModel(h = altitude, V = velocity)
+  model = F16TrimV2(h = altitude, V = velocity)
   
   "Trim altitude [m]"
   parameter altitude::Real = 1000.0
   
-  "Trim velocity [m/s]"  
+  "Trim airspeed [m/s]"
   parameter velocity::Real = 152.4
-end
-
-"Simulation from a trim condition"
-analysis F16FromTrim
-  extends TransientAnalysis(stop = 10.0)
-  
-  model = F16SimplifiedPlant(
-    T = 44482.2,
-    el = 0.0,
-    ail = 0.0,
-    rud = 0.0,
-    lef = 0.0
-  )
 end

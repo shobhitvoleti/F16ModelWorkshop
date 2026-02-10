@@ -2,7 +2,7 @@ using F16ModelWorkshop
 using ModelingToolkit
 
 # Trim at 1000m altitude, 152.4 m/s velocity
-result = F16LevelFlightTrim(altitude = 1000.0, velocity = 152.4)
+result = F16LevelFlightTrim(altitude = 3000.0, velocity = 152.4)
 
 # Access trimmed values
 model = result.sys

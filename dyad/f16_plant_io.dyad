@@ -51,6 +51,18 @@ component F16PlantIO
   variable ail::Real
   variable rud::Real
   variable lef::Real
+  parameter npos_init::Real = 0.0
+  parameter epos_init::Real = 0.0
+  parameter alt_init::Real = 1000.0
+  parameter phi_init::Real = 0.0
+  parameter theta_init::Real = -0.0170
+  parameter psi_init::Real = 0.0
+  parameter vt_init::Real = 152.4
+  parameter alpha_init::Real = -0.0170
+  parameter beta_init::Real = 0.0
+  parameter P_init::Real = 0.0
+  parameter Q_init::Real = 0.0
+  parameter R_init::Real = 0.0
   final parameter g::Real = 9.80665
   final parameter m::Real = 9295.44
   final parameter B::Real = 9.144
@@ -132,6 +144,18 @@ component F16PlantIO
   variable rud_rad::Real
   variable lef_rad::Real
 relations
+initial npos = npos_init
+initial epos = epos_init
+initial alt = alt_init
+initial phi = phi_init
+initial theta = theta_init
+initial psi = psi_init
+initial vt = vt_init
+initial alpha = alpha_init
+initial beta = beta_init
+initial P = P_init
+initial Q = Q_init
+initial R = R_init
   T = T_in
   el = el_in
   ail = ail_in

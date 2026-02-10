@@ -7,28 +7,29 @@
 using DyadInterface
 
 using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
-@kwdef mutable struct F16FromTrimSpec <: AbstractTransientAnalysisSpec
-  name::Symbol = :F16FromTrim
+@kwdef mutable struct Scenario1ClosedLoopSpec <: AbstractTransientAnalysisSpec
+  name::Symbol = :Scenario1ClosedLoop
   var"alg"::String = "auto"
   var"start"::Float64 = 0
-  var"stop"::Float64 = 10
+  var"stop"::Float64 = 100
   var"abstol"::Float64 = 0.000001
   var"reltol"::Float64 = 0.000001
   var"saveat"::Float64 = 0
   var"dtmax"::Float64 = 0
   var"IfLifting"::Bool = false
-  # F16 plant model with F16Model.jl state space and dynamics structure, simplified aerodynamics
-  var"model"::Union{Nothing, System} = F16ModelWorkshop.F16SimplifiedPlant(; name=:F16SimplifiedPlant)
+  # Scenario 1: Closed-Loop Model with LQG controller feedback.
+  # Demonstrates controller stabilization from 10° pitch perturbation.
+  var"model"::Union{Nothing, System} = F16ModelWorkshop.F16ClosedLoopPerturbed(; name=:F16ClosedLoopPerturbed)
 end
 
-function DyadInterface.run_analysis(spec::F16FromTrimSpec)
-  spec.model = DyadInterface.update_model(spec.model, (; var"T"=44482.2, var"el"=0, var"ail"=0, var"rud"=0, var"lef"=0))
+function DyadInterface.run_analysis(spec::Scenario1ClosedLoopSpec)
+  spec.model = DyadInterface.update_model(spec.model, (; ))
   base_spec = TransientAnalysisSpec(;
     name=:TransientAnalysis, alg=spec.alg, start=spec.start, stop=spec.stop, abstol=spec.abstol, reltol=spec.reltol, saveat=spec.saveat, dtmax=spec.dtmax, IfLifting=spec.IfLifting, model=spec.model
   )
   run_analysis(base_spec)
 end
 
-F16FromTrim(;kwargs...) = run_analysis(F16FromTrimSpec(;kwargs...))
-export F16FromTrim, F16FromTrimSpec
-export F16FromTrimSpec, F16FromTrim
+Scenario1ClosedLoop(;kwargs...) = run_analysis(Scenario1ClosedLoopSpec(;kwargs...))
+export Scenario1ClosedLoop, Scenario1ClosedLoopSpec
+export Scenario1ClosedLoopSpec, Scenario1ClosedLoop

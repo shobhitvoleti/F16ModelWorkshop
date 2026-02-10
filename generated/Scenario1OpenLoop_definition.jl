@@ -7,32 +7,31 @@
 using DyadInterface
 
 using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
-@kwdef mutable struct F16LevelFlightTrimSpec <: AbstractTransientAnalysisSpec
-  name::Symbol = :F16LevelFlightTrim
+@kwdef mutable struct Scenario1OpenLoopSpec <: AbstractTransientAnalysisSpec
+  name::Symbol = :Scenario1OpenLoop
   var"alg"::String = "auto"
   var"start"::Float64 = 0
-  var"stop"::Float64 = 0.01
+  var"stop"::Float64 = 100
   var"abstol"::Float64 = 0.000001
   var"reltol"::Float64 = 0.000001
   var"saveat"::Float64 = 0
   var"dtmax"::Float64 = 0
   var"IfLifting"::Bool = false
-  # Trim altitude [m]
-  var"altitude"::Float64 = 1000
-  # Trim airspeed [m/s]
-  var"velocity"::Float64 = 152.4
-  # Trim test: 4 decision variables, 4 equilibrium constraints
-  var"model"::Union{Nothing, System} = F16ModelWorkshop.F16TrimV2(; name=:F16TrimV2)
+  # Scenario 1: Disturbance Rejection - Open-Loop vs Closed-Loop
+  # 
+  # Open-loop model in this file. Closed-loop model in scenario2_closed_loop.dyad.
+  # Both demonstrate LQG controller effectiveness against 10° pitch perturbation.
+  var"model"::Union{Nothing, System} = F16ModelWorkshop.F16OpenLoop(; name=:F16OpenLoop)
 end
 
-function DyadInterface.run_analysis(spec::F16LevelFlightTrimSpec)
-  spec.model = DyadInterface.update_model(spec.model, (; var"h"=spec.var"altitude", var"V"=spec.var"velocity"))
+function DyadInterface.run_analysis(spec::Scenario1OpenLoopSpec)
+  spec.model = DyadInterface.update_model(spec.model, (; ))
   base_spec = TransientAnalysisSpec(;
     name=:TransientAnalysis, alg=spec.alg, start=spec.start, stop=spec.stop, abstol=spec.abstol, reltol=spec.reltol, saveat=spec.saveat, dtmax=spec.dtmax, IfLifting=spec.IfLifting, model=spec.model
   )
   run_analysis(base_spec)
 end
 
-F16LevelFlightTrim(;kwargs...) = run_analysis(F16LevelFlightTrimSpec(;kwargs...))
-export F16LevelFlightTrim, F16LevelFlightTrimSpec
-export F16LevelFlightTrimSpec, F16LevelFlightTrim
+Scenario1OpenLoop(;kwargs...) = run_analysis(Scenario1OpenLoopSpec(;kwargs...))
+export Scenario1OpenLoop, Scenario1OpenLoopSpec
+export Scenario1OpenLoopSpec, Scenario1OpenLoop

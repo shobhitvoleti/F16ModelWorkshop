@@ -17,9 +17,10 @@ end
 
 @testset "`F16ModelWorkshop`" begin
 include("ClosedLoopModel_test.jl")
+include("F16ClosedLoopPerturbed_test.jl")
+include("F16OpenLoop_test.jl")
+include("F16PlantForTrim_test.jl")
 include("F16PlantIO_test.jl")
-include("F16SimplifiedPlant_test.jl")
-include("F16TrimModel_test.jl")
+include("F16TrimV2_test.jl")
 include("Hello_test.jl")
-include("Scenario3AlphaProtection_test.jl")
 end

@@ -5,14 +5,17 @@
 
 
 @doc Markdown.doc"""
-   ClosedLoopModel(; name)
+   F16ClosedLoopPerturbed(; name)
+
+Scenario 1: Closed-Loop Model with LQG controller feedback.
+Demonstrates controller stabilization from 10° pitch perturbation.
 """
-@component function ClosedLoopModel(; name = nothing)
+@component function F16ClosedLoopPerturbed(; name = nothing)
   isnothing(name) && throw(ArgumentError("""
         The `name` keyword must be provided. Please consider using the `@named` macro,
         like so:
 
-        @named model = ClosedLoopModel()
+        @named model = F16ClosedLoopPerturbed()
         """))
   __params = Any[]
   __vars = Any[]
@@ -30,7 +33,7 @@
   __constants = Any[]
 
   ### Components
-  push!(__systems, @named f16plant = F16ModelWorkshop.F16PlantIO(alt_init=3000, alpha_init=-0.01695))
+  push!(__systems, @named f16plant = F16ModelWorkshop.F16PlantIO(alt_init=3000, theta_init=10 * pi / 180))
   push!(__systems, @named controller = BlockComponents.StateSpace(nx=12, nu=12, ny=5, A=ControllerA, B=ControllerB, C=ControllerC, D=ControllerD, x0=fill(0, 12), u0=fill(0, 12), y0=fill(0, 5)))
   push!(__systems, @named ref_npos = BlockComponents.Constant(k=0))
   push!(__systems, @named ref_epos = BlockComponents.Constant(k=0))
@@ -39,7 +42,7 @@
   push!(__systems, @named ref_theta = BlockComponents.Constant(k=-0.017))
   push!(__systems, @named ref_psi = BlockComponents.Constant(k=0))
   push!(__systems, @named ref_vt = BlockComponents.Constant(k=152.4))
-  push!(__systems, @named ref_alpha = BlockComponents.Constant(k=-0.01695))
+  push!(__systems, @named ref_alpha = BlockComponents.Constant(k=-0.017))
   push!(__systems, @named ref_beta = BlockComponents.Constant(k=0))
   push!(__systems, @named ref_P = BlockComponents.Constant(k=0))
   push!(__systems, @named ref_Q = BlockComponents.Constant(k=0))
@@ -56,8 +59,8 @@
   push!(__systems, @named error10 = BlockComponents.Add(k1=1, k2=-1))
   push!(__systems, @named error11 = BlockComponents.Add(k1=1, k2=-1))
   push!(__systems, @named error12 = BlockComponents.Add(k1=1, k2=-1))
-  push!(__systems, @named trim_T = BlockComponents.Constant(k=28696.23))
-  push!(__systems, @named trim_el = BlockComponents.Constant(k=0.0459))
+  push!(__systems, @named trim_T = BlockComponents.Constant(k=44482.2))
+  push!(__systems, @named trim_el = BlockComponents.Constant(k=0))
   push!(__systems, @named trim_ail = BlockComponents.Constant(k=0))
   push!(__systems, @named trim_rud = BlockComponents.Constant(k=0))
   push!(__systems, @named trim_lef = BlockComponents.Constant(k=0))
@@ -149,4 +152,4 @@
   # Return completely constructed System
   return System(__eqs, t, __vars, __params; systems=__systems, defaults=__defaults, guesses=__guesses, name, initialization_eqs=__initialization_eqs, assertions=__assertions)
 end
-export ClosedLoopModel
+export F16ClosedLoopPerturbed

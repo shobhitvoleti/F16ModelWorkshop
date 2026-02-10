@@ -5,36 +5,36 @@
 
 
 @doc Markdown.doc"""
-   F16SimplifiedPlant(; name, T, el, ail, rud, lef)
+   F16PlantForTrim(; name, ail, rud, lef)
 
-F16 plant model with F16Model.jl state space and dynamics structure, simplified aerodynamics
+F16 trim model - controls are algebraic variables determined by equilibrium
 
 ## Parameters: 
 
 | Name         | Description                         | Units  |   Default value |
 | ------------ | ----------------------------------- | ------ | --------------- |
-| `T`         | Thrust [N]                         | --  |   44482.2 |
-| `el`         | Elevator [deg]                         | --  |   0 |
-| `ail`         | Aileron [deg]                         | --  |   0 |
-| `rud`         | Rudder [deg]                         | --  |   0 |
-| `lef`         | Leading edge flap [deg]                         | --  |   0 |
+| `ail`         |                          | --  |   0 |
+| `rud`         |                          | --  |   0 |
+| `lef`         |                          | --  |   0 |
 
 ## Variables
 
 | Name         | Description                         | Units  | 
 | ------------ | ----------------------------------- | ------ | 
-| `npos`         | North position [m]                         | --  | 
-| `epos`         | East position [m]                         | --  | 
-| `alt`         | Altitude [m] (positive up)                         | --  | 
-| `phi`         | Roll angle [rad]                         | --  | 
-| `theta`         | Pitch angle [rad]                         | --  | 
-| `psi`         | Yaw angle [rad]                         | --  | 
-| `vt`         | Total velocity [m/s]                         | --  | 
-| `alpha`         | Angle of attack [rad]                         | --  | 
-| `beta`         | Sideslip angle [rad]                         | --  | 
-| `P`         | Roll rate [rad/s]                         | --  | 
-| `Q`         | Pitch rate [rad/s]                         | --  | 
-| `R`         | Yaw rate [rad/s]                         | --  | 
+| `npos`         |                          | --  | 
+| `epos`         |                          | --  | 
+| `alt`         |                          | --  | 
+| `phi`         |                          | --  | 
+| `theta`         |                          | --  | 
+| `psi`         |                          | --  | 
+| `vt`         |                          | --  | 
+| `alpha`         |                          | --  | 
+| `beta`         |                          | --  | 
+| `P`         |                          | --  | 
+| `Q`         |                          | --  | 
+| `R`         |                          | --  | 
+| `T`         |                          | --  | 
+| `el`         |                          | --  | 
 | `sa`         |                          | --  | 
 | `ca`         |                          | --  | 
 | `sb`         |                          | --  | 
@@ -65,7 +65,13 @@ F16 plant model with F16Model.jl state space and dynamics structure, simplified 
 | `N_tot`         |                          | --  | 
 | `denom`         |                          | --  | 
 """
-@component function F16SimplifiedPlant(; name, T=44482.2, el=0, ail=0, rud=0, lef=0)
+@component function F16PlantForTrim(; name = nothing, ail=0, rud=0, lef=0)
+  isnothing(name) && throw(ArgumentError("""
+        The `name` keyword must be provided. Please consider using the `@named` macro,
+        like so:
+
+        @named model = F16PlantForTrim()
+        """))
   __params = Any[]
   __vars = Any[]
   __systems = System[]
@@ -75,11 +81,9 @@ F16 plant model with F16Model.jl state space and dynamics structure, simplified 
   __eqs = Equation[]
 
   ### Symbolic Parameters
-  append!(__params, @parameters (T::Real = T), [description = "Thrust [N]"])
-  append!(__params, @parameters (el::Real = el), [description = "Elevator [deg]"])
-  append!(__params, @parameters (ail::Real = ail), [description = "Aileron [deg]"])
-  append!(__params, @parameters (rud::Real = rud), [description = "Rudder [deg]"])
-  append!(__params, @parameters (lef::Real = lef), [description = "Leading edge flap [deg]"])
+  append!(__params, @parameters (ail::Real = ail))
+  append!(__params, @parameters (rud::Real = rud))
+  append!(__params, @parameters (lef::Real = lef))
   append!(__params, @parameters (g::Real = 9.80665))
   append!(__params, @parameters (m::Real = 9295.44))
   append!(__params, @parameters (B::Real = 9.144))
@@ -127,18 +131,20 @@ F16 plant model with F16Model.jl state space and dynamics structure, simplified 
   append!(__params, @parameters (Cnr::Real = -0.25))
 
   ### Variables
-  append!(__vars, @variables (npos(t)::Real), [description = "North position [m]"])
-  append!(__vars, @variables (epos(t)::Real), [description = "East position [m]"])
-  append!(__vars, @variables (alt(t)::Real), [description = "Altitude [m] (positive up)"])
-  append!(__vars, @variables (phi(t)::Real), [description = "Roll angle [rad]"])
-  append!(__vars, @variables (theta(t)::Real), [description = "Pitch angle [rad]"])
-  append!(__vars, @variables (psi(t)::Real), [description = "Yaw angle [rad]"])
-  append!(__vars, @variables (vt(t)::Real), [description = "Total velocity [m/s]"])
-  append!(__vars, @variables (alpha(t)::Real), [description = "Angle of attack [rad]"])
-  append!(__vars, @variables (beta(t)::Real), [description = "Sideslip angle [rad]"])
-  append!(__vars, @variables (P(t)::Real), [description = "Roll rate [rad/s]"])
-  append!(__vars, @variables (Q(t)::Real), [description = "Pitch rate [rad/s]"])
-  append!(__vars, @variables (R(t)::Real), [description = "Yaw rate [rad/s]"])
+  append!(__vars, @variables (npos(t)::Real))
+  append!(__vars, @variables (epos(t)::Real))
+  append!(__vars, @variables (alt(t)::Real))
+  append!(__vars, @variables (phi(t)::Real))
+  append!(__vars, @variables (theta(t)::Real))
+  append!(__vars, @variables (psi(t)::Real))
+  append!(__vars, @variables (vt(t)::Real))
+  append!(__vars, @variables (alpha(t)::Real))
+  append!(__vars, @variables (beta(t)::Real))
+  append!(__vars, @variables (P(t)::Real))
+  append!(__vars, @variables (Q(t)::Real))
+  append!(__vars, @variables (R(t)::Real))
+  append!(__vars, @variables (T(t)::Real))
+  append!(__vars, @variables (el(t)::Real))
   append!(__vars, @variables (sa(t)::Real))
   append!(__vars, @variables (ca(t)::Real))
   append!(__vars, @variables (sb(t)::Real))
@@ -209,13 +215,13 @@ F16 plant model with F16Model.jl state space and dynamics structure, simplified 
   push!(__eqs, Udot ~ R * V - Q * W - g * st + qbar * S * Cx_tot / m + T / m)
   push!(__eqs, Vdot ~ P * W - R * U + g * ct * sphi + qbar * S * Cy_tot / m)
   push!(__eqs, Wdot ~ Q * U - P * V + g * ct * cphi + qbar * S * Cz_tot / m)
-  push!(__eqs, ModelingToolkit.D_nounits(vt) ~ (U * Udot + V * Vdot + W * Wdot) / vt)
-  push!(__eqs, ModelingToolkit.D_nounits(alpha) ~ (U * Wdot - W * Udot) / (U * U + W * W))
-  push!(__eqs, ModelingToolkit.D_nounits(beta) ~ (Vdot * vt - V * (U * Udot + V * Vdot + W * Wdot) / vt) / (vt * vt * cb))
   push!(__eqs, L_tot ~ Cl_tot * qbar * S * B)
   push!(__eqs, M_tot ~ Cm_tot * qbar * S * cbar)
   push!(__eqs, N_tot ~ Cn_tot * qbar * S * B)
   push!(__eqs, denom ~ Jx * Jz - Jxz * Jxz)
+  push!(__eqs, ModelingToolkit.D_nounits(vt) ~ (U * Udot + V * Vdot + W * Wdot) / vt)
+  push!(__eqs, ModelingToolkit.D_nounits(alpha) ~ (U * Wdot - W * Udot) / (U * U + W * W))
+  push!(__eqs, ModelingToolkit.D_nounits(beta) ~ (Vdot * vt - V * (U * Udot + V * Vdot + W * Wdot) / vt) / (vt * vt * cb))
   push!(__eqs, ModelingToolkit.D_nounits(P) ~ (Jz * L_tot + Jxz * N_tot - (Jz * (Jz - Jy) + Jxz * Jxz) * Q * R + Jxz * (Jx - Jy + Jz) * P * Q + Jxz * Q * Heng) / denom)
   push!(__eqs, ModelingToolkit.D_nounits(Q) ~ (M_tot + (Jz - Jx) * P * R - Jxz * (P * P - R * R) - R * Heng) / Jy)
   push!(__eqs, ModelingToolkit.D_nounits(R) ~ (Jx * N_tot + Jxz * L_tot + (Jx * (Jx - Jy) + Jxz * Jxz) * P * Q - Jxz * (Jx - Jy + Jz) * Q * R + Jx * Q * Heng) / denom)
@@ -225,8 +231,10 @@ F16 plant model with F16Model.jl state space and dynamics structure, simplified 
   push!(__eqs, ModelingToolkit.D_nounits(phi) ~ P + tt * (Q * sphi + R * cphi))
   push!(__eqs, ModelingToolkit.D_nounits(theta) ~ Q * cphi - R * sphi)
   push!(__eqs, ModelingToolkit.D_nounits(psi) ~ (Q * sphi + R * cphi) / ct)
+  push!(__eqs, 0 ~ (U * Udot + V * Vdot + W * Wdot) / vt)
+  push!(__eqs, 0 ~ (M_tot + (Jz - Jx) * P * R - Jxz * (P * P - R * R) - R * Heng) / Jy)
 
   # Return completely constructed System
   return System(__eqs, t, __vars, __params; systems=__systems, defaults=__defaults, guesses=__guesses, name, initialization_eqs=__initialization_eqs, assertions=__assertions)
 end
-export F16SimplifiedPlant
+export F16PlantForTrim
