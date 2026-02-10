@@ -13,7 +13,7 @@ println("Loading GUI app...")
 include(joinpath(@__DIR__, "lqg_app.jl"))
 
 println("\nCreating F16 LQG spec...")
-spec = F16ModelWorkshop.F16ReducedLQGControllerAnalysisSpec()
+spec = F16ModelWorkshop.F16LQGControllerAnalysisSpec()
 
 # Convert to base LQGAnalysisSpec
 base_spec = DyadControlSystems.LQGAnalysisSpec(

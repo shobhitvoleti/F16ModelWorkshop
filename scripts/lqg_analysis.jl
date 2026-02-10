@@ -1,6 +1,6 @@
 using  DyadInterface, F16ModelWorkshop, DyadControlSystems
 
-solution = F16ReducedLQGControllerAnalysis()
+solution = F16LQGControllerAnalysis()
 
 
 open("src/output.jl", "w") do f

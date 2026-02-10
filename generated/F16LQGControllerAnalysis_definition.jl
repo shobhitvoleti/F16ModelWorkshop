@@ -10,12 +10,12 @@ using DyadControlSystems: AbstractLQGAnalysisSpec, LQGAnalysisSpec
 @kwdef mutable struct F16LQGControllerAnalysisSpec <: AbstractLQGAnalysisSpec
   name::Symbol = :F16LQGControllerAnalysis
   var"measurement"::Array{String, 1} = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"]
-  var"controlled_output"::Array{String, 1} = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"]
+  var"controlled_output"::Array{String, 1} = ["yn", "ye", "yalt", "ypitch", "yvt", "yalpha", "yQ"]
   var"control_input"::Array{String, 1} = ["uT", "uEl", "uAil", "uRud", "uLef"]
   var"disturbance_inputs"::Array{String, 1} = []
   var"loop_openings"::Array{String, 1} = []
   var"t"::Float64 = 0
-  var"q1_diag"::Array{Float64, 1} = [0.01, 0.01, 100, 10, 50, 1, 10, 1000, 1000, 50, 50, 50]
+  var"q1_diag"::Array{Float64, 1} = [0.1, 0.1, 100, 200, 10, 1000, 50]
   var"q2_diag"::Array{Float64, 1} = [0.1, 0.1, 0.1, 0.1, 0.1]
   var"r1_diag"::Array{Float64, 1} = [0.01, 0.01, 0.01, 0.01, 0.01]
   var"r2_diag"::Array{Float64, 1} = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
@@ -28,7 +28,7 @@ using DyadControlSystems: AbstractLQGAnalysisSpec, LQGAnalysisSpec
   var"wl"::Float64 = -1
   var"wu"::Float64 = -1
   var"num_frequencies"::Int = 3000
-  var"duration"::Float64 = 30
+  var"duration"::Float64 = -1
   var"model"::Union{Nothing, System} = F16ModelWorkshop.ClosedLoopModel(; name=:ClosedLoopModel)
 end
 

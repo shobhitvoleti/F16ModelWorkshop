@@ -1,5 +1,5 @@
 component ClosedLoopModel
-  f16plant = F16ModelWorkshop.F16PlantIO(alt_init = 3000, alpha_init = -0.01695) {^f16plant}
+  f16plant = F16PlantIO(alt_init = 3000, alpha_init = -0.01695) {^f16plant}
   controller = BlockComponents.StateSpace(nx = 12, nu = 12, ny = 5, A = ControllerA, B = ControllerB, C = ControllerC, D = ControllerD, x0 = fill(0.0, 12), u0 = fill(0.0, 12), y0 = fill(0.0, 5)) {^controller}
   ref_npos = BlockComponents.Constant(k = 0) {^ref_npos}
   ref_epos = BlockComponents.Constant(k = 0) {^ref_epos}
@@ -576,22 +576,6 @@ u4 (Rudder): 0.1 - Low penalty, yaw control
 u5 (LEF): 10.0 - Higher penalty, LEF slower actuator, use sparingly
 """
 analysis F16LQGControllerAnalysis
-  extends DyadControlSystems.LQGAnalysis(
-  measurement = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"], 
-  controlled_output = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"], 
-  control_input = ["uT", "uEl", "uAil", "uRud", "uLef"], 
-  loop_openings = [], 
-  q1_diag = [0.01, 0.01, 100.0, 10.0, 50.0, 1.0, 10.0, 1000.0, 1000.0, 50.0, 50.0, 50.0], 
-  q2_diag = [0.1, 0.1, 0.1, 0.1, 0.1], 
-  r1_diag = [0.01, 0.01, 0.01, 0.01, 0.01], 
-  r2_diag = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01], 
-  duration = 30.0
-  )
-  model = ClosedLoopModel()
-relations
-end
-
-analysis F16ReducedLQGControllerAnalysis
   extends DyadControlSystems.LQGAnalysis(
   measurement = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"], 
   controlled_output = ["yn", "ye","yalt", "ypitch", "yvt", "yalpha", "yQ"], 

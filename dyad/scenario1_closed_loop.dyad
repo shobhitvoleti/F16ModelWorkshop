@@ -574,7 +574,7 @@ end
 
 analysis Scenario1ClosedLoop
   "Closed-loop response to 10° pitch perturbation with LQG controller"
-  extends TransientAnalysis(stop = 30.0)
+  extends TransientAnalysis(stop = 100.0)
   model = F16ClosedLoopPerturbed()
 relations
 end
