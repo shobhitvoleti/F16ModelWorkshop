@@ -5,18 +5,25 @@
 
 
 using DyadInterface
-
+using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel
+using ModelingToolkit: SymbolicT, toggle_namespacing
 using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
 @kwdef mutable struct Scenario1OpenLoopSpec <: AbstractTransientAnalysisSpec
   name::Symbol = :Scenario1OpenLoop
-  var"alg"::String = "auto"
+  var"alg"::ODEAlg.Type = ODEAlg.Auto()
   var"start"::Float64 = 0
   var"stop"::Float64 = 100
   var"abstol"::Float64 = 0.000001
   var"reltol"::Float64 = 0.000001
   var"saveat"::Float64 = 0
   var"dtmax"::Float64 = 0
-  var"IfLifting"::Bool = false
+  var"tstops"::Array{Float64, 1} = []
+  var"automatic_discontinuity_detection"::Bool = false
+  var"optimize"::OptimizationLevel.Type = OptimizationLevel.None()
+  var"progress"::Bool = true
+  var"respecialize"::Bool = false
+  var"verbose"::DEVerbosity.Type = DEVerbosity.Standard()
+  var"log_file"::String = ""
   # Scenario 1: Disturbance Rejection - Open-Loop vs Closed-Loop
   # 
   # Open-loop model in this file. Closed-loop model in scenario2_closed_loop.dyad.
@@ -25,13 +32,13 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
 end
 
 function DyadInterface.run_analysis(spec::Scenario1OpenLoopSpec)
-  spec.model = DyadInterface.update_model(spec.model, (; ))
+  overrides = Dict{SymbolicT, SymbolicT}()
+  no_namespace_model = toggle_namespacing(spec.model, false)
   base_spec = TransientAnalysisSpec(;
-    name=:TransientAnalysis, alg=spec.alg, start=spec.start, stop=spec.stop, abstol=spec.abstol, reltol=spec.reltol, saveat=spec.saveat, dtmax=spec.dtmax, IfLifting=spec.IfLifting, model=spec.model
+    name=:TransientAnalysis, overrides, alg=spec.alg, start=spec.start, stop=spec.stop, abstol=spec.abstol, reltol=spec.reltol, saveat=spec.saveat, dtmax=spec.dtmax, tstops=spec.tstops, automatic_discontinuity_detection=spec.automatic_discontinuity_detection, optimize=spec.optimize, progress=spec.progress, respecialize=spec.respecialize, verbose=spec.verbose, log_file=spec.log_file, model=spec.model
   )
   run_analysis(base_spec)
 end
 
 Scenario1OpenLoop(;kwargs...) = run_analysis(Scenario1OpenLoopSpec(;kwargs...))
 export Scenario1OpenLoop, Scenario1OpenLoopSpec
-export Scenario1OpenLoopSpec, Scenario1OpenLoop

@@ -65,72 +65,141 @@ F16 trim model - controls are algebraic variables determined by equilibrium
 | `N_tot`         |                          | --  | 
 | `denom`         |                          | --  | 
 """
-@component function F16PlantForTrim(; name = nothing, ail=0, rud=0, lef=0)
+@component function F16PlantForTrim(; name = nothing, ail=Float64(0), rud=Float64(0), lef=Float64(0), kwargs...)
   isnothing(name) && throw(ArgumentError("""
         The `name` keyword must be provided. Please consider using the `@named` macro,
         like so:
 
         @named model = F16PlantForTrim()
         """))
-  __params = Any[]
-  __vars = Any[]
+  __overrides = Dict{String, Symbolics.SymbolicT}(string(k) => v for (k, v) in kwargs)
+  __params = Symbolics.SymbolicT[]
+  __vars = Symbolics.SymbolicT[]
   __systems = System[]
-  __guesses = Dict()
-  __defaults = Dict()
-  __initialization_eqs = []
+  __guesses = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initial_conditions = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initialization_eqs = Equation[]
   __eqs = Equation[]
+  __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Structural Parameters (functions)
+
+  ### Structural Parameters (Final)
+
+  ### Path Parameters (functions)
+
+  ### Path Parameters (non-final)
+
+  ### Final Parameters (declarations)
+  append!(__params, @parameters (g::Real), [misc = "final"])
+  append!(__params, @parameters (m::Real), [misc = "final"])
+  append!(__params, @parameters (B::Real), [misc = "final"])
+  append!(__params, @parameters (S::Real), [misc = "final"])
+  append!(__params, @parameters (cbar::Real), [misc = "final"])
+  append!(__params, @parameters (xcgr::Real), [misc = "final"])
+  append!(__params, @parameters (xcg::Real), [misc = "final"])
+  append!(__params, @parameters (Heng::Real), [misc = "final"])
+  append!(__params, @parameters (Jx::Real), [misc = "final"])
+  append!(__params, @parameters (Jy::Real), [misc = "final"])
+  append!(__params, @parameters (Jz::Real), [misc = "final"])
+  append!(__params, @parameters (Jxz::Real), [misc = "final"])
+  append!(__params, @parameters (Cx0::Real), [misc = "final"])
+  append!(__params, @parameters (Cxa::Real), [misc = "final"])
+  append!(__params, @parameters (Cxa2::Real), [misc = "final"])
+  append!(__params, @parameters (Cxde::Real), [misc = "final"])
+  append!(__params, @parameters (Cy0::Real), [misc = "final"])
+  append!(__params, @parameters (Cyb::Real), [misc = "final"])
+  append!(__params, @parameters (Cyda::Real), [misc = "final"])
+  append!(__params, @parameters (Cydr::Real), [misc = "final"])
+  append!(__params, @parameters (Cz0::Real), [misc = "final"])
+  append!(__params, @parameters (Cza::Real), [misc = "final"])
+  append!(__params, @parameters (Cza2::Real), [misc = "final"])
+  append!(__params, @parameters (Czde::Real), [misc = "final"])
+  append!(__params, @parameters (Cl0::Real), [misc = "final"])
+  append!(__params, @parameters (Clb::Real), [misc = "final"])
+  append!(__params, @parameters (Clda::Real), [misc = "final"])
+  append!(__params, @parameters (Cldr::Real), [misc = "final"])
+  append!(__params, @parameters (Cm0::Real), [misc = "final"])
+  append!(__params, @parameters (Cma::Real), [misc = "final"])
+  append!(__params, @parameters (Cma2::Real), [misc = "final"])
+  append!(__params, @parameters (Cmde::Real), [misc = "final"])
+  append!(__params, @parameters (Cn0::Real), [misc = "final"])
+  append!(__params, @parameters (Cnb::Real), [misc = "final"])
+  append!(__params, @parameters (Cnda::Real), [misc = "final"])
+  append!(__params, @parameters (Cndr::Real), [misc = "final"])
+  append!(__params, @parameters (Cxq::Real), [misc = "final"])
+  append!(__params, @parameters (Cyp::Real), [misc = "final"])
+  append!(__params, @parameters (Cyr::Real), [misc = "final"])
+  append!(__params, @parameters (Czq::Real), [misc = "final"])
+  append!(__params, @parameters (Clp::Real), [misc = "final"])
+  append!(__params, @parameters (Clr::Real), [misc = "final"])
+  append!(__params, @parameters (Cmq::Real), [misc = "final"])
+  append!(__params, @parameters (Cnp::Real), [misc = "final"])
+  append!(__params, @parameters (Cnr::Real), [misc = "final"])
+
+  ### Final Parameters (assignments)
+  __bindings[g] = 9.80665
+  __bindings[m] = 9295.44
+  __bindings[B] = 9.144
+  __bindings[S] = 27.87
+  __bindings[cbar] = 3.45
+  __bindings[xcgr] = 0.35
+  __bindings[xcg] = 0.3
+  __bindings[Heng] = 0
+  __bindings[Jx] = 12874.8
+  __bindings[Jy] = 75673.6
+  __bindings[Jz] = 85552.1
+  __bindings[Jxz] = 1331.4
+  __bindings[Cx0] = -0.099
+  __bindings[Cxa] = 0.205
+  __bindings[Cxa2] = -0.484
+  __bindings[Cxde] = -0.0036
+  __bindings[Cy0] = 0
+  __bindings[Cyb] = -0.83
+  __bindings[Cyda] = 0
+  __bindings[Cydr] = 0.23
+  __bindings[Cz0] = -0.366
+  __bindings[Cza] = -5.09
+  __bindings[Cza2] = -3.57
+  __bindings[Czde] = -0.632
+  __bindings[Cl0] = 0
+  __bindings[Clb] = -0.14
+  __bindings[Clda] = 0.134
+  __bindings[Cldr] = 0.0107
+  __bindings[Cm0] = 0.0411
+  __bindings[Cma] = -0.98
+  __bindings[Cma2] = 3.67
+  __bindings[Cmde] = -1.28
+  __bindings[Cn0] = 0
+  __bindings[Cnb] = 0.117
+  __bindings[Cnda] = -0.0036
+  __bindings[Cndr] = -0.15
+  __bindings[Cxq] = -0.267
+  __bindings[Cyp] = -0.1
+  __bindings[Cyr] = 0.3
+  __bindings[Czq] = -3
+  __bindings[Clp] = -0.56
+  __bindings[Clr] = 0.25
+  __bindings[Cmq] = -12.2
+  __bindings[Cnp] = -0.026
+  __bindings[Cnr] = -0.25
+
+  ### Deferred assignment (default values that depend on final parameters)
 
   ### Symbolic Parameters
-  append!(__params, @parameters (ail::Real = ail))
-  append!(__params, @parameters (rud::Real = rud))
-  append!(__params, @parameters (lef::Real = lef))
-  append!(__params, @parameters (g::Real = 9.80665))
-  append!(__params, @parameters (m::Real = 9295.44))
-  append!(__params, @parameters (B::Real = 9.144))
-  append!(__params, @parameters (S::Real = 27.87))
-  append!(__params, @parameters (cbar::Real = 3.45))
-  append!(__params, @parameters (xcgr::Real = 0.35))
-  append!(__params, @parameters (xcg::Real = 0.3))
-  append!(__params, @parameters (Heng::Real = 0))
-  append!(__params, @parameters (Jx::Real = 12874.8))
-  append!(__params, @parameters (Jy::Real = 75673.6))
-  append!(__params, @parameters (Jz::Real = 85552.1))
-  append!(__params, @parameters (Jxz::Real = 1331.4))
-  append!(__params, @parameters (Cx0::Real = -0.099))
-  append!(__params, @parameters (Cxa::Real = 0.205))
-  append!(__params, @parameters (Cxa2::Real = -0.484))
-  append!(__params, @parameters (Cxde::Real = -0.0036))
-  append!(__params, @parameters (Cy0::Real = 0))
-  append!(__params, @parameters (Cyb::Real = -0.83))
-  append!(__params, @parameters (Cyda::Real = 0))
-  append!(__params, @parameters (Cydr::Real = 0.23))
-  append!(__params, @parameters (Cz0::Real = -0.366))
-  append!(__params, @parameters (Cza::Real = -5.09))
-  append!(__params, @parameters (Cza2::Real = -3.57))
-  append!(__params, @parameters (Czde::Real = -0.632))
-  append!(__params, @parameters (Cl0::Real = 0))
-  append!(__params, @parameters (Clb::Real = -0.14))
-  append!(__params, @parameters (Clda::Real = 0.134))
-  append!(__params, @parameters (Cldr::Real = 0.0107))
-  append!(__params, @parameters (Cm0::Real = 0.0411))
-  append!(__params, @parameters (Cma::Real = -0.98))
-  append!(__params, @parameters (Cma2::Real = 3.67))
-  append!(__params, @parameters (Cmde::Real = -1.28))
-  append!(__params, @parameters (Cn0::Real = 0))
-  append!(__params, @parameters (Cnb::Real = 0.117))
-  append!(__params, @parameters (Cnda::Real = -0.0036))
-  append!(__params, @parameters (Cndr::Real = -0.15))
-  append!(__params, @parameters (Cxq::Real = -0.267))
-  append!(__params, @parameters (Cyp::Real = -0.1))
-  append!(__params, @parameters (Cyr::Real = 0.3))
-  append!(__params, @parameters (Czq::Real = -3))
-  append!(__params, @parameters (Clp::Real = -0.56))
-  append!(__params, @parameters (Clr::Real = 0.25))
-  append!(__params, @parameters (Cmq::Real = -12.2))
-  append!(__params, @parameters (Cnp::Real = -0.026))
-  append!(__params, @parameters (Cnr::Real = -0.25))
+  __local__ail = ail
+  append!(__params, @parameters (ail::Real))
+  __initial_conditions[ail] = __local__ail
+  __local__rud = rud
+  append!(__params, @parameters (rud::Real))
+  __initial_conditions[rud] = __local__rud
+  __local__lef = lef
+  append!(__params, @parameters (lef::Real))
+  __initial_conditions[lef] = __local__lef
 
-  ### Variables
+  ### Final Path Parameters
+
+  ### Variables (declarations)
   append!(__vars, @variables (npos(t)::Real))
   append!(__vars, @variables (epos(t)::Real))
   append!(__vars, @variables (alt(t)::Real))
@@ -175,14 +244,103 @@ F16 trim model - controls are algebraic variables determined by equilibrium
   append!(__vars, @variables (N_tot(t)::Real))
   append!(__vars, @variables (denom(t)::Real))
 
+  ### Variables (assignments)
+  __ovr_npos = pop!(__overrides, "npos", nothing); isnothing(__ovr_npos) || push!(__eqs, npos ~ __ovr_npos)
+  __ovr_npos__initial = pop!(__overrides, "npos__initial", nothing); isnothing(__ovr_npos__initial) || (__initial_conditions[npos] = __ovr_npos__initial)
+  __ovr_epos = pop!(__overrides, "epos", nothing); isnothing(__ovr_epos) || push!(__eqs, epos ~ __ovr_epos)
+  __ovr_epos__initial = pop!(__overrides, "epos__initial", nothing); isnothing(__ovr_epos__initial) || (__initial_conditions[epos] = __ovr_epos__initial)
+  __ovr_alt = pop!(__overrides, "alt", nothing); isnothing(__ovr_alt) || push!(__eqs, alt ~ __ovr_alt)
+  __ovr_alt__initial = pop!(__overrides, "alt__initial", nothing); isnothing(__ovr_alt__initial) || (__initial_conditions[alt] = __ovr_alt__initial)
+  __ovr_phi = pop!(__overrides, "phi", nothing); isnothing(__ovr_phi) || push!(__eqs, phi ~ __ovr_phi)
+  __ovr_phi__initial = pop!(__overrides, "phi__initial", nothing); isnothing(__ovr_phi__initial) || (__initial_conditions[phi] = __ovr_phi__initial)
+  __ovr_theta = pop!(__overrides, "theta", nothing); isnothing(__ovr_theta) || push!(__eqs, theta ~ __ovr_theta)
+  __ovr_theta__initial = pop!(__overrides, "theta__initial", nothing); isnothing(__ovr_theta__initial) || (__initial_conditions[theta] = __ovr_theta__initial)
+  __ovr_psi = pop!(__overrides, "psi", nothing); isnothing(__ovr_psi) || push!(__eqs, psi ~ __ovr_psi)
+  __ovr_psi__initial = pop!(__overrides, "psi__initial", nothing); isnothing(__ovr_psi__initial) || (__initial_conditions[psi] = __ovr_psi__initial)
+  __ovr_vt = pop!(__overrides, "vt", nothing); isnothing(__ovr_vt) || push!(__eqs, vt ~ __ovr_vt)
+  __ovr_vt__initial = pop!(__overrides, "vt__initial", nothing); isnothing(__ovr_vt__initial) || (__initial_conditions[vt] = __ovr_vt__initial)
+  __ovr_alpha = pop!(__overrides, "alpha", nothing); isnothing(__ovr_alpha) || push!(__eqs, alpha ~ __ovr_alpha)
+  __ovr_alpha__initial = pop!(__overrides, "alpha__initial", nothing); isnothing(__ovr_alpha__initial) || (__initial_conditions[alpha] = __ovr_alpha__initial)
+  __ovr_beta = pop!(__overrides, "beta", nothing); isnothing(__ovr_beta) || push!(__eqs, beta ~ __ovr_beta)
+  __ovr_beta__initial = pop!(__overrides, "beta__initial", nothing); isnothing(__ovr_beta__initial) || (__initial_conditions[beta] = __ovr_beta__initial)
+  __ovr_P = pop!(__overrides, "P", nothing); isnothing(__ovr_P) || push!(__eqs, P ~ __ovr_P)
+  __ovr_P__initial = pop!(__overrides, "P__initial", nothing); isnothing(__ovr_P__initial) || (__initial_conditions[P] = __ovr_P__initial)
+  __ovr_Q = pop!(__overrides, "Q", nothing); isnothing(__ovr_Q) || push!(__eqs, Q ~ __ovr_Q)
+  __ovr_Q__initial = pop!(__overrides, "Q__initial", nothing); isnothing(__ovr_Q__initial) || (__initial_conditions[Q] = __ovr_Q__initial)
+  __ovr_R = pop!(__overrides, "R", nothing); isnothing(__ovr_R) || push!(__eqs, R ~ __ovr_R)
+  __ovr_R__initial = pop!(__overrides, "R__initial", nothing); isnothing(__ovr_R__initial) || (__initial_conditions[R] = __ovr_R__initial)
+  __ovr_T = pop!(__overrides, "T", nothing); isnothing(__ovr_T) || push!(__eqs, T ~ __ovr_T)
+  __ovr_T__initial = pop!(__overrides, "T__initial", nothing); isnothing(__ovr_T__initial) || (__initial_conditions[T] = __ovr_T__initial)
+  __ovr_el = pop!(__overrides, "el", nothing); isnothing(__ovr_el) || push!(__eqs, el ~ __ovr_el)
+  __ovr_el__initial = pop!(__overrides, "el__initial", nothing); isnothing(__ovr_el__initial) || (__initial_conditions[el] = __ovr_el__initial)
+  __ovr_sa = pop!(__overrides, "sa", nothing); isnothing(__ovr_sa) || push!(__eqs, sa ~ __ovr_sa)
+  __ovr_sa__initial = pop!(__overrides, "sa__initial", nothing); isnothing(__ovr_sa__initial) || (__initial_conditions[sa] = __ovr_sa__initial)
+  __ovr_ca = pop!(__overrides, "ca", nothing); isnothing(__ovr_ca) || push!(__eqs, ca ~ __ovr_ca)
+  __ovr_ca__initial = pop!(__overrides, "ca__initial", nothing); isnothing(__ovr_ca__initial) || (__initial_conditions[ca] = __ovr_ca__initial)
+  __ovr_sb = pop!(__overrides, "sb", nothing); isnothing(__ovr_sb) || push!(__eqs, sb ~ __ovr_sb)
+  __ovr_sb__initial = pop!(__overrides, "sb__initial", nothing); isnothing(__ovr_sb__initial) || (__initial_conditions[sb] = __ovr_sb__initial)
+  __ovr_cb = pop!(__overrides, "cb", nothing); isnothing(__ovr_cb) || push!(__eqs, cb ~ __ovr_cb)
+  __ovr_cb__initial = pop!(__overrides, "cb__initial", nothing); isnothing(__ovr_cb__initial) || (__initial_conditions[cb] = __ovr_cb__initial)
+  __ovr_st = pop!(__overrides, "st", nothing); isnothing(__ovr_st) || push!(__eqs, st ~ __ovr_st)
+  __ovr_st__initial = pop!(__overrides, "st__initial", nothing); isnothing(__ovr_st__initial) || (__initial_conditions[st] = __ovr_st__initial)
+  __ovr_ct = pop!(__overrides, "ct", nothing); isnothing(__ovr_ct) || push!(__eqs, ct ~ __ovr_ct)
+  __ovr_ct__initial = pop!(__overrides, "ct__initial", nothing); isnothing(__ovr_ct__initial) || (__initial_conditions[ct] = __ovr_ct__initial)
+  __ovr_tt = pop!(__overrides, "tt", nothing); isnothing(__ovr_tt) || push!(__eqs, tt ~ __ovr_tt)
+  __ovr_tt__initial = pop!(__overrides, "tt__initial", nothing); isnothing(__ovr_tt__initial) || (__initial_conditions[tt] = __ovr_tt__initial)
+  __ovr_sphi = pop!(__overrides, "sphi", nothing); isnothing(__ovr_sphi) || push!(__eqs, sphi ~ __ovr_sphi)
+  __ovr_sphi__initial = pop!(__overrides, "sphi__initial", nothing); isnothing(__ovr_sphi__initial) || (__initial_conditions[sphi] = __ovr_sphi__initial)
+  __ovr_cphi = pop!(__overrides, "cphi", nothing); isnothing(__ovr_cphi) || push!(__eqs, cphi ~ __ovr_cphi)
+  __ovr_cphi__initial = pop!(__overrides, "cphi__initial", nothing); isnothing(__ovr_cphi__initial) || (__initial_conditions[cphi] = __ovr_cphi__initial)
+  __ovr_spsi = pop!(__overrides, "spsi", nothing); isnothing(__ovr_spsi) || push!(__eqs, spsi ~ __ovr_spsi)
+  __ovr_spsi__initial = pop!(__overrides, "spsi__initial", nothing); isnothing(__ovr_spsi__initial) || (__initial_conditions[spsi] = __ovr_spsi__initial)
+  __ovr_cpsi = pop!(__overrides, "cpsi", nothing); isnothing(__ovr_cpsi) || push!(__eqs, cpsi ~ __ovr_cpsi)
+  __ovr_cpsi__initial = pop!(__overrides, "cpsi__initial", nothing); isnothing(__ovr_cpsi__initial) || (__initial_conditions[cpsi] = __ovr_cpsi__initial)
+  __ovr_U = pop!(__overrides, "U", nothing); isnothing(__ovr_U) || push!(__eqs, U ~ __ovr_U)
+  __ovr_U__initial = pop!(__overrides, "U__initial", nothing); isnothing(__ovr_U__initial) || (__initial_conditions[U] = __ovr_U__initial)
+  __ovr_V = pop!(__overrides, "V", nothing); isnothing(__ovr_V) || push!(__eqs, V ~ __ovr_V)
+  __ovr_V__initial = pop!(__overrides, "V__initial", nothing); isnothing(__ovr_V__initial) || (__initial_conditions[V] = __ovr_V__initial)
+  __ovr_W = pop!(__overrides, "W", nothing); isnothing(__ovr_W) || push!(__eqs, W ~ __ovr_W)
+  __ovr_W__initial = pop!(__overrides, "W__initial", nothing); isnothing(__ovr_W__initial) || (__initial_conditions[W] = __ovr_W__initial)
+  __ovr_qbar = pop!(__overrides, "qbar", nothing); isnothing(__ovr_qbar) || push!(__eqs, qbar ~ __ovr_qbar)
+  __ovr_qbar__initial = pop!(__overrides, "qbar__initial", nothing); isnothing(__ovr_qbar__initial) || (__initial_conditions[qbar] = __ovr_qbar__initial)
+  __ovr_rho = pop!(__overrides, "rho", nothing); isnothing(__ovr_rho) || push!(__eqs, rho ~ __ovr_rho)
+  __ovr_rho__initial = pop!(__overrides, "rho__initial", nothing); isnothing(__ovr_rho__initial) || (__initial_conditions[rho] = __ovr_rho__initial)
+  __ovr_Cx_tot = pop!(__overrides, "Cx_tot", nothing); isnothing(__ovr_Cx_tot) || push!(__eqs, Cx_tot ~ __ovr_Cx_tot)
+  __ovr_Cx_tot__initial = pop!(__overrides, "Cx_tot__initial", nothing); isnothing(__ovr_Cx_tot__initial) || (__initial_conditions[Cx_tot] = __ovr_Cx_tot__initial)
+  __ovr_Cy_tot = pop!(__overrides, "Cy_tot", nothing); isnothing(__ovr_Cy_tot) || push!(__eqs, Cy_tot ~ __ovr_Cy_tot)
+  __ovr_Cy_tot__initial = pop!(__overrides, "Cy_tot__initial", nothing); isnothing(__ovr_Cy_tot__initial) || (__initial_conditions[Cy_tot] = __ovr_Cy_tot__initial)
+  __ovr_Cz_tot = pop!(__overrides, "Cz_tot", nothing); isnothing(__ovr_Cz_tot) || push!(__eqs, Cz_tot ~ __ovr_Cz_tot)
+  __ovr_Cz_tot__initial = pop!(__overrides, "Cz_tot__initial", nothing); isnothing(__ovr_Cz_tot__initial) || (__initial_conditions[Cz_tot] = __ovr_Cz_tot__initial)
+  __ovr_Cl_tot = pop!(__overrides, "Cl_tot", nothing); isnothing(__ovr_Cl_tot) || push!(__eqs, Cl_tot ~ __ovr_Cl_tot)
+  __ovr_Cl_tot__initial = pop!(__overrides, "Cl_tot__initial", nothing); isnothing(__ovr_Cl_tot__initial) || (__initial_conditions[Cl_tot] = __ovr_Cl_tot__initial)
+  __ovr_Cm_tot = pop!(__overrides, "Cm_tot", nothing); isnothing(__ovr_Cm_tot) || push!(__eqs, Cm_tot ~ __ovr_Cm_tot)
+  __ovr_Cm_tot__initial = pop!(__overrides, "Cm_tot__initial", nothing); isnothing(__ovr_Cm_tot__initial) || (__initial_conditions[Cm_tot] = __ovr_Cm_tot__initial)
+  __ovr_Cn_tot = pop!(__overrides, "Cn_tot", nothing); isnothing(__ovr_Cn_tot) || push!(__eqs, Cn_tot ~ __ovr_Cn_tot)
+  __ovr_Cn_tot__initial = pop!(__overrides, "Cn_tot__initial", nothing); isnothing(__ovr_Cn_tot__initial) || (__initial_conditions[Cn_tot] = __ovr_Cn_tot__initial)
+  __ovr_Udot = pop!(__overrides, "Udot", nothing); isnothing(__ovr_Udot) || push!(__eqs, Udot ~ __ovr_Udot)
+  __ovr_Udot__initial = pop!(__overrides, "Udot__initial", nothing); isnothing(__ovr_Udot__initial) || (__initial_conditions[Udot] = __ovr_Udot__initial)
+  __ovr_Vdot = pop!(__overrides, "Vdot", nothing); isnothing(__ovr_Vdot) || push!(__eqs, Vdot ~ __ovr_Vdot)
+  __ovr_Vdot__initial = pop!(__overrides, "Vdot__initial", nothing); isnothing(__ovr_Vdot__initial) || (__initial_conditions[Vdot] = __ovr_Vdot__initial)
+  __ovr_Wdot = pop!(__overrides, "Wdot", nothing); isnothing(__ovr_Wdot) || push!(__eqs, Wdot ~ __ovr_Wdot)
+  __ovr_Wdot__initial = pop!(__overrides, "Wdot__initial", nothing); isnothing(__ovr_Wdot__initial) || (__initial_conditions[Wdot] = __ovr_Wdot__initial)
+  __ovr_L_tot = pop!(__overrides, "L_tot", nothing); isnothing(__ovr_L_tot) || push!(__eqs, L_tot ~ __ovr_L_tot)
+  __ovr_L_tot__initial = pop!(__overrides, "L_tot__initial", nothing); isnothing(__ovr_L_tot__initial) || (__initial_conditions[L_tot] = __ovr_L_tot__initial)
+  __ovr_M_tot = pop!(__overrides, "M_tot", nothing); isnothing(__ovr_M_tot) || push!(__eqs, M_tot ~ __ovr_M_tot)
+  __ovr_M_tot__initial = pop!(__overrides, "M_tot__initial", nothing); isnothing(__ovr_M_tot__initial) || (__initial_conditions[M_tot] = __ovr_M_tot__initial)
+  __ovr_N_tot = pop!(__overrides, "N_tot", nothing); isnothing(__ovr_N_tot) || push!(__eqs, N_tot ~ __ovr_N_tot)
+  __ovr_N_tot__initial = pop!(__overrides, "N_tot__initial", nothing); isnothing(__ovr_N_tot__initial) || (__initial_conditions[N_tot] = __ovr_N_tot__initial)
+  __ovr_denom = pop!(__overrides, "denom", nothing); isnothing(__ovr_denom) || push!(__eqs, denom ~ __ovr_denom)
+  __ovr_denom__initial = pop!(__overrides, "denom__initial", nothing); isnothing(__ovr_denom__initial) || (__initial_conditions[denom] = __ovr_denom__initial)
+
   ### Constants
   __constants = Any[]
 
   ### Components
 
-  ### Guesses
+  ### Check there are no unmatched overrides
+  isempty(__overrides) || throw(ArgumentError("overides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
 
-  ### Defaults
+  ### Guesses
 
   ### Initialization Equations
 
@@ -235,6 +393,6 @@ F16 trim model - controls are algebraic variables determined by equilibrium
   push!(__eqs, 0 ~ (M_tot + (Jz - Jx) * P * R - Jxz * (P * P - R * R) - R * Heng) / Jy)
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, defaults=__defaults, guesses=__guesses, name, initialization_eqs=__initialization_eqs, assertions=__assertions)
+  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export F16PlantForTrim

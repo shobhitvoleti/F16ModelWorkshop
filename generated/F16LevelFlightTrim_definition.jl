@@ -5,18 +5,25 @@
 
 
 using DyadInterface
-
+using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel
+using ModelingToolkit: SymbolicT, toggle_namespacing
 using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
 @kwdef mutable struct F16LevelFlightTrimSpec <: AbstractTransientAnalysisSpec
   name::Symbol = :F16LevelFlightTrim
-  var"alg"::String = "auto"
+  var"alg"::ODEAlg.Type = ODEAlg.Auto()
   var"start"::Float64 = 0
   var"stop"::Float64 = 0.1
   var"abstol"::Float64 = 0.000001
   var"reltol"::Float64 = 0.000001
   var"saveat"::Float64 = 0
   var"dtmax"::Float64 = 0
-  var"IfLifting"::Bool = false
+  var"tstops"::Array{Float64, 1} = []
+  var"automatic_discontinuity_detection"::Bool = false
+  var"optimize"::OptimizationLevel.Type = OptimizationLevel.None()
+  var"progress"::Bool = true
+  var"respecialize"::Bool = false
+  var"verbose"::DEVerbosity.Type = DEVerbosity.Standard()
+  var"log_file"::String = ""
   # Trim altitude [m]
   var"altitude"::Float64 = 1000
   # Trim airspeed [m/s]
@@ -26,13 +33,15 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
 end
 
 function DyadInterface.run_analysis(spec::F16LevelFlightTrimSpec)
-  spec.model = DyadInterface.update_model(spec.model, (; var"h"=spec.var"altitude", var"V"=spec.var"velocity"))
+  overrides = Dict{SymbolicT, SymbolicT}()
+  no_namespace_model = toggle_namespacing(spec.model, false)
+  push!(overrides, no_namespace_model.h => spec.var"altitude")
+  push!(overrides, no_namespace_model.V => spec.var"velocity")
   base_spec = TransientAnalysisSpec(;
-    name=:TransientAnalysis, alg=spec.alg, start=spec.start, stop=spec.stop, abstol=spec.abstol, reltol=spec.reltol, saveat=spec.saveat, dtmax=spec.dtmax, IfLifting=spec.IfLifting, model=spec.model
+    name=:TransientAnalysis, overrides, alg=spec.alg, start=spec.start, stop=spec.stop, abstol=spec.abstol, reltol=spec.reltol, saveat=spec.saveat, dtmax=spec.dtmax, tstops=spec.tstops, automatic_discontinuity_detection=spec.automatic_discontinuity_detection, optimize=spec.optimize, progress=spec.progress, respecialize=spec.respecialize, verbose=spec.verbose, log_file=spec.log_file, model=spec.model
   )
   run_analysis(base_spec)
 end
 
 F16LevelFlightTrim(;kwargs...) = run_analysis(F16LevelFlightTrimSpec(;kwargs...))
 export F16LevelFlightTrim, F16LevelFlightTrimSpec
-export F16LevelFlightTrimSpec, F16LevelFlightTrim

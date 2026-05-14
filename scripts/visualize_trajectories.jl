@@ -14,9 +14,10 @@ For visual clarity limited to three variables supplied as kwargs.
 
 include("animate_trajectories_turbo.jl")
 animate_trajectories_turbo(result, duration=10.0;
-                            plot1=:alt, 
+                            plot1=:alpha, 
                             plot2=:theta, 
-                            plot3=:vt)
+                            plot3=:vt,
+                            filename = "custom_open_loop.mp4")
 animate_trajectories_turbo(result2, duration=10.0;
                             plot1=:alt, 
                             plot2=:theta, 

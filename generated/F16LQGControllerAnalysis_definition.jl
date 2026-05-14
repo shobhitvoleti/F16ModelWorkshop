@@ -5,7 +5,8 @@
 
 
 using DyadInterface
-
+using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel
+using ModelingToolkit: SymbolicT, toggle_namespacing
 using DyadControlSystems: AbstractLQGAnalysisSpec, LQGAnalysisSpec
 @kwdef mutable struct F16LQGControllerAnalysisSpec <: AbstractLQGAnalysisSpec
   name::Symbol = :F16LQGControllerAnalysis
@@ -33,13 +34,13 @@ using DyadControlSystems: AbstractLQGAnalysisSpec, LQGAnalysisSpec
 end
 
 function DyadInterface.run_analysis(spec::F16LQGControllerAnalysisSpec)
-  spec.model = DyadInterface.update_model(spec.model, (; ))
+  overrides = Dict{SymbolicT, SymbolicT}()
+  no_namespace_model = toggle_namespacing(spec.model, false)
   base_spec = LQGAnalysisSpec(;
-    name=:LQGAnalysis, measurement=spec.measurement, controlled_output=spec.controlled_output, control_input=spec.control_input, disturbance_inputs=spec.disturbance_inputs, loop_openings=spec.loop_openings, t=spec.t, q1_diag=spec.q1_diag, q2_diag=spec.q2_diag, r1_diag=spec.r1_diag, r2_diag=spec.r2_diag, qQ=spec.qQ, qR=spec.qR, disc=spec.disc, Ts=spec.Ts, integrator_indices=spec.integrator_indices, integrator_r1_diag=spec.integrator_r1_diag, wl=spec.wl, wu=spec.wu, num_frequencies=spec.num_frequencies, duration=spec.duration, model=spec.model
+    name=:LQGAnalysis, overrides, measurement=spec.measurement, controlled_output=spec.controlled_output, control_input=spec.control_input, disturbance_inputs=spec.disturbance_inputs, loop_openings=spec.loop_openings, t=spec.t, q1_diag=spec.q1_diag, q2_diag=spec.q2_diag, r1_diag=spec.r1_diag, r2_diag=spec.r2_diag, qQ=spec.qQ, qR=spec.qR, disc=spec.disc, Ts=spec.Ts, integrator_indices=spec.integrator_indices, integrator_r1_diag=spec.integrator_r1_diag, wl=spec.wl, wu=spec.wu, num_frequencies=spec.num_frequencies, duration=spec.duration, model=spec.model
   )
   run_analysis(base_spec)
 end
 
 F16LQGControllerAnalysis(;kwargs...) = run_analysis(F16LQGControllerAnalysisSpec(;kwargs...))
 export F16LQGControllerAnalysis, F16LQGControllerAnalysisSpec
-export F16LQGControllerAnalysisSpec, F16LQGControllerAnalysis

@@ -10,69 +10,198 @@
 Scenario 1: Closed-Loop Model with LQG controller feedback.
 Demonstrates controller stabilization from 10° pitch perturbation.
 """
-@component function F16ClosedLoopPerturbed(; name = nothing)
+@component function F16ClosedLoopPerturbed(; name = nothing, kwargs...)
   isnothing(name) && throw(ArgumentError("""
         The `name` keyword must be provided. Please consider using the `@named` macro,
         like so:
 
         @named model = F16ClosedLoopPerturbed()
         """))
-  __params = Any[]
-  __vars = Any[]
+  __overrides = Dict{String, Symbolics.SymbolicT}(string(k) => v for (k, v) in kwargs)
+  __params = Symbolics.SymbolicT[]
+  __vars = Symbolics.SymbolicT[]
   __systems = System[]
-  __guesses = Dict()
-  __defaults = Dict()
-  __initialization_eqs = []
+  __guesses = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initial_conditions = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initialization_eqs = Equation[]
   __eqs = Equation[]
+  __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Structural Parameters (functions)
+
+  ### Structural Parameters (Final)
+
+  ### Path Parameters (functions)
+
+  ### Path Parameters (non-final)
+
+  ### Final Parameters (declarations)
+
+  ### Final Parameters (assignments)
+
+  ### Deferred assignment (default values that depend on final parameters)
 
   ### Symbolic Parameters
 
-  ### Variables
+  ### Final Path Parameters
+
+  ### Variables (declarations)
+
+  ### Variables (assignments)
 
   ### Constants
   __constants = Any[]
 
   ### Components
-  push!(__systems, @named f16plant = F16ModelWorkshop.F16PlantIO(alt_init=3000, theta_init=10 * pi / 180))
-  push!(__systems, @named controller = BlockComponents.StateSpace(nx=12, nu=12, ny=5, A=ControllerA, B=ControllerB, C=ControllerC, D=ControllerD, x0=fill(0, 12), u0=fill(0, 12), y0=fill(0, 5)))
-  push!(__systems, @named ref_npos = BlockComponents.Constant(k=0))
-  push!(__systems, @named ref_epos = BlockComponents.Constant(k=0))
-  push!(__systems, @named ref_alt = BlockComponents.Constant(k=3000))
-  push!(__systems, @named ref_phi = BlockComponents.Constant(k=0))
-  push!(__systems, @named ref_theta = BlockComponents.Constant(k=-0.017))
-  push!(__systems, @named ref_psi = BlockComponents.Constant(k=0))
-  push!(__systems, @named ref_vt = BlockComponents.Constant(k=152.4))
-  push!(__systems, @named ref_alpha = BlockComponents.Constant(k=-0.017))
-  push!(__systems, @named ref_beta = BlockComponents.Constant(k=0))
-  push!(__systems, @named ref_P = BlockComponents.Constant(k=0))
-  push!(__systems, @named ref_Q = BlockComponents.Constant(k=0))
-  push!(__systems, @named ref_R = BlockComponents.Constant(k=0))
-  push!(__systems, @named error1 = BlockComponents.Add(k1=1, k2=-1))
-  push!(__systems, @named error2 = BlockComponents.Add(k1=1, k2=-1))
-  push!(__systems, @named error3 = BlockComponents.Add(k1=1, k2=-1))
-  push!(__systems, @named error4 = BlockComponents.Add(k1=1, k2=-1))
-  push!(__systems, @named error5 = BlockComponents.Add(k1=1, k2=-1))
-  push!(__systems, @named error6 = BlockComponents.Add(k1=1, k2=-1))
-  push!(__systems, @named error7 = BlockComponents.Add(k1=1, k2=-1))
-  push!(__systems, @named error8 = BlockComponents.Add(k1=1, k2=-1))
-  push!(__systems, @named error9 = BlockComponents.Add(k1=1, k2=-1))
-  push!(__systems, @named error10 = BlockComponents.Add(k1=1, k2=-1))
-  push!(__systems, @named error11 = BlockComponents.Add(k1=1, k2=-1))
-  push!(__systems, @named error12 = BlockComponents.Add(k1=1, k2=-1))
-  push!(__systems, @named trim_T = BlockComponents.Constant(k=44482.2))
-  push!(__systems, @named trim_el = BlockComponents.Constant(k=0))
-  push!(__systems, @named trim_ail = BlockComponents.Constant(k=0))
-  push!(__systems, @named trim_rud = BlockComponents.Constant(k=0))
-  push!(__systems, @named trim_lef = BlockComponents.Constant(k=0))
-  push!(__systems, @named control_T = BlockComponents.Add(k1=1, k2=1))
-  push!(__systems, @named control_el = BlockComponents.Add(k1=1, k2=1))
-  push!(__systems, @named control_ail = BlockComponents.Add(k1=1, k2=1))
-  push!(__systems, @named control_rud = BlockComponents.Add(k1=1, k2=1))
-  push!(__systems, @named control_lef = BlockComponents.Add(k1=1, k2=1))
+  # Subcomponent f16plant of type F16ModelWorkshop.F16PlantIO
+  f16plant_overrides = Dict(Symbol(replace(string(k), r"^f16plant__" => "")) => v for (k, v) in __overrides if startswith(string(k), "f16plant__"))
+  filter!(p -> !startswith(string(first(p)), "f16plant__"), __overrides)
+  push!(__systems, @named f16plant = F16ModelWorkshop.F16PlantIO(alt_init=3000, theta_init=10 * pi / 180, f16plant_overrides...))
+  # Subcomponent controller of type BlockComponents.Continuous.StateSpace
+  controller_overrides = Dict(Symbol(replace(string(k), r"^controller__" => "")) => v for (k, v) in __overrides if startswith(string(k), "controller__"))
+  filter!(p -> !startswith(string(first(p)), "controller__"), __overrides)
+  push!(__systems, @named controller = BlockComponents.Continuous.StateSpace(nx=12, nu=12, ny=5, A=ControllerA, B=ControllerB, C=ControllerC, D=ControllerD, x0=fill(0, 12), u0=fill(0, 12), y0=fill(0, 5), controller_overrides...))
+  # Subcomponent ref_npos of type BlockComponents.Sources.Constant
+  ref_npos_overrides = Dict(Symbol(replace(string(k), r"^ref_npos__" => "")) => v for (k, v) in __overrides if startswith(string(k), "ref_npos__"))
+  filter!(p -> !startswith(string(first(p)), "ref_npos__"), __overrides)
+  push!(__systems, @named ref_npos = BlockComponents.Sources.Constant(k=0, ref_npos_overrides...))
+  # Subcomponent ref_epos of type BlockComponents.Sources.Constant
+  ref_epos_overrides = Dict(Symbol(replace(string(k), r"^ref_epos__" => "")) => v for (k, v) in __overrides if startswith(string(k), "ref_epos__"))
+  filter!(p -> !startswith(string(first(p)), "ref_epos__"), __overrides)
+  push!(__systems, @named ref_epos = BlockComponents.Sources.Constant(k=0, ref_epos_overrides...))
+  # Subcomponent ref_alt of type BlockComponents.Sources.Constant
+  ref_alt_overrides = Dict(Symbol(replace(string(k), r"^ref_alt__" => "")) => v for (k, v) in __overrides if startswith(string(k), "ref_alt__"))
+  filter!(p -> !startswith(string(first(p)), "ref_alt__"), __overrides)
+  push!(__systems, @named ref_alt = BlockComponents.Sources.Constant(k=3000, ref_alt_overrides...))
+  # Subcomponent ref_phi of type BlockComponents.Sources.Constant
+  ref_phi_overrides = Dict(Symbol(replace(string(k), r"^ref_phi__" => "")) => v for (k, v) in __overrides if startswith(string(k), "ref_phi__"))
+  filter!(p -> !startswith(string(first(p)), "ref_phi__"), __overrides)
+  push!(__systems, @named ref_phi = BlockComponents.Sources.Constant(k=0, ref_phi_overrides...))
+  # Subcomponent ref_theta of type BlockComponents.Sources.Constant
+  ref_theta_overrides = Dict(Symbol(replace(string(k), r"^ref_theta__" => "")) => v for (k, v) in __overrides if startswith(string(k), "ref_theta__"))
+  filter!(p -> !startswith(string(first(p)), "ref_theta__"), __overrides)
+  push!(__systems, @named ref_theta = BlockComponents.Sources.Constant(k=-0.017, ref_theta_overrides...))
+  # Subcomponent ref_psi of type BlockComponents.Sources.Constant
+  ref_psi_overrides = Dict(Symbol(replace(string(k), r"^ref_psi__" => "")) => v for (k, v) in __overrides if startswith(string(k), "ref_psi__"))
+  filter!(p -> !startswith(string(first(p)), "ref_psi__"), __overrides)
+  push!(__systems, @named ref_psi = BlockComponents.Sources.Constant(k=0, ref_psi_overrides...))
+  # Subcomponent ref_vt of type BlockComponents.Sources.Constant
+  ref_vt_overrides = Dict(Symbol(replace(string(k), r"^ref_vt__" => "")) => v for (k, v) in __overrides if startswith(string(k), "ref_vt__"))
+  filter!(p -> !startswith(string(first(p)), "ref_vt__"), __overrides)
+  push!(__systems, @named ref_vt = BlockComponents.Sources.Constant(k=152.4, ref_vt_overrides...))
+  # Subcomponent ref_alpha of type BlockComponents.Sources.Constant
+  ref_alpha_overrides = Dict(Symbol(replace(string(k), r"^ref_alpha__" => "")) => v for (k, v) in __overrides if startswith(string(k), "ref_alpha__"))
+  filter!(p -> !startswith(string(first(p)), "ref_alpha__"), __overrides)
+  push!(__systems, @named ref_alpha = BlockComponents.Sources.Constant(k=-0.017, ref_alpha_overrides...))
+  # Subcomponent ref_beta of type BlockComponents.Sources.Constant
+  ref_beta_overrides = Dict(Symbol(replace(string(k), r"^ref_beta__" => "")) => v for (k, v) in __overrides if startswith(string(k), "ref_beta__"))
+  filter!(p -> !startswith(string(first(p)), "ref_beta__"), __overrides)
+  push!(__systems, @named ref_beta = BlockComponents.Sources.Constant(k=0, ref_beta_overrides...))
+  # Subcomponent ref_P of type BlockComponents.Sources.Constant
+  ref_P_overrides = Dict(Symbol(replace(string(k), r"^ref_P__" => "")) => v for (k, v) in __overrides if startswith(string(k), "ref_P__"))
+  filter!(p -> !startswith(string(first(p)), "ref_P__"), __overrides)
+  push!(__systems, @named ref_P = BlockComponents.Sources.Constant(k=0, ref_P_overrides...))
+  # Subcomponent ref_Q of type BlockComponents.Sources.Constant
+  ref_Q_overrides = Dict(Symbol(replace(string(k), r"^ref_Q__" => "")) => v for (k, v) in __overrides if startswith(string(k), "ref_Q__"))
+  filter!(p -> !startswith(string(first(p)), "ref_Q__"), __overrides)
+  push!(__systems, @named ref_Q = BlockComponents.Sources.Constant(k=0, ref_Q_overrides...))
+  # Subcomponent ref_R of type BlockComponents.Sources.Constant
+  ref_R_overrides = Dict(Symbol(replace(string(k), r"^ref_R__" => "")) => v for (k, v) in __overrides if startswith(string(k), "ref_R__"))
+  filter!(p -> !startswith(string(first(p)), "ref_R__"), __overrides)
+  push!(__systems, @named ref_R = BlockComponents.Sources.Constant(k=0, ref_R_overrides...))
+  # Subcomponent error1 of type BlockComponents.Math.Add
+  error1_overrides = Dict(Symbol(replace(string(k), r"^error1__" => "")) => v for (k, v) in __overrides if startswith(string(k), "error1__"))
+  filter!(p -> !startswith(string(first(p)), "error1__"), __overrides)
+  push!(__systems, @named error1 = BlockComponents.Math.Add(k1=1, k2=-1, error1_overrides...))
+  # Subcomponent error2 of type BlockComponents.Math.Add
+  error2_overrides = Dict(Symbol(replace(string(k), r"^error2__" => "")) => v for (k, v) in __overrides if startswith(string(k), "error2__"))
+  filter!(p -> !startswith(string(first(p)), "error2__"), __overrides)
+  push!(__systems, @named error2 = BlockComponents.Math.Add(k1=1, k2=-1, error2_overrides...))
+  # Subcomponent error3 of type BlockComponents.Math.Add
+  error3_overrides = Dict(Symbol(replace(string(k), r"^error3__" => "")) => v for (k, v) in __overrides if startswith(string(k), "error3__"))
+  filter!(p -> !startswith(string(first(p)), "error3__"), __overrides)
+  push!(__systems, @named error3 = BlockComponents.Math.Add(k1=1, k2=-1, error3_overrides...))
+  # Subcomponent error4 of type BlockComponents.Math.Add
+  error4_overrides = Dict(Symbol(replace(string(k), r"^error4__" => "")) => v for (k, v) in __overrides if startswith(string(k), "error4__"))
+  filter!(p -> !startswith(string(first(p)), "error4__"), __overrides)
+  push!(__systems, @named error4 = BlockComponents.Math.Add(k1=1, k2=-1, error4_overrides...))
+  # Subcomponent error5 of type BlockComponents.Math.Add
+  error5_overrides = Dict(Symbol(replace(string(k), r"^error5__" => "")) => v for (k, v) in __overrides if startswith(string(k), "error5__"))
+  filter!(p -> !startswith(string(first(p)), "error5__"), __overrides)
+  push!(__systems, @named error5 = BlockComponents.Math.Add(k1=1, k2=-1, error5_overrides...))
+  # Subcomponent error6 of type BlockComponents.Math.Add
+  error6_overrides = Dict(Symbol(replace(string(k), r"^error6__" => "")) => v for (k, v) in __overrides if startswith(string(k), "error6__"))
+  filter!(p -> !startswith(string(first(p)), "error6__"), __overrides)
+  push!(__systems, @named error6 = BlockComponents.Math.Add(k1=1, k2=-1, error6_overrides...))
+  # Subcomponent error7 of type BlockComponents.Math.Add
+  error7_overrides = Dict(Symbol(replace(string(k), r"^error7__" => "")) => v for (k, v) in __overrides if startswith(string(k), "error7__"))
+  filter!(p -> !startswith(string(first(p)), "error7__"), __overrides)
+  push!(__systems, @named error7 = BlockComponents.Math.Add(k1=1, k2=-1, error7_overrides...))
+  # Subcomponent error8 of type BlockComponents.Math.Add
+  error8_overrides = Dict(Symbol(replace(string(k), r"^error8__" => "")) => v for (k, v) in __overrides if startswith(string(k), "error8__"))
+  filter!(p -> !startswith(string(first(p)), "error8__"), __overrides)
+  push!(__systems, @named error8 = BlockComponents.Math.Add(k1=1, k2=-1, error8_overrides...))
+  # Subcomponent error9 of type BlockComponents.Math.Add
+  error9_overrides = Dict(Symbol(replace(string(k), r"^error9__" => "")) => v for (k, v) in __overrides if startswith(string(k), "error9__"))
+  filter!(p -> !startswith(string(first(p)), "error9__"), __overrides)
+  push!(__systems, @named error9 = BlockComponents.Math.Add(k1=1, k2=-1, error9_overrides...))
+  # Subcomponent error10 of type BlockComponents.Math.Add
+  error10_overrides = Dict(Symbol(replace(string(k), r"^error10__" => "")) => v for (k, v) in __overrides if startswith(string(k), "error10__"))
+  filter!(p -> !startswith(string(first(p)), "error10__"), __overrides)
+  push!(__systems, @named error10 = BlockComponents.Math.Add(k1=1, k2=-1, error10_overrides...))
+  # Subcomponent error11 of type BlockComponents.Math.Add
+  error11_overrides = Dict(Symbol(replace(string(k), r"^error11__" => "")) => v for (k, v) in __overrides if startswith(string(k), "error11__"))
+  filter!(p -> !startswith(string(first(p)), "error11__"), __overrides)
+  push!(__systems, @named error11 = BlockComponents.Math.Add(k1=1, k2=-1, error11_overrides...))
+  # Subcomponent error12 of type BlockComponents.Math.Add
+  error12_overrides = Dict(Symbol(replace(string(k), r"^error12__" => "")) => v for (k, v) in __overrides if startswith(string(k), "error12__"))
+  filter!(p -> !startswith(string(first(p)), "error12__"), __overrides)
+  push!(__systems, @named error12 = BlockComponents.Math.Add(k1=1, k2=-1, error12_overrides...))
+  # Subcomponent trim_T of type BlockComponents.Sources.Constant
+  trim_T_overrides = Dict(Symbol(replace(string(k), r"^trim_T__" => "")) => v for (k, v) in __overrides if startswith(string(k), "trim_T__"))
+  filter!(p -> !startswith(string(first(p)), "trim_T__"), __overrides)
+  push!(__systems, @named trim_T = BlockComponents.Sources.Constant(k=44482.2, trim_T_overrides...))
+  # Subcomponent trim_el of type BlockComponents.Sources.Constant
+  trim_el_overrides = Dict(Symbol(replace(string(k), r"^trim_el__" => "")) => v for (k, v) in __overrides if startswith(string(k), "trim_el__"))
+  filter!(p -> !startswith(string(first(p)), "trim_el__"), __overrides)
+  push!(__systems, @named trim_el = BlockComponents.Sources.Constant(k=0, trim_el_overrides...))
+  # Subcomponent trim_ail of type BlockComponents.Sources.Constant
+  trim_ail_overrides = Dict(Symbol(replace(string(k), r"^trim_ail__" => "")) => v for (k, v) in __overrides if startswith(string(k), "trim_ail__"))
+  filter!(p -> !startswith(string(first(p)), "trim_ail__"), __overrides)
+  push!(__systems, @named trim_ail = BlockComponents.Sources.Constant(k=0, trim_ail_overrides...))
+  # Subcomponent trim_rud of type BlockComponents.Sources.Constant
+  trim_rud_overrides = Dict(Symbol(replace(string(k), r"^trim_rud__" => "")) => v for (k, v) in __overrides if startswith(string(k), "trim_rud__"))
+  filter!(p -> !startswith(string(first(p)), "trim_rud__"), __overrides)
+  push!(__systems, @named trim_rud = BlockComponents.Sources.Constant(k=0, trim_rud_overrides...))
+  # Subcomponent trim_lef of type BlockComponents.Sources.Constant
+  trim_lef_overrides = Dict(Symbol(replace(string(k), r"^trim_lef__" => "")) => v for (k, v) in __overrides if startswith(string(k), "trim_lef__"))
+  filter!(p -> !startswith(string(first(p)), "trim_lef__"), __overrides)
+  push!(__systems, @named trim_lef = BlockComponents.Sources.Constant(k=0, trim_lef_overrides...))
+  # Subcomponent control_T of type BlockComponents.Math.Add
+  control_T_overrides = Dict(Symbol(replace(string(k), r"^control_T__" => "")) => v for (k, v) in __overrides if startswith(string(k), "control_T__"))
+  filter!(p -> !startswith(string(first(p)), "control_T__"), __overrides)
+  push!(__systems, @named control_T = BlockComponents.Math.Add(k1=1, k2=1, control_T_overrides...))
+  # Subcomponent control_el of type BlockComponents.Math.Add
+  control_el_overrides = Dict(Symbol(replace(string(k), r"^control_el__" => "")) => v for (k, v) in __overrides if startswith(string(k), "control_el__"))
+  filter!(p -> !startswith(string(first(p)), "control_el__"), __overrides)
+  push!(__systems, @named control_el = BlockComponents.Math.Add(k1=1, k2=1, control_el_overrides...))
+  # Subcomponent control_ail of type BlockComponents.Math.Add
+  control_ail_overrides = Dict(Symbol(replace(string(k), r"^control_ail__" => "")) => v for (k, v) in __overrides if startswith(string(k), "control_ail__"))
+  filter!(p -> !startswith(string(first(p)), "control_ail__"), __overrides)
+  push!(__systems, @named control_ail = BlockComponents.Math.Add(k1=1, k2=1, control_ail_overrides...))
+  # Subcomponent control_rud of type BlockComponents.Math.Add
+  control_rud_overrides = Dict(Symbol(replace(string(k), r"^control_rud__" => "")) => v for (k, v) in __overrides if startswith(string(k), "control_rud__"))
+  filter!(p -> !startswith(string(first(p)), "control_rud__"), __overrides)
+  push!(__systems, @named control_rud = BlockComponents.Math.Add(k1=1, k2=1, control_rud_overrides...))
+  # Subcomponent control_lef of type BlockComponents.Math.Add
+  control_lef_overrides = Dict(Symbol(replace(string(k), r"^control_lef__" => "")) => v for (k, v) in __overrides if startswith(string(k), "control_lef__"))
+  filter!(p -> !startswith(string(first(p)), "control_lef__"), __overrides)
+  push!(__systems, @named control_lef = BlockComponents.Math.Add(k1=1, k2=1, control_lef_overrides...))
+
+  ### Check there are no unmatched overrides
+  isempty(__overrides) || throw(ArgumentError("overides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
 
   ### Guesses
-
-  ### Defaults
 
   ### Initialization Equations
 
@@ -80,40 +209,23 @@ Demonstrates controller stabilization from 10° pitch perturbation.
   __assertions = []
 
   ### Equations
-  push!(__eqs, controller.u[1] ~ error1.y)
-  push!(__eqs, controller.u[2] ~ error2.y)
-  push!(__eqs, controller.u[3] ~ error3.y)
-  push!(__eqs, controller.u[4] ~ error4.y)
-  push!(__eqs, controller.u[5] ~ error5.y)
-  push!(__eqs, controller.u[6] ~ error6.y)
-  push!(__eqs, controller.u[7] ~ error7.y)
-  push!(__eqs, controller.u[8] ~ error8.y)
-  push!(__eqs, controller.u[9] ~ error9.y)
-  push!(__eqs, controller.u[10] ~ error10.y)
-  push!(__eqs, controller.u[11] ~ error11.y)
-  push!(__eqs, controller.u[12] ~ error12.y)
-  push!(__eqs, control_T.u1 ~ controller.y[1])
-  push!(__eqs, control_el.u1 ~ controller.y[2])
-  push!(__eqs, control_ail.u1 ~ controller.y[3])
-  push!(__eqs, control_rud.u1 ~ controller.y[4])
-  push!(__eqs, control_lef.u1 ~ controller.y[5])
-  push!(__eqs, AnalysisPoint() ~ AnalysisPoint(control_T.y, :uT, [f16plant.T_in]))
-  push!(__eqs, AnalysisPoint() ~ AnalysisPoint(control_el.y, :uEl, [f16plant.el_in]))
-  push!(__eqs, AnalysisPoint() ~ AnalysisPoint(control_ail.y, :uAil, [f16plant.ail_in]))
-  push!(__eqs, AnalysisPoint() ~ AnalysisPoint(control_rud.y, :uRud, [f16plant.rud_in]))
-  push!(__eqs, AnalysisPoint() ~ AnalysisPoint(control_lef.y, :uLef, [f16plant.lef_in]))
-  push!(__eqs, AnalysisPoint() ~ AnalysisPoint(f16plant.npos_out, :yn, [error1.u2]))
-  push!(__eqs, AnalysisPoint() ~ AnalysisPoint(f16plant.epos_out, :ye, [error2.u2]))
-  push!(__eqs, AnalysisPoint() ~ AnalysisPoint(f16plant.alt_out, :yalt, [error3.u2]))
-  push!(__eqs, AnalysisPoint() ~ AnalysisPoint(f16plant.phi_out, :yphi, [error4.u2]))
-  push!(__eqs, AnalysisPoint() ~ AnalysisPoint(f16plant.theta_out, :ypitch, [error5.u2]))
-  push!(__eqs, AnalysisPoint() ~ AnalysisPoint(f16plant.psi_out, :ypsi, [error6.u2]))
-  push!(__eqs, AnalysisPoint() ~ AnalysisPoint(f16plant.vt_out, :yvt, [error7.u2]))
-  push!(__eqs, AnalysisPoint() ~ AnalysisPoint(f16plant.alpha_out, :yalpha, [error8.u2]))
-  push!(__eqs, AnalysisPoint() ~ AnalysisPoint(f16plant.beta_out, :ybeta, [error9.u2]))
-  push!(__eqs, AnalysisPoint() ~ AnalysisPoint(f16plant.P_out, :yP, [error10.u2]))
-  push!(__eqs, AnalysisPoint() ~ AnalysisPoint(f16plant.Q_out, :yQ, [error11.u2]))
-  push!(__eqs, AnalysisPoint() ~ AnalysisPoint(f16plant.R_out, :yR, [error12.u2]))
+  push!(__eqs, connect(control_T.y, :uT, f16plant.T_in))
+  push!(__eqs, connect(control_el.y, :uEl, f16plant.el_in))
+  push!(__eqs, connect(control_ail.y, :uAil, f16plant.ail_in))
+  push!(__eqs, connect(control_rud.y, :uRud, f16plant.rud_in))
+  push!(__eqs, connect(control_lef.y, :uLef, f16plant.lef_in))
+  push!(__eqs, connect(f16plant.npos_out, :yn, error1.u2))
+  push!(__eqs, connect(f16plant.epos_out, :ye, error2.u2))
+  push!(__eqs, connect(f16plant.alt_out, :yalt, error3.u2))
+  push!(__eqs, connect(f16plant.phi_out, :yphi, error4.u2))
+  push!(__eqs, connect(f16plant.theta_out, :ypitch, error5.u2))
+  push!(__eqs, connect(f16plant.psi_out, :ypsi, error6.u2))
+  push!(__eqs, connect(f16plant.vt_out, :yvt, error7.u2))
+  push!(__eqs, connect(f16plant.alpha_out, :yalpha, error8.u2))
+  push!(__eqs, connect(f16plant.beta_out, :ybeta, error9.u2))
+  push!(__eqs, connect(f16plant.P_out, :yP, error10.u2))
+  push!(__eqs, connect(f16plant.Q_out, :yQ, error11.u2))
+  push!(__eqs, connect(f16plant.R_out, :yR, error12.u2))
   push!(__eqs, connect(ref_npos.y, error1.u1))
   push!(__eqs, connect(f16plant.npos_out, error1.u2))
   push!(__eqs, connect(ref_epos.y, error2.u1))
@@ -138,18 +250,35 @@ Demonstrates controller stabilization from 10° pitch perturbation.
   push!(__eqs, connect(f16plant.Q_out, error11.u2))
   push!(__eqs, connect(ref_R.y, error12.u1))
   push!(__eqs, connect(f16plant.R_out, error12.u2))
+  push!(__eqs, connect(error1.y, controller.u[1]))
+  push!(__eqs, connect(error2.y, controller.u[2]))
+  push!(__eqs, connect(error3.y, controller.u[3]))
+  push!(__eqs, connect(error4.y, controller.u[4]))
+  push!(__eqs, connect(error5.y, controller.u[5]))
+  push!(__eqs, connect(error6.y, controller.u[6]))
+  push!(__eqs, connect(error7.y, controller.u[7]))
+  push!(__eqs, connect(error8.y, controller.u[8]))
+  push!(__eqs, connect(error9.y, controller.u[9]))
+  push!(__eqs, connect(error10.y, controller.u[10]))
+  push!(__eqs, connect(error11.y, controller.u[11]))
+  push!(__eqs, connect(error12.y, controller.u[12]))
+  push!(__eqs, connect(controller.y[1], control_T.u1))
   push!(__eqs, connect(trim_T.y, control_T.u2))
   push!(__eqs, connect(control_T.y, f16plant.T_in))
+  push!(__eqs, connect(controller.y[2], control_el.u1))
   push!(__eqs, connect(trim_el.y, control_el.u2))
   push!(__eqs, connect(control_el.y, f16plant.el_in))
+  push!(__eqs, connect(controller.y[3], control_ail.u1))
   push!(__eqs, connect(trim_ail.y, control_ail.u2))
   push!(__eqs, connect(control_ail.y, f16plant.ail_in))
+  push!(__eqs, connect(controller.y[4], control_rud.u1))
   push!(__eqs, connect(trim_rud.y, control_rud.u2))
   push!(__eqs, connect(control_rud.y, f16plant.rud_in))
+  push!(__eqs, connect(controller.y[5], control_lef.u1))
   push!(__eqs, connect(trim_lef.y, control_lef.u2))
   push!(__eqs, connect(control_lef.y, f16plant.lef_in))
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, defaults=__defaults, guesses=__guesses, name, initialization_eqs=__initialization_eqs, assertions=__assertions)
+  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export F16ClosedLoopPerturbed

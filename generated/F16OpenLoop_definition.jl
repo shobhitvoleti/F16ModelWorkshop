@@ -12,39 +12,78 @@ Scenario 1: Disturbance Rejection - Open-Loop vs Closed-Loop
 Open-loop model in this file. Closed-loop model in scenario2_closed_loop.dyad.
 Both demonstrate LQG controller effectiveness against 10° pitch perturbation.
 """
-@component function F16OpenLoop(; name = nothing)
+@component function F16OpenLoop(; name = nothing, kwargs...)
   isnothing(name) && throw(ArgumentError("""
         The `name` keyword must be provided. Please consider using the `@named` macro,
         like so:
 
         @named model = F16OpenLoop()
         """))
-  __params = Any[]
-  __vars = Any[]
+  __overrides = Dict{String, Symbolics.SymbolicT}(string(k) => v for (k, v) in kwargs)
+  __params = Symbolics.SymbolicT[]
+  __vars = Symbolics.SymbolicT[]
   __systems = System[]
-  __guesses = Dict()
-  __defaults = Dict()
-  __initialization_eqs = []
+  __guesses = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initial_conditions = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initialization_eqs = Equation[]
   __eqs = Equation[]
+  __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Structural Parameters (functions)
+
+  ### Structural Parameters (Final)
+
+  ### Path Parameters (functions)
+
+  ### Path Parameters (non-final)
+
+  ### Final Parameters (declarations)
+
+  ### Final Parameters (assignments)
+
+  ### Deferred assignment (default values that depend on final parameters)
 
   ### Symbolic Parameters
 
-  ### Variables
+  ### Final Path Parameters
+
+  ### Variables (declarations)
+
+  ### Variables (assignments)
 
   ### Constants
   __constants = Any[]
 
   ### Components
-  push!(__systems, @named f16plant = F16ModelWorkshop.F16PlantIO(alt_init=3000, theta_init=10 * pi / 180))
-  push!(__systems, @named T_cmd = BlockComponents.Constant(k=28696.2))
-  push!(__systems, @named el_cmd = BlockComponents.Constant(k=0.0459105))
-  push!(__systems, @named ail_cmd = BlockComponents.Constant(k=0))
-  push!(__systems, @named rud_cmd = BlockComponents.Constant(k=0))
-  push!(__systems, @named lef_cmd = BlockComponents.Constant(k=0))
+  # Subcomponent f16plant of type F16ModelWorkshop.F16PlantIO
+  f16plant_overrides = Dict(Symbol(replace(string(k), r"^f16plant__" => "")) => v for (k, v) in __overrides if startswith(string(k), "f16plant__"))
+  filter!(p -> !startswith(string(first(p)), "f16plant__"), __overrides)
+  push!(__systems, @named f16plant = F16ModelWorkshop.F16PlantIO(alt_init=3000, theta_init=10 * pi / 180, f16plant_overrides...))
+  # Subcomponent T_cmd of type BlockComponents.Sources.Constant
+  T_cmd_overrides = Dict(Symbol(replace(string(k), r"^T_cmd__" => "")) => v for (k, v) in __overrides if startswith(string(k), "T_cmd__"))
+  filter!(p -> !startswith(string(first(p)), "T_cmd__"), __overrides)
+  push!(__systems, @named T_cmd = BlockComponents.Sources.Constant(k=28696.2, T_cmd_overrides...))
+  # Subcomponent el_cmd of type BlockComponents.Sources.Constant
+  el_cmd_overrides = Dict(Symbol(replace(string(k), r"^el_cmd__" => "")) => v for (k, v) in __overrides if startswith(string(k), "el_cmd__"))
+  filter!(p -> !startswith(string(first(p)), "el_cmd__"), __overrides)
+  push!(__systems, @named el_cmd = BlockComponents.Sources.Constant(k=0.0459105, el_cmd_overrides...))
+  # Subcomponent ail_cmd of type BlockComponents.Sources.Constant
+  ail_cmd_overrides = Dict(Symbol(replace(string(k), r"^ail_cmd__" => "")) => v for (k, v) in __overrides if startswith(string(k), "ail_cmd__"))
+  filter!(p -> !startswith(string(first(p)), "ail_cmd__"), __overrides)
+  push!(__systems, @named ail_cmd = BlockComponents.Sources.Constant(k=0, ail_cmd_overrides...))
+  # Subcomponent rud_cmd of type BlockComponents.Sources.Constant
+  rud_cmd_overrides = Dict(Symbol(replace(string(k), r"^rud_cmd__" => "")) => v for (k, v) in __overrides if startswith(string(k), "rud_cmd__"))
+  filter!(p -> !startswith(string(first(p)), "rud_cmd__"), __overrides)
+  push!(__systems, @named rud_cmd = BlockComponents.Sources.Constant(k=0, rud_cmd_overrides...))
+  # Subcomponent lef_cmd of type BlockComponents.Sources.Constant
+  lef_cmd_overrides = Dict(Symbol(replace(string(k), r"^lef_cmd__" => "")) => v for (k, v) in __overrides if startswith(string(k), "lef_cmd__"))
+  filter!(p -> !startswith(string(first(p)), "lef_cmd__"), __overrides)
+  push!(__systems, @named lef_cmd = BlockComponents.Sources.Constant(k=0, lef_cmd_overrides...))
+
+  ### Check there are no unmatched overrides
+  isempty(__overrides) || throw(ArgumentError("overides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
 
   ### Guesses
-
-  ### Defaults
 
   ### Initialization Equations
 
@@ -59,6 +98,6 @@ Both demonstrate LQG controller effectiveness against 10° pitch perturbation.
   push!(__eqs, connect(lef_cmd.y, f16plant.lef_in))
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, defaults=__defaults, guesses=__guesses, name, initialization_eqs=__initialization_eqs, assertions=__assertions)
+  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export F16OpenLoop
