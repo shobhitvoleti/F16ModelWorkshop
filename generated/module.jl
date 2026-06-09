@@ -6,7 +6,12 @@
 if isfile(joinpath((@__DIR__) |> Base.dirname, "dyad", "module.jl"))
   include(joinpath((@__DIR__) |> Base.dirname, "dyad", "module.jl"))
 end
+include("internals.jl")
 include("types.jl")
 include("definitions.jl")
 include("experiments.jl")
+include("Controls/module.jl")
+include("Plant/module.jl")
+include("Trimming/module.jl")
+include("Utils/module.jl")
 include("precompilation.jl")

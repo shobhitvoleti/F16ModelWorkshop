@@ -1,0 +1,49 @@
+"Signal-to-Frame3D bridge: maps Y-up position and NED Euler angles to a Frame3D connector"
+component SignalPoseSource
+  "3-D frame output for rendering or multibody connection"
+  frame_a = Frame3D()
+  "Position inputs (Y-up world frame): x(forward), y(up), z(right)"
+  pos = [RealInput() for i in 1:3]
+  "NED Euler-angle inputs (ZYX convention): roll(phi), pitch(theta), yaw(psi)"
+  ang = [RealInput() for i in 1:3]
+  # trig intermediates
+  variable sp::Real
+  variable cp::Real
+  variable st::Real
+  variable ct::Real
+  variable sy::Real
+  variable cy::Real
+relations
+  # trig of NED Euler angles
+  sp = sin(ang[1])
+  cp = cos(ang[1])
+  st = sin(ang[2])
+  ct = cos(ang[2])
+  sy = sin(ang[3])
+  cy = cos(ang[3])
+  # position (pass-through, user maps NED→Y-up in connect statements)
+  frame_a.r_0[1] = pos[1]
+  frame_a.r_0[2] = pos[2]
+  frame_a.r_0[3] = pos[3]
+  # World-to-body rotation in Y-up frame: R_stored = T * R_ned' * T'
+  # where T = [1 0 0; 0 0 -1; 0 1 0] maps NED → Y-up
+  # and R_ned = Rz(psi)*Ry(theta)*Rx(phi) is body-to-world in NED
+  # MultibodyComponents convention: frame.R = world-to-body
+  # The renderer transposes frame.R to get body-to-world for rendering
+  frame_a.R[1,1] = cy * ct
+  frame_a.R[1,2] = st
+  frame_a.R[1,3] = sy * ct
+  frame_a.R[2,1] = -(cy * st * cp + sy * sp)
+  frame_a.R[2,2] = ct * cp
+  frame_a.R[2,3] = cy * sp - sy * st * cp
+  frame_a.R[3,1] = cy * st * sp - sy * cp
+  frame_a.R[3,2] = -ct * sp
+  frame_a.R[3,3] = sy * st * sp + cy * cp
+  # no mechanical loads — pure pose source
+  frame_a.f[1] = 0.0
+  frame_a.f[2] = 0.0
+  frame_a.f[3] = 0.0
+  frame_a.tau[1] = 0.0
+  frame_a.tau[2] = 0.0
+  frame_a.tau[3] = 0.0
+end

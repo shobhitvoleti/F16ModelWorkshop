@@ -12,8 +12,8 @@ using OrdinaryDiffEqDefault
 using RuntimeGeneratedFunctions
 RuntimeGeneratedFunctions.init(@__MODULE__)
 
-if isfile(joinpath((@__DIR__) |> Base.dirname, "dyad", "definitions.jl"))
-  include(joinpath((@__DIR__) |> Base.dirname, "dyad", "definitions.jl"))
+if isfile(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Utils", "definitions.jl"))
+  include(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Utils", "definitions.jl"))
 end
 
 import BlockComponents
@@ -194,3 +194,7 @@ component.
   )
   return System(Equation[], t, __vars, __params; name, metadata = __metadata)
 end
+
+include("Demux12_definition.jl")
+include("Mux5_definition.jl")
+include("SignalPoseSource_definition.jl")

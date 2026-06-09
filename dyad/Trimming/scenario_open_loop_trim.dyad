@@ -1,0 +1,117 @@
+"""
+Open-loop trim scenario using F16PlantModel with vector I/O.
+Signal flow: Constants → Mux5 → F16PlantModel → Demux12
+Demux outputs: [npos, epos, alt, phi, theta, psi, vt, alpha, beta, P, Q, R]
+"""
+test component F16OpenLoopTrim
+  # ---- Trim control inputs ----
+  T_cmd = BlockComponents.Sources.Constant(k = 28696.23) {^T_cmd}
+  el_cmd = BlockComponents.Sources.Constant(k = 2.6305) {^el_cmd}
+  ail_cmd = BlockComponents.Sources.Constant(k = 0.0) {^ail_cmd}
+  rud_cmd = BlockComponents.Sources.Constant(k = 0.0) {^rud_cmd}
+  lef_cmd = BlockComponents.Sources.Constant(k = 0.0) {^lef_cmd}
+  # ---- Signal routing ----
+  mux = F16ModelWorkshop.Utils.Mux5() {^mux}
+  # ---- Plant ----
+  plant = F16ModelWorkshop.Plant.F16PlantModel(alt_init = 3000.0, vt_init = 152.4, alpha_init = -0.01695, theta_init = -0.01695, beta_init = 0.0, phi_init = 0.0, psi_init = 0.0, P_init = 0.0, Q_init = 0.0, R_init = 0.0) {^plant}
+relations
+  # Constants → Mux
+  connect(T_cmd.y, mux.u1) {^id8}
+  connect(el_cmd.y, mux.u2) {^id9}
+  connect(ail_cmd.y, mux.u3) {^id10}
+  connect(rud_cmd.y, mux.u4) {^id11}
+  connect(lef_cmd.y, mux.u5) {^id12}
+  connect(mux.y, plant.u_in) {^id13}
+metadata {
+  "_links": {
+    "T_cmd": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 10, "y1": 150, "x2": 110, "y2": 250, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "el_cmd": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 10, "y1": 300, "x2": 110, "y2": 400, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "ail_cmd": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 10, "y1": 450, "x2": 110, "y2": 550, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "rud_cmd": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 20, "y1": 620, "x2": 120, "y2": 720, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "lef_cmd": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 10, "y1": 790, "x2": 110, "y2": 890, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "mux": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 340, "y1": 450, "x2": 440, "y2": 550, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "plant": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 590, "y1": 450, "x2": 690, "y2": 550, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "id8": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 150, "y": 200}, {"x": 150, "y": 455}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id9": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 140, "y": 350}, {"x": 140, "y": 476}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id10": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id11": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 140, "y": 670}, {"x": 140, "y": 522}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id12": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 150, "y": 840}, {"x": 150, "y": 545}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id13": {"Dyad": {"renderStyle": "standard", "edges": [{"S": 1, "E": 2, "M": []}]}}
+  }
+}
+end
+
+analysis F16OpenLoopTrimAnalysis
+  extends TransientAnalysis(stop = 10.0)
+  model = F16OpenLoopTrim()
+relations
+end

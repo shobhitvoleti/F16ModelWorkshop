@@ -1,0 +1,113 @@
+"Mux5: combine 5 scalar inputs into a vector output"
+component Mux5
+  u1 = RealInput() {^u1}
+  u2 = RealInput() {^u2}
+  u3 = RealInput() {^u3}
+  u4 = RealInput() {^u4}
+  u5 = RealInput() {^u5}
+  y = [RealOutput() for i in 1:5] {^y}
+relations
+  y = [u1, u2, u3, u4, u5]
+metadata {
+  "Dyad": {
+    "icons": {"default": "dyad://F16ModelWorkshop/mux5.svg"}
+  },
+  "_links": {
+    "u1": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 0, "y1": 0, "x2": 100, "y2": 100, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "u2": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 0, "y1": 210, "x2": 100, "y2": 310, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "u3": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 0, "y1": 450, "x2": 100, "y2": 550, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "u4": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 0, "y1": 670, "x2": 100, "y2": 770, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "u5": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 0, "y1": 900, "x2": 100, "y2": 1000, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "y": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 550, "rot": 0}
+        },
+        "tags": []
+      }
+    }
+  }
+}
+end
+
+"Demux12: split a 12-element vector input into scalar outputs"
+component Demux12
+  u = [RealInput() for i in 1:12] {^u}
+  y1 = RealOutput() {^y1}
+  y2 = RealOutput() {^y2}
+  y3 = RealOutput() {^y3}
+  y4 = RealOutput() {^y4}
+  y5 = RealOutput() {^y5}
+  y6 = RealOutput() {^y6}
+  y7 = RealOutput() {^y7}
+  y8 = RealOutput() {^y8}
+  y9 = RealOutput() {^y9}
+  y10 = RealOutput() {^y10}
+  y11 = RealOutput() {^y11}
+  y12 = RealOutput() {^y12}
+relations
+  y1 = u[1]
+  y2 = u[2]
+  y3 = u[3]
+  y4 = u[4]
+  y5 = u[5]
+  y6 = u[6]
+  y7 = u[7]
+  y8 = u[8]
+  y9 = u[9]
+  y10 = u[10]
+  y11 = u[11]
+  y12 = u[12]
+metadata {
+  "_links": {
+    "u": {},
+    "y1": {},
+    "y2": {},
+    "y3": {},
+    "y4": {},
+    "y5": {},
+    "y6": {},
+    "y7": {},
+    "y8": {},
+    "y9": {},
+    "y10": {},
+    "y11": {},
+    "y12": {}
+  }
+}
+end

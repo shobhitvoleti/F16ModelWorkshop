@@ -12,8 +12,8 @@ using OrdinaryDiffEqDefault
 using RuntimeGeneratedFunctions
 RuntimeGeneratedFunctions.init(@__MODULE__)
 
-if isfile(joinpath((@__DIR__) |> Base.dirname, "dyad", "definitions.jl"))
-  include(joinpath((@__DIR__) |> Base.dirname, "dyad", "definitions.jl"))
+if isfile(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Controls", "definitions.jl"))
+  include(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Controls", "definitions.jl"))
 end
 
 import BlockComponents
@@ -194,3 +194,16 @@ component.
   )
   return System(Equation[], t, __vars, __params; name, metadata = __metadata)
 end
+
+include("ClosedLoopModel_definition.jl")
+include("F16ClosedLoopPerturbed_definition.jl")
+include("F16ClosedLoopVizMiniAnalysis_definition.jl")
+include("F16ClosedLoopVizMini_definition.jl")
+include("F16LQGControllerAnalysis_definition.jl")
+include("F16OpenLoop_definition.jl")
+include("F16VizClosedLoopAnalysis_definition.jl")
+include("F16VizClosedLoop_definition.jl")
+include("Scenario0ClosedLoop_definition.jl")
+include("Scenario1ClosedLoop_definition.jl")
+include("Scenario1OpenLoop_definition.jl")
+include("TestClosedLoopModel_definition.jl")

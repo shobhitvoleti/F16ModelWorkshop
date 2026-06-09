@@ -12,8 +12,8 @@ using OrdinaryDiffEqDefault
 using RuntimeGeneratedFunctions
 RuntimeGeneratedFunctions.init(@__MODULE__)
 
-if isfile(joinpath((@__DIR__) |> Base.dirname, "dyad", "definitions.jl"))
-  include(joinpath((@__DIR__) |> Base.dirname, "dyad", "definitions.jl"))
+if isfile(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Trimming", "definitions.jl"))
+  include(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Trimming", "definitions.jl"))
 end
 
 import BlockComponents
@@ -194,3 +194,10 @@ component.
   )
   return System(Equation[], t, __vars, __params; name, metadata = __metadata)
 end
+
+include("F16OpenLoopTrimAnalysis_definition.jl")
+include("F16OpenLoopTrim_definition.jl")
+include("F16TrimV3Analysis_definition.jl")
+include("F16TrimV3_definition.jl")
+include("F16VizTrimAnalysis_definition.jl")
+include("F16VizTrim_definition.jl")
