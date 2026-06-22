@@ -15,11 +15,11 @@ if isfile(joinpath((@__DIR__) |> Base.dirname, "dyad", "tests.jl"))
 end
 
 
+include("test_internals.jl")
+
 @testset "`F16ModelWorkshop`" begin
-include("ClosedLoopModel_test.jl")
-include("F16ClosedLoopPerturbed_test.jl")
-include("F16OpenLoop_test.jl")
-include("F16PlantForTrim_test.jl")
-include("F16PlantIO_test.jl")
-include("F16TrimV2_test.jl")
 end
+include("Controls/tests.jl")
+include("Plant/tests.jl")
+include("Trimming/tests.jl")
+include("Utils/tests.jl")

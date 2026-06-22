@@ -8,10 +8,3 @@ if isfile(joinpath((@__DIR__) |> Base.dirname, "dyad", "experiments.jl"))
   include(joinpath((@__DIR__) |> Base.dirname, "dyad", "experiments.jl"))
 end
 
-
-include("ClosedLoopModel_experiment.jl")
-include("F16ClosedLoopPerturbed_experiment.jl")
-include("F16OpenLoop_experiment.jl")
-include("F16PlantForTrim_experiment.jl")
-include("F16PlantIO_experiment.jl")
-include("F16TrimV2_experiment.jl")

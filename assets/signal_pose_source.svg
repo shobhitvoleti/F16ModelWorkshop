@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000">
+  <!-- Monochrome animated signal-pose-source icon:
+       pos/ang signal inputs feed a rotating 3-axis attitude gimbal (frame_a output). -->
+
+  <!-- Component body -->
+  <rect x="150" y="120" width="700" height="760" rx="60" ry="60"
+        fill="#2e75b6" fill-opacity="0.06" stroke="#2e75b6" stroke-width="6" />
+
+  <!-- Input port: pos -->
+  <line x1="100" y1="250" x2="150" y2="250" stroke="#2e75b6" stroke-width="4" />
+  <circle cx="100" cy="250" r="14" fill="#2e75b6" />
+  <text x="175" y="250" font-family="monospace" font-size="44" fill="#2e75b6"
+        text-anchor="start" dominant-baseline="middle">pos</text>
+
+  <!-- Input port: ang -->
+  <line x1="100" y1="780" x2="150" y2="780" stroke="#2e75b6" stroke-width="4" />
+  <circle cx="100" cy="780" r="14" fill="#2e75b6" />
+  <text x="175" y="780" font-family="monospace" font-size="44" fill="#2e75b6"
+        text-anchor="start" dominant-baseline="middle">ang</text>
+
+  <!-- Output port: frame_a (3-D frame connector) -->
+  <line x1="850" y1="500" x2="900" y2="500" stroke="#2e75b6" stroke-width="4" />
+  <circle cx="900" cy="500" r="16" fill="#2e75b6" />
+  <circle cx="900" cy="500" r="8"  fill="white" />
+  <text x="835" y="430" font-family="monospace" font-size="40" fill="#2e75b6"
+        text-anchor="end" dominant-baseline="middle">frame_a</text>
+
+  <!-- Central attitude gimbal -->
+  <g transform="translate(500,510)">
+    <!-- Static housing ring -->
+    <circle r="255" fill="none" stroke="#2e75b6" stroke-width="6" stroke-opacity="0.5" />
+
+    <!-- Outer gimbal ring (animated roll) -->
+    <ellipse rx="255" ry="105" fill="none" stroke="#2e75b6" stroke-width="4" stroke-opacity="0.45">
+      <animateTransform attributeName="transform" type="rotate"
+                        from="0" to="360" dur="11s" repeatCount="indefinite" />
+    </ellipse>
+
+    <!-- Inner gimbal ring (animated pitch) -->
+    <ellipse rx="105" ry="255" fill="none" stroke="#2e75b6" stroke-width="4" stroke-opacity="0.45">
+      <animateTransform attributeName="transform" type="rotate"
+                        from="360" to="0" dur="15s" repeatCount="indefinite" />
+    </ellipse>
+
+    <!-- Rotating 3-axis triad (the pose/attitude) -->
+    <g>
+      <animateTransform attributeName="transform" type="rotate"
+                        from="0" to="360" dur="8s" repeatCount="indefinite" />
+      <!-- up axis -->
+      <line x1="0" y1="0" x2="0" y2="-205" stroke="#2e75b6" stroke-width="9" />
+      <circle cx="0" cy="-205" r="15" fill="#2e75b6" />
+      <!-- right axis (isometric) -->
+      <line x1="0" y1="0" x2="178" y2="103" stroke="#2e75b6" stroke-width="9" />
+      <circle cx="178" cy="103" r="15" fill="#2e75b6" />
+      <!-- left axis (isometric) -->
+      <line x1="0" y1="0" x2="-178" y2="103" stroke="#2e75b6" stroke-width="9" />
+      <circle cx="-178" cy="103" r="15" fill="#2e75b6" />
+      <!-- origin -->
+      <circle cx="0" cy="0" r="12" fill="#2e75b6" />
+    </g>
+  </g>
+
+  <!-- Label -->
+  <text x="500" y="845" font-family="sans-serif" font-weight="bold" font-size="44"
+        fill="#2e75b6" text-anchor="middle" dominant-baseline="middle" opacity="0.7">POSE</text>
+</svg>

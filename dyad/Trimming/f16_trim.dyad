@@ -1,0 +1,132 @@
+"Trim via missing-Constant + zero-duration TransientAnalysis"
+test component F16Trim
+  # Plant with all physics (vector-I/O variant — same model the scenarios use)
+  # alpha_init and theta_init are missing — they become decision variables
+  f16plant = F16ModelWorkshop.Plant.F16PlantModel(alt_init = 3000.0, vt_init = 152.4, alpha_init = missing, theta_init = missing) {^f16plant}
+  # Control inputs: k = missing makes them unknowns for the initialization solver
+  T_cmd = BlockComponents.Sources.Constant(k = missing) {^T_cmd}
+  el_cmd = BlockComponents.Sources.Constant(k = missing) {^el_cmd}
+  ail_cmd = BlockComponents.Sources.Constant(k = 0.0) {^ail_cmd}
+  rud_cmd = BlockComponents.Sources.Constant(k = 0.0) {^rud_cmd}
+  lef_cmd = BlockComponents.Sources.Constant(k = 0.0) {^lef_cmd}
+  mux = F16ModelWorkshop.Utils.Mux5() {^mux}
+relations
+  connect(T_cmd.y, mux.u1) {^id8}
+  connect(el_cmd.y, mux.u2) {^id9}
+  connect(ail_cmd.y, mux.u3) {^id10}
+  connect(rud_cmd.y, mux.u4) {^id11}
+  connect(lef_cmd.y, mux.u5) {^id12}
+  connect(mux.y, f16plant.u_in) {^id13}
+  # Equilibrium constraints — all time derivatives zero at t=0
+  initial der(f16plant.vt) = 0.0
+  initial der(f16plant.alpha) = 0.0
+  initial der(f16plant.alt) = 0.0
+  initial der(f16plant.Q) = 0.0
+  # Guesses for the decision variables
+  guess T_cmd.k = 30000.0
+  guess el_cmd.k = 2.0
+  guess f16plant.alpha_init = -0.02
+  guess f16plant.theta_init = -0.02
+  # Minimal anchors for the two algebraic intermediates that depend on the
+  # missing inputs through the array connector u_in (the guess-resolver treats
+  # the array connector atomically, so the T_cmd.k / el_cmd.k guesses do not
+  # propagate into u_in[1]/u_in[2]):
+  #   x_lon[3] = el_rad depends on the missing elevator (u_in[2])
+  #   Udot's T/m term depends on the missing thrust (u_in[1])
+  # x_lat, Vdot and Wdot resolve from these plus the pinned states, so they
+  # need no anchor. Values here only seed Newton; they do not affect the trim.
+  guess f16plant.x_lon = [-0.02, 0.0004, 0.046, 0.0]
+  guess f16plant.Udot = 0.0
+metadata {
+  "_links": {
+    "f16plant": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 670, "y1": 410, "x2": 850, "y2": 590, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "T_cmd": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 160, "y1": 120, "x2": 260, "y2": 220, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "el_cmd": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 160, "y1": 280, "x2": 260, "y2": 380, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "ail_cmd": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 160, "y1": 450, "x2": 260, "y2": 550, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "rud_cmd": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 160, "y1": 630, "x2": 260, "y2": 730, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "lef_cmd": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 160, "y1": 790, "x2": 260, "y2": 890, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "mux": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 410, "y1": 450, "x2": 510, "y2": 550, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "id8": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 370, "y": 170}, {"x": 370, "y": 455}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id9": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 300, "y": 330}, {"x": 300, "y": 476}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id10": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id11": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 300, "y": 680}, {"x": 300, "y": 522}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id12": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 370, "y": 840}, {"x": 370, "y": 545}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id13": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}}
+  }
+}
+end
+
+analysis F16TrimAnalysis
+  extends TransientAnalysis(stop = 0.0)
+  model = F16Trim()
+relations
+end

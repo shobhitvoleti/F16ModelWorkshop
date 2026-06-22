@@ -1,5 +1,0 @@
-component TrainCar
-  extends TranslationalComponents.Mass
-relations
-metadata {"Dyad": {"icons": {"default": "dyad://DyadExampleComponents/mass.svg"}}}
-end

@@ -1,42 +1,65 @@
 name = "F16ModelWorkshop"
 uuid = "583a9d02-f083-4e13-8666-022e634a307d"
-authors = [" <>"]
 version = "0.1.0"
+authors = [" <>"]
 
 [deps]
 BlockComponents = "1ef5d832-be8e-447f-9f2c-8b5d17d15fd3"
 ControlSystemsBase = "aaaaaaaa-a6ca-5380-bf3e-84a91bcd477e"
+DiscreteComponents = "b5590941-51af-4a5a-9bca-5ae7cd448b75"
 DyadControlSystems = "6f9e59d0-2838-4fee-9bce-c163a6c9592b"
 DyadData = "cab12561-e36c-4498-ae70-c9a5e79fef2a"
-DyadEcosystemDependencies = "7bc808db-8006-421e-b546-062440d520b7"
 DyadInterface = "99806f68-afab-45ca-9d8c-ceff6bc61f54"
+ElectricalComponents = "3fc4c519-469d-4ff5-98c9-d4d06b1514a2"
+FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
 Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
+MeshIO = "7269a6da-0436-5bbc-96c2-40638cbb6118"
 ModelingToolkit = "961ee093-0014-501f-94e3-6117800e7a78"
 Moshi = "2e0e35c7-a2e4-4343-998d-7ef72827ed2d"
+MultibodyComponents = "01883e52-22cd-4538-b14d-b44f958a131d"
 NonlinearSolve = "8913a72c-1f9b-4ce2-8d82-65094dcecaec"
 OrdinaryDiffEqDefault = "50262376-6c5a-4cf5-baba-aaf4f84d72d7"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
+RotationalComponents = "824fa3ed-d7dc-4365-8bdf-ac77a1ac2011"
 Rotations = "6038ab10-8711-5258-84ad-4b1120ba62dc"
 RuntimeGeneratedFunctions = "7e49a35a-f44a-4d26-94aa-eba1b4ca6b47"
+Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
+SynchToolkit = "f500ffa8-9682-42ac-8d34-0ca7926c2e94"
+TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
+ThermalComponents = "084a29d9-4f48-4925-95b4-b7d4c79725f4"
+TranslationalComponents = "42acc370-819b-4877-bdd6-eb3294461f5d"
+
+[sources]
+DiscreteComponents = {rev = "main", url = "https://github.com/JuliaComputing/DiscreteComponents.git"}
+MultibodyComponents = {rev = "main", url = "https://github.com/JuliaComputing/MultibodyComponents.jl.git"}
+SynchToolkit = {rev = "main", url = "https://github.com/JuliaComputing/SynchToolkit.jl.git"}
 
 [compat]
-BlockComponents = "3.0.4"
+BlockComponents = "=4.0.9"
+DiscreteComponents = "0.1.0"
 DyadData = "2.0.1"
-DyadEcosystemDependencies = "=0.10.8"
+ElectricalComponents = "=2.2.1"
+FileIO = "1.19.0"
 GLMakie = "0.13.8"
 GeometryBasics = "0.5.10"
 Markdown = "1"
+MeshIO = "0.5.3"
+MultibodyComponents = "0.1"
 NonlinearSolve = "4.12.0"
 Plots = "1.41.4"
 Revise = "3.13.2"
+RotationalComponents = "=2.5.1"
 Rotations = "1.7.1"
+Symbolics = "7.22.0"
+ThermalComponents = "=2.0.5"
+TranslationalComponents = "=2.4.2"
 
 [dyad]
-kernel = "2.0.0"
+kernel = "3.1.1"
 
 [extras]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"

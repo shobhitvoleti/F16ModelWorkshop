@@ -1,0 +1,255 @@
+"F16 6-DOF plant with vector I/O and matrix aerodynamics"
+component F16PlantModel
+  "Control inputs: [T(N), el(deg), ail(deg), rud(deg), lef(deg)]"
+  u_in = [RealInput() for i in 1:5] {^u_in}
+  "State outputs: [npos, epos, alt, phi, theta, psi, vt, alpha, beta, P, Q, R]"
+  y_out = [RealOutput() for i in 1:12] {^y_out}
+  # ---- 12 state variables ----
+  variable npos::Real
+  variable epos::Real
+  variable alt::Real
+  variable phi::Real
+  variable theta::Real
+  variable psi::Real
+  variable vt::Real
+  variable alpha::Real
+  variable beta::Real
+  variable P::Real
+  variable Q::Real
+  variable R::Real
+  # ---- Initial condition parameters ----
+  parameter npos_init::Real = 0.0
+  parameter epos_init::Real = 0.0
+  parameter alt_init::Real = 1000.0
+  parameter phi_init::Real = 0.0
+  parameter theta_init::Real = -0.0170
+  parameter psi_init::Real = 0.0
+  parameter vt_init::Real = 152.4
+  parameter alpha_init::Real = -0.0170
+  parameter beta_init::Real = 0.0
+  parameter P_init::Real = 0.0
+  parameter Q_init::Real = 0.0
+  parameter R_init::Real = 0.0
+  # ---- Aircraft parameters ----
+  final parameter g::Real = 9.80665
+  final parameter m::Real = 9295.44
+  final parameter B::Real = 9.144
+  final parameter S::Real = 27.87
+  final parameter cbar::Real = 3.45
+  final parameter xcgr::Real = 0.35
+  final parameter xcg::Real = 0.30
+  final parameter Heng::Real = 0.0
+  final parameter Jx::Real = 12874.8
+  final parameter Jy::Real = 75673.6
+  final parameter Jz::Real = 85552.1
+  final parameter Jxz::Real = 1331.4
+  final parameter deg2rad::Real = 3.14159265359 / 180.0
+  # ================================================================
+  #  Aerodynamic stability & control derivative matrices
+  # ================================================================
+  #
+  #  Longitudinal:  C_lon = C0_lon + Cmat_lon * x_lon
+  #
+  #    [Cx]   [Cx0]   [Cxa   Cxa2   Cxde   Cxq ] [  α     ]
+  #    [Cz] = [Cz0] + [Cza   Cza2   Czde   Czq ] [  α²    ]
+  #    [Cm]   [Cm0]   [Cma   Cma2   Cmde   Cmq ] [  δe_rad]
+  #                                                [  Q̂     ]
+  #
+  #  Lateral:  C_lat = C0_lat + Cmat_lat * x_lat
+  #
+  #    [Cy]   [Cy0]   [Cyb   Cyda   Cydr   Cyp   Cyr] [  β      ]
+  #    [Cl] = [Cl0] + [Clb   Clda   Cldr   Clp   Clr] [  δa_rad ]
+  #    [Cn]   [Cn0]   [Cnb   Cnda   Cndr   Cnp   Cnr] [  δr_rad ]
+  #                                                     [  P̂      ]
+  #                                                     [  R̂      ]
+  # ================================================================
+  final parameter C0_lon::Real[3] = [-0.099, -0.366, 0.0411]
+  final parameter Cmat_lon::Real[3, 4] = [[0.205, -0.484, -0.0036, -0.267], [-5.09, -3.57, -0.632, -3.0], [-0.98, 3.67, -1.28, -12.2]]
+  final parameter C0_lat::Real[3] = [0.0, 0.0, 0.0]
+  final parameter Cmat_lat::Real[3, 5] = [[-0.83, 0.0, 0.23, -0.1, 0.3], [-0.14, 0.134, 0.0107, -0.56, 0.25], [0.117, -0.0036, -0.15, -0.026, -0.25]]
+  # ---- Intermediate variables ----
+  # Control surfaces (mapped from u_in)
+  variable T::Real
+  variable el::Real
+  variable ail::Real
+  variable rud::Real
+  variable lef::Real
+  # Control deflections in radians
+  variable el_rad::Real
+  variable ail_rad::Real
+  variable rud_rad::Real
+  variable lef_rad::Real
+  # Trig intermediates
+  variable sa::Real
+  variable ca::Real
+  variable sb::Real
+  variable cb::Real
+  variable st::Real
+  variable ct::Real
+  variable tt::Real
+  variable sphi::Real
+  variable cphi::Real
+  variable spsi::Real
+  variable cpsi::Real
+  # Body-axis velocities
+  variable U::Real
+  variable V_body::Real
+  variable W::Real
+  # Atmosphere
+  variable rho::Real
+  variable qbar::Real
+  # Aerodynamic input vectors
+  variable x_lon::Real[4]
+  variable x_lat::Real[5]
+  # Aerodynamic coefficient vectors: [Cx,Cz,Cm] and [Cy,Cl,Cn]
+  variable C_lon::Real[3]
+  variable C_lat::Real[3]
+  # Body-axis accelerations
+  variable Udot::Real
+  variable Vdot::Real
+  variable Wdot::Real
+  # Total aerodynamic moments
+  variable L_tot::Real
+  variable M_tot::Real
+  variable N_tot::Real
+  # Inertia denominator
+  variable denom::Real
+relations
+  # ---- Initial conditions ----
+  initial npos = npos_init
+  initial epos = epos_init
+  initial alt = alt_init
+  initial phi = phi_init
+  initial theta = theta_init
+  initial psi = psi_init
+  initial vt = vt_init
+  initial alpha = alpha_init
+  initial beta = beta_init
+  initial P = P_init
+  initial Q = Q_init
+  initial R = R_init
+  # ---- Input mapping: u_in = [T, el, ail, rud, lef] ----
+  T = u_in[1]
+  el = u_in[2]
+  ail = u_in[3]
+  rud = u_in[4]
+  lef = u_in[5]
+  # ---- Output mapping: y_out = [npos, epos, alt, phi, theta, psi, vt, alpha, beta, P, Q, R] ----
+  y_out[1] = npos
+  y_out[2] = epos
+  y_out[3] = alt
+  y_out[4] = phi
+  y_out[5] = theta
+  y_out[6] = psi
+  y_out[7] = vt
+  y_out[8] = alpha
+  y_out[9] = beta
+  y_out[10] = P
+  y_out[11] = Q
+  y_out[12] = R
+  # ---- Control surface deg → rad ----
+  el_rad = el * deg2rad
+  ail_rad = ail * deg2rad
+  rud_rad = rud * deg2rad
+  lef_rad = lef * deg2rad
+  # ---- Trigonometry ----
+  sa = sin(alpha)
+  ca = cos(alpha)
+  sb = sin(beta)
+  cb = cos(beta)
+  st = sin(theta)
+  ct = cos(theta)
+  tt = tan(theta)
+  sphi = sin(phi)
+  cphi = cos(phi)
+  spsi = sin(psi)
+  cpsi = cos(psi)
+  # ---- Body-axis velocities ----
+  U = vt * ca * cb
+  V_body = vt * sb
+  W = vt * sa * cb
+  # ---- Atmosphere (ISA troposphere) ----
+  rho = 1.225 * (1.0 - 0.0065 * alt / 288.15) ^ 4.256
+  qbar = 0.5 * rho * vt * vt
+  # ================================================================
+  #  Aerodynamic coefficients — matrix equations
+  # ================================================================
+  # Longitudinal input vector
+  x_lon[1] = alpha
+  x_lon[2] = alpha * alpha
+  x_lon[3] = el_rad
+  x_lon[4] = cbar * Q / (2.0 * vt)
+  # Lateral input vector
+  x_lat[1] = beta
+  x_lat[2] = ail_rad
+  x_lat[3] = rud_rad
+  x_lat[4] = B * P / (2.0 * vt)
+  x_lat[5] = B * R / (2.0 * vt)
+  # Matrix multiply: 6 scalar equations → 2 matrix equations
+  C_lon = C0_lon + Cmat_lon * x_lon
+  C_lat = C0_lat + Cmat_lat * x_lat
+  # ================================================================
+  #  Body-axis force equations
+  #
+  #  [Udot]   [  0   R  -Q ] [U     ]   [ -g·sθ       ]   (qbar·S/m)·[Cx]   [T/m]
+  #  [Vdot] = [ -R   0   P ] [V_body] + [  g·cθ·sφ    ] +            [Cy] + [ 0 ]
+  #  [Wdot]   [  Q  -P   0 ] [W     ]   [  g·cθ·cφ    ]             [Cz]   [ 0 ]
+  # ================================================================
+  Udot = R * V_body - Q * W - g * st + qbar * S * C_lon[1] / m + T / m
+  Vdot = P * W - R * U + g * ct * sphi + qbar * S * C_lat[1] / m
+  Wdot = Q * U - P * V_body + g * ct * cphi + qbar * S * C_lon[2] / m
+  # ---- Wind-axis state derivatives ----
+  der(vt) = (U * Udot + V_body * Vdot + W * Wdot) / vt
+  der(alpha) = (U * Wdot - W * Udot) / (U * U + W * W)
+  der(beta) = (Vdot * vt - V_body * (U * Udot + V_body * Vdot + W * Wdot) / vt) / (vt * vt * cb)
+  # ---- Aerodynamic moments ----
+  L_tot = C_lat[2] * qbar * S * B
+  M_tot = C_lon[3] * qbar * S * cbar
+  N_tot = C_lat[3] * qbar * S * B
+  # ---- Angular acceleration (inertia coupling) ----
+  denom = Jx * Jz - Jxz * Jxz
+  der(P) = (Jz * L_tot + Jxz * N_tot - (Jz * (Jz - Jy) + Jxz * Jxz) * Q * R + Jxz * (Jx - Jy + Jz) * P * Q + Jxz * Q * Heng) / denom
+  der(Q) = (M_tot + (Jz - Jx) * P * R - Jxz * (P * P - R * R) - R * Heng) / Jy
+  der(R) = (Jx * N_tot + Jxz * L_tot + (Jx * (Jx - Jy) + Jxz * Jxz) * P * Q - Jxz * (Jx - Jy + Jz) * Q * R + Jx * Q * Heng) / denom
+  # ================================================================
+  #  Navigation equations (body→Earth DCM × body velocity)
+  #
+  #  [ṅpos]   [cθ·cψ    sφ·sθ·cψ−cφ·sψ    cφ·sθ·cψ+sφ·sψ] [U     ]
+  #  [ėpos] = [cθ·sψ    sφ·sθ·sψ+cφ·cψ    cφ·sθ·sψ−sφ·cψ] [V_body]
+  #  [ḣ   ]   [sθ       −sφ·cθ             −cφ·cθ          ] [W     ]
+  # ================================================================
+  der(npos) = U * ct * cpsi + V_body * (sphi * st * cpsi - cphi * spsi) + W * (cphi * st * cpsi + sphi * spsi)
+  der(epos) = U * ct * spsi + V_body * (sphi * st * spsi + cphi * cpsi) + W * (cphi * st * spsi - sphi * cpsi)
+  der(alt) = U * st - V_body * sphi * ct - W * cphi * ct
+  # ================================================================
+  #  Euler kinematic equations
+  #
+  #  [φ̇]   [1    sφ·tθ    cφ·tθ ] [P]
+  #  [θ̇] = [0    cφ       −sφ   ] [Q]
+  #  [ψ̇]   [0    sφ/cθ    cφ/cθ ] [R]
+  # ================================================================
+  der(phi) = P + tt * (Q * sphi + R * cphi)
+  der(theta) = Q * cphi - R * sphi
+  der(psi) = (Q * sphi + R * cphi) / ct
+metadata {
+  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/f16_plant_model.svg"}},
+  "_links": {
+    "u_in": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 0, "y1": 450, "x2": 100, "y2": 550, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "y_out": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 550, "rot": 0}
+        },
+        "tags": []
+      }
+    }
+  }
+}
+end

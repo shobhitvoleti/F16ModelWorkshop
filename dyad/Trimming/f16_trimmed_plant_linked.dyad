@@ -1,0 +1,127 @@
+"""
+Trimmed-plant scenario.
+
+Every control input (Constant `k`) and plant initial condition (`*_init`)
+defaults to `F16ModelWorkshop.load_trim`, reading `trim/trim_point.toml` at
+build time. Workflow:
+  1. Run `F16ModelWorkshop.TrimPlantAnalysis()` to compute the trim and write
+     `trim/trim_point.toml` (keyed by this component's instance paths —
+     `T_cmd.k`, ..., `plant.alpha_init`).
+  2. Run `F16TrimmedPlantLinkedAnalysis` — the values are loaded from the file
+     at build time and the states hold steady at the trim. Re-run step 1 and the
+     next build picks up the new operating point automatically.
+
+Signal flow: Constants -> Mux5 -> F16PlantModel
+"""
+test component F16TrimmedPlantLinked
+  # ---- Control inputs, loaded from the trim parameter set at build time ----
+  T_cmd = BlockComponents.Sources.Constant(k = F16ModelWorkshop.load_trim("trim/trim_point.toml", "T_cmd.k")) {^T_cmd}
+  el_cmd = BlockComponents.Sources.Constant(k = F16ModelWorkshop.load_trim("trim/trim_point.toml", "el_cmd.k")) {^el_cmd}
+  ail_cmd = BlockComponents.Sources.Constant(k = F16ModelWorkshop.load_trim("trim/trim_point.toml", "ail_cmd.k")) {^ail_cmd}
+  rud_cmd = BlockComponents.Sources.Constant(k = F16ModelWorkshop.load_trim("trim/trim_point.toml", "rud_cmd.k")) {^rud_cmd}
+  lef_cmd = BlockComponents.Sources.Constant(k = F16ModelWorkshop.load_trim("trim/trim_point.toml", "lef_cmd.k")) {^lef_cmd}
+  # ---- Signal routing ----
+  mux = F16ModelWorkshop.Utils.Mux5() {^mux}
+  # ---- Plant, initial conditions loaded from the trim parameter set at build time ----
+  plant = F16ModelWorkshop.Plant.F16PlantModel(npos_init = F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.npos_init"), epos_init = F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.epos_init"), alt_init = F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.alt_init"), phi_init = F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.phi_init"), theta_init = F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.theta_init"), psi_init = F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.psi_init"), vt_init = F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.vt_init"), alpha_init = F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.alpha_init"), beta_init = F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.beta_init"), P_init = F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.P_init"), Q_init = F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.Q_init"), R_init = F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.R_init")) {^plant}
+relations
+  # Constants -> Mux
+  connect(T_cmd.y, mux.u1) {^id8}
+  connect(el_cmd.y, mux.u2) {^id9}
+  connect(ail_cmd.y, mux.u3) {^id10}
+  connect(rud_cmd.y, mux.u4) {^id11}
+  connect(lef_cmd.y, mux.u5) {^id12}
+  connect(mux.y, plant.u_in) {^id13}
+metadata {
+  "_links": {
+    "T_cmd": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 10, "y1": 150, "x2": 110, "y2": 250, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "el_cmd": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 10, "y1": 300, "x2": 110, "y2": 400, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "ail_cmd": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 10, "y1": 450, "x2": 110, "y2": 550, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "rud_cmd": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 20, "y1": 620, "x2": 120, "y2": 720, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "lef_cmd": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 10, "y1": 790, "x2": 110, "y2": 890, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "mux": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 340, "y1": 450, "x2": 440, "y2": 550, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "plant": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 590, "y1": 450, "x2": 690, "y2": 550, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "id8": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 150, "y": 200}, {"x": 150, "y": 455}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id9": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 140, "y": 350}, {"x": 140, "y": 476}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id10": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id11": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 140, "y": 670}, {"x": 140, "y": 522}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id12": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 150, "y": 840}, {"x": 150, "y": 545}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id13": {"Dyad": {"renderStyle": "standard", "edges": [{"S": 1, "E": 2, "M": []}]}}
+  }
+}
+end
+
+analysis F16TrimmedPlantLinkedAnalysis
+  extends TransientAnalysis(stop = 10.0)
+  model = F16TrimmedPlantLinked()
+relations
+end
