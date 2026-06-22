@@ -17,6 +17,7 @@ if isfile(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Utils", 
 end
 
 import BlockComponents
+import DiscreteComponents
 import DyadControlSystems
 import DyadData
 import DyadInterface
@@ -196,5 +197,7 @@ component.
 end
 
 include("Demux12_definition.jl")
+include("Demux3_definition.jl")
+include("Demux4x3_definition.jl")
 include("Mux5_definition.jl")
 include("SignalPoseSource_definition.jl")

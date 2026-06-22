@@ -8,8 +8,8 @@ using DyadInterface
 using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel
 using ModelingToolkit: SymbolicT, toggle_namespacing
 using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
-@kwdef mutable struct F16VizClosedLoopAnalysisSpec <: AbstractTransientAnalysisSpec
-  name::Symbol = :F16VizClosedLoopAnalysis
+@kwdef mutable struct F16OpenLoopVizAnalysisSpec <: AbstractTransientAnalysisSpec
+  name::Symbol = :F16OpenLoopVizAnalysis
   var"alg"::ODEAlg.Type = ODEAlg.Auto()
   var"start"::Float64 = 0
   var"stop"::Float64 = 30.0
@@ -24,13 +24,11 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
   var"respecialize"::Bool = false
   var"verbose"::DEVerbosity.Type = DEVerbosity.Standard()
   var"log_file"::String = ""
-  # Closed-loop pitch recovery with 3-D visualizer.
-  # F16 starts at 10° pitch perturbation; the LQG controller drives it back to trim.
-  # Pose is fed to MultibodyComponents.ShapefileVisualizer for STL rendering.
-  var"model"::Union{Nothing, System} = F16ModelWorkshop.Controls.F16VizClosedLoop(; name=:F16VizClosedLoop)
+  # Open-loop pitch perturbation with 3-D OBJ visualizer (constant trim commands, no feedback)
+  var"model"::Union{Nothing, System} = F16ModelWorkshop.Controls.F16OpenLoopViz(; name=:F16OpenLoopViz)
 end
 
-function DyadInterface.run_analysis(spec::F16VizClosedLoopAnalysisSpec)
+function DyadInterface.run_analysis(spec::F16OpenLoopVizAnalysisSpec)
   overrides = Dict{SymbolicT, SymbolicT}()
   no_namespace_model = toggle_namespacing(spec.model, false)
   base_spec = TransientAnalysisSpec(;
@@ -39,5 +37,5 @@ function DyadInterface.run_analysis(spec::F16VizClosedLoopAnalysisSpec)
   run_analysis(base_spec)
 end
 
-F16VizClosedLoopAnalysis(;kwargs...) = run_analysis(F16VizClosedLoopAnalysisSpec(;kwargs...))
-export F16VizClosedLoopAnalysis, F16VizClosedLoopAnalysisSpec
+F16OpenLoopVizAnalysis(;kwargs...) = run_analysis(F16OpenLoopVizAnalysisSpec(;kwargs...))
+export F16OpenLoopVizAnalysis, F16OpenLoopVizAnalysisSpec

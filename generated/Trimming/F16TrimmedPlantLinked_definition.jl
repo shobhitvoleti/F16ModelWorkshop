@@ -7,19 +7,28 @@
 import Moshi as __Ext__Moshi
 
 @doc Markdown.doc"""
-   F16OpenLoop(; name)
+   F16TrimmedPlantLinked(; name)
 
-Scenario 1: Disturbance Rejection - Open-Loop vs Closed-Loop
+Trimmed-plant scenario.
 
-Open-loop model in this file. Closed-loop model in scenario2_closed_loop.dyad.
-Both demonstrate LQG controller effectiveness against 10° pitch perturbation.
+Every control input (Constant `k`) and plant initial condition (`*_init`)
+defaults to `F16ModelWorkshop.load_trim`, reading `trim/trim_point.toml` at
+build time. Workflow:
+  1. Run `F16ModelWorkshop.TrimPlantAnalysis()` to compute the trim and write
+     `trim/trim_point.toml` (keyed by this component's instance paths —
+     `T_cmd.k`, ..., `plant.alpha_init`).
+  2. Run `F16TrimmedPlantLinkedAnalysis` — the values are loaded from the file
+     at build time and the states hold steady at the trim. Re-run step 1 and the
+     next build picks up the new operating point automatically.
+
+Signal flow: Constants -> Mux5 -> F16PlantModel
 """
-@component function F16OpenLoop(; name = nothing, kwargs...)
+@component function F16TrimmedPlantLinked(; name = nothing, kwargs...)
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
   
-    @named model = F16OpenLoop()
+    @named model = F16TrimmedPlantLinked()
   """))
 
   __overrides = __build_overrides(kwargs)
@@ -58,27 +67,27 @@ Both demonstrate LQG controller effectiveness against 10° pitch perturbation.
   __constants = Any[]
 
   ### Components
-  # Subcomponent f16plant of type F16ModelWorkshop.Plant.F16PlantModel
-  f16plant_overrides = __pop_subcomponent_overrides!(__overrides, "f16plant")
-  push!(__systems, @named f16plant = F16ModelWorkshop.Plant.F16PlantModel(alt_init=3000, theta_init=10 * pi / 180, f16plant_overrides...))
   # Subcomponent T_cmd of type BlockComponents.Sources.Constant
   T_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "T_cmd")
-  push!(__systems, @named T_cmd = BlockComponents.Sources.Constant(k=28696.2, T_cmd_overrides...))
+  push!(__systems, @named T_cmd = BlockComponents.Sources.Constant(k=F16ModelWorkshop.load_trim("trim/trim_point.toml", "T_cmd.k"), T_cmd_overrides...))
   # Subcomponent el_cmd of type BlockComponents.Sources.Constant
   el_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "el_cmd")
-  push!(__systems, @named el_cmd = BlockComponents.Sources.Constant(k=2.630478286, el_cmd_overrides...))
+  push!(__systems, @named el_cmd = BlockComponents.Sources.Constant(k=F16ModelWorkshop.load_trim("trim/trim_point.toml", "el_cmd.k"), el_cmd_overrides...))
   # Subcomponent ail_cmd of type BlockComponents.Sources.Constant
   ail_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "ail_cmd")
-  push!(__systems, @named ail_cmd = BlockComponents.Sources.Constant(k=0.0, ail_cmd_overrides...))
+  push!(__systems, @named ail_cmd = BlockComponents.Sources.Constant(k=F16ModelWorkshop.load_trim("trim/trim_point.toml", "ail_cmd.k"), ail_cmd_overrides...))
   # Subcomponent rud_cmd of type BlockComponents.Sources.Constant
   rud_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "rud_cmd")
-  push!(__systems, @named rud_cmd = BlockComponents.Sources.Constant(k=0.0, rud_cmd_overrides...))
+  push!(__systems, @named rud_cmd = BlockComponents.Sources.Constant(k=F16ModelWorkshop.load_trim("trim/trim_point.toml", "rud_cmd.k"), rud_cmd_overrides...))
   # Subcomponent lef_cmd of type BlockComponents.Sources.Constant
   lef_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "lef_cmd")
-  push!(__systems, @named lef_cmd = BlockComponents.Sources.Constant(k=0.0, lef_cmd_overrides...))
+  push!(__systems, @named lef_cmd = BlockComponents.Sources.Constant(k=F16ModelWorkshop.load_trim("trim/trim_point.toml", "lef_cmd.k"), lef_cmd_overrides...))
   # Subcomponent mux of type F16ModelWorkshop.Utils.Mux5
   mux_overrides = __pop_subcomponent_overrides!(__overrides, "mux")
   push!(__systems, @named mux = F16ModelWorkshop.Utils.Mux5(mux_overrides...))
+  # Subcomponent plant of type F16ModelWorkshop.Plant.F16PlantModel
+  plant_overrides = __pop_subcomponent_overrides!(__overrides, "plant")
+  push!(__systems, @named plant = F16ModelWorkshop.Plant.F16PlantModel(npos_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.npos_init"), epos_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.epos_init"), alt_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.alt_init"), phi_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.phi_init"), theta_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.theta_init"), psi_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.psi_init"), vt_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.vt_init"), alpha_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.alpha_init"), beta_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.beta_init"), P_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.P_init"), Q_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.Q_init"), R_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.R_init"), plant_overrides...))
 
   ### Check there are no unmatched overrides
   isempty(__overrides) || throw(ArgumentError("overides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
@@ -96,9 +105,9 @@ Both demonstrate LQG controller effectiveness against 10° pitch perturbation.
   push!(__eqs, connect(ail_cmd.y, mux.u3))
   push!(__eqs, connect(rud_cmd.y, mux.u4))
   push!(__eqs, connect(lef_cmd.y, mux.u5))
-  push!(__eqs, connect(mux.y, f16plant.u_in))
+  push!(__eqs, connect(mux.y, plant.u_in))
 
   # Return completely constructed System
   return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
-export F16OpenLoop
+export F16TrimmedPlantLinked

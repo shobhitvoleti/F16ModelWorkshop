@@ -8,8 +8,8 @@ using DyadInterface
 using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel
 using ModelingToolkit: SymbolicT, toggle_namespacing
 using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
-@kwdef mutable struct F16TrimV3AnalysisSpec <: AbstractTransientAnalysisSpec
-  name::Symbol = :F16TrimV3Analysis
+@kwdef mutable struct F16TrimAnalysisSpec <: AbstractTransientAnalysisSpec
+  name::Symbol = :F16TrimAnalysis
   var"alg"::ODEAlg.Type = ODEAlg.Auto()
   var"start"::Float64 = 0
   var"stop"::Float64 = 0.0
@@ -25,10 +25,10 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
   var"verbose"::DEVerbosity.Type = DEVerbosity.Standard()
   var"log_file"::String = ""
   # Trim via missing-Constant + zero-duration TransientAnalysis
-  var"model"::Union{Nothing, System} = F16ModelWorkshop.Trimming.F16TrimV3(; name=:F16TrimV3)
+  var"model"::Union{Nothing, System} = F16ModelWorkshop.Trimming.F16Trim(; name=:F16Trim)
 end
 
-function DyadInterface.run_analysis(spec::F16TrimV3AnalysisSpec)
+function DyadInterface.run_analysis(spec::F16TrimAnalysisSpec)
   overrides = Dict{SymbolicT, SymbolicT}()
   no_namespace_model = toggle_namespacing(spec.model, false)
   base_spec = TransientAnalysisSpec(;
@@ -37,5 +37,5 @@ function DyadInterface.run_analysis(spec::F16TrimV3AnalysisSpec)
   run_analysis(base_spec)
 end
 
-F16TrimV3Analysis(;kwargs...) = run_analysis(F16TrimV3AnalysisSpec(;kwargs...))
-export F16TrimV3Analysis, F16TrimV3AnalysisSpec
+F16TrimAnalysis(;kwargs...) = run_analysis(F16TrimAnalysisSpec(;kwargs...))
+export F16TrimAnalysis, F16TrimAnalysisSpec

@@ -232,6 +232,7 @@ relations
   der(theta) = Q * cphi - R * sphi
   der(psi) = (Q * sphi + R * cphi) / ct
 metadata {
+  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/f16_plant_model.svg"}},
   "_links": {
     "u_in": {
       "Dyad": {

@@ -7,16 +7,16 @@
 import Moshi as __Ext__Moshi
 
 @doc Markdown.doc"""
-   F16TrimV3(; name)
+   F16Trim(; name)
 
 Trim via missing-Constant + zero-duration TransientAnalysis
 """
-@component function F16TrimV3(; name = nothing, kwargs...)
+@component function F16Trim(; name = nothing, kwargs...)
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
   
-    @named model = F16TrimV3()
+    @named model = F16Trim()
   """))
 
   __overrides = __build_overrides(kwargs)
@@ -55,9 +55,9 @@ Trim via missing-Constant + zero-duration TransientAnalysis
   __constants = Any[]
 
   ### Components
-  # Subcomponent f16plant of type F16ModelWorkshop.Plant.F16PlantIO
+  # Subcomponent f16plant of type F16ModelWorkshop.Plant.F16PlantModel
   f16plant_overrides = __pop_subcomponent_overrides!(__overrides, "f16plant")
-  push!(__systems, @named f16plant = F16ModelWorkshop.Plant.F16PlantIO(alt_init=3000.0, vt_init=152.4, alpha_init=missing, theta_init=missing, beta_init=0.0, phi_init=0.0, psi_init=0.0, P_init=0.0, Q_init=0.0, R_init=0.0, f16plant_overrides...))
+  push!(__systems, @named f16plant = F16ModelWorkshop.Plant.F16PlantModel(alt_init=3000.0, vt_init=152.4, alpha_init=missing, theta_init=missing, f16plant_overrides...))
   # Subcomponent T_cmd of type BlockComponents.Sources.Constant
   T_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "T_cmd")
   push!(__systems, @named T_cmd = BlockComponents.Sources.Constant(k=missing, T_cmd_overrides...))
@@ -73,6 +73,9 @@ Trim via missing-Constant + zero-duration TransientAnalysis
   # Subcomponent lef_cmd of type BlockComponents.Sources.Constant
   lef_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "lef_cmd")
   push!(__systems, @named lef_cmd = BlockComponents.Sources.Constant(k=0.0, lef_cmd_overrides...))
+  # Subcomponent mux of type F16ModelWorkshop.Utils.Mux5
+  mux_overrides = __pop_subcomponent_overrides!(__overrides, "mux")
+  push!(__systems, @named mux = F16ModelWorkshop.Utils.Mux5(mux_overrides...))
 
   ### Check there are no unmatched overrides
   isempty(__overrides) || throw(ArgumentError("overides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
@@ -82,18 +85,8 @@ Trim via missing-Constant + zero-duration TransientAnalysis
   __guesses[el_cmd.k] = (2.0)
   __guesses[f16plant.alpha_init] = (-0.02)
   __guesses[f16plant.theta_init] = (-0.02)
-  __guesses[f16plant.vt] = (152.4)
-  __guesses[f16plant.alpha] = (-0.02)
-  __guesses[f16plant.beta] = (0.0)
-  __guesses[f16plant.phi] = (0.0)
-  __guesses[f16plant.theta] = (-0.02)
-  __guesses[f16plant.psi] = (0.0)
-  __guesses[f16plant.P] = (0.0)
-  __guesses[f16plant.Q] = (0.0)
-  __guesses[f16plant.R] = (0.0)
-  __guesses[f16plant.npos] = (0.0)
-  __guesses[f16plant.epos] = (0.0)
-  __guesses[f16plant.alt] = (3000.0)
+  __guesses[f16plant.x_lon] = ([-0.02, 0.0004, 0.046, 0.0])
+  __guesses[f16plant.Udot] = (0.0)
 
   ### Initialization Equations
   push!(__initialization_eqs, ModelingToolkit.D_nounits(f16plant.vt) ~ 0.0)
@@ -105,13 +98,14 @@ Trim via missing-Constant + zero-duration TransientAnalysis
   __assertions = []
 
   ### Equations
-  push!(__eqs, connect(T_cmd.y, f16plant.T_in))
-  push!(__eqs, connect(el_cmd.y, f16plant.el_in))
-  push!(__eqs, connect(ail_cmd.y, f16plant.ail_in))
-  push!(__eqs, connect(rud_cmd.y, f16plant.rud_in))
-  push!(__eqs, connect(lef_cmd.y, f16plant.lef_in))
+  push!(__eqs, connect(T_cmd.y, mux.u1))
+  push!(__eqs, connect(el_cmd.y, mux.u2))
+  push!(__eqs, connect(ail_cmd.y, mux.u3))
+  push!(__eqs, connect(rud_cmd.y, mux.u4))
+  push!(__eqs, connect(lef_cmd.y, mux.u5))
+  push!(__eqs, connect(mux.y, f16plant.u_in))
 
   # Return completely constructed System
   return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
-export F16TrimV3
+export F16Trim

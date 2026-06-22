@@ -7,18 +7,25 @@
 import Moshi as __Ext__Moshi
 
 @doc Markdown.doc"""
-   F16VizClosedLoop(; name)
+   ClosedLoopVectorMuxedModel(; name)
 
-Closed-loop pitch recovery with 3-D visualizer.
-F16 starts at 10° pitch perturbation; the LQG controller drives it back to trim.
-Pose is fed to MultibodyComponents.ShapefileVisualizer for STL rendering.
+Mux/demux variant of ClosedLoopVectorModel.
+
+Identical plant, controller, reference, error, trim and control blocks, but the
+plant-boundary wiring is routed through a Mux5 (5 control outputs -> u_in[1:5])
+and a Demux12 (y_out[1:12] -> 12 scalar measurements). The 17 analysis points
+are kept SCALAR and relocated onto the mux-input / demux-output edges:
+  control_X.y --[uX AP]--> mux.uX          (mux.y -> f16plant.u_in, pass-through)
+  demux.yK   --[yK AP]--> errorN.u2        (f16plant.y_out -> demux.u, pass-through)
+Since Mux5/Demux12 are pure algebraic pass-throughs, the linearized plant the
+LQG analysis sees is unchanged. Tests whether mux/demux breaks AP name resolution.
 """
-@component function F16VizClosedLoop(; name = nothing, kwargs...)
+@component function ClosedLoopVectorMuxedModel(; name = nothing, kwargs...)
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
   
-    @named model = F16VizClosedLoop()
+    @named model = ClosedLoopVectorMuxedModel()
   """))
 
   __overrides = __build_overrides(kwargs)
@@ -57,9 +64,27 @@ Pose is fed to MultibodyComponents.ShapefileVisualizer for STL rendering.
   __constants = Any[]
 
   ### Components
-  # Subcomponent f16plant of type F16ModelWorkshop.Plant.F16PlantIO
+  # Subcomponent f16plant of type F16ModelWorkshop.Plant.F16PlantModel
   f16plant_overrides = __pop_subcomponent_overrides!(__overrides, "f16plant")
-  push!(__systems, @named f16plant = F16ModelWorkshop.Plant.F16PlantIO(alt_init=3000, theta_init=10 * pi / 180, f16plant_overrides...))
+  push!(__systems, @named f16plant = F16ModelWorkshop.Plant.F16PlantModel(alt_init=3000, alpha_init=-0.01695, f16plant_overrides...))
+  # Subcomponent mux of type F16ModelWorkshop.Utils.Mux5
+  mux_overrides = __pop_subcomponent_overrides!(__overrides, "mux")
+  push!(__systems, @named mux = F16ModelWorkshop.Utils.Mux5(mux_overrides...))
+  # Subcomponent demux of type F16ModelWorkshop.Utils.Demux4x3
+  demux_overrides = __pop_subcomponent_overrides!(__overrides, "demux")
+  push!(__systems, @named demux = F16ModelWorkshop.Utils.Demux4x3(demux_overrides...))
+  # Subcomponent demux_pos of type F16ModelWorkshop.Utils.Demux3
+  demux_pos_overrides = __pop_subcomponent_overrides!(__overrides, "demux_pos")
+  push!(__systems, @named demux_pos = F16ModelWorkshop.Utils.Demux3(demux_pos_overrides...))
+  # Subcomponent demux_att of type F16ModelWorkshop.Utils.Demux3
+  demux_att_overrides = __pop_subcomponent_overrides!(__overrides, "demux_att")
+  push!(__systems, @named demux_att = F16ModelWorkshop.Utils.Demux3(demux_att_overrides...))
+  # Subcomponent demux_air of type F16ModelWorkshop.Utils.Demux3
+  demux_air_overrides = __pop_subcomponent_overrides!(__overrides, "demux_air")
+  push!(__systems, @named demux_air = F16ModelWorkshop.Utils.Demux3(demux_air_overrides...))
+  # Subcomponent demux_rate of type F16ModelWorkshop.Utils.Demux3
+  demux_rate_overrides = __pop_subcomponent_overrides!(__overrides, "demux_rate")
+  push!(__systems, @named demux_rate = F16ModelWorkshop.Utils.Demux3(demux_rate_overrides...))
   # Subcomponent controller of type BlockComponents.Continuous.StateSpace
   controller_overrides = __pop_subcomponent_overrides!(__overrides, "controller")
   push!(__systems, @named controller = BlockComponents.Continuous.StateSpace(nx=12, nu=12, ny=5, A=ControllerA, B=ControllerB, C=ControllerC, D=ControllerD, x0=fill(0.0, 12), u0=fill(0.0, 12), y0=fill(0.0, 5), controller_overrides...))
@@ -86,7 +111,7 @@ Pose is fed to MultibodyComponents.ShapefileVisualizer for STL rendering.
   push!(__systems, @named ref_vt = BlockComponents.Sources.Constant(k=152.4, ref_vt_overrides...))
   # Subcomponent ref_alpha of type BlockComponents.Sources.Constant
   ref_alpha_overrides = __pop_subcomponent_overrides!(__overrides, "ref_alpha")
-  push!(__systems, @named ref_alpha = BlockComponents.Sources.Constant(k=-0.017, ref_alpha_overrides...))
+  push!(__systems, @named ref_alpha = BlockComponents.Sources.Constant(k=-0.01695, ref_alpha_overrides...))
   # Subcomponent ref_beta of type BlockComponents.Sources.Constant
   ref_beta_overrides = __pop_subcomponent_overrides!(__overrides, "ref_beta")
   push!(__systems, @named ref_beta = BlockComponents.Sources.Constant(k=0, ref_beta_overrides...))
@@ -137,10 +162,10 @@ Pose is fed to MultibodyComponents.ShapefileVisualizer for STL rendering.
   push!(__systems, @named error12 = BlockComponents.Math.Add(k1=1, k2=-1, error12_overrides...))
   # Subcomponent trim_T of type BlockComponents.Sources.Constant
   trim_T_overrides = __pop_subcomponent_overrides!(__overrides, "trim_T")
-  push!(__systems, @named trim_T = BlockComponents.Sources.Constant(k=44482.2, trim_T_overrides...))
+  push!(__systems, @named trim_T = BlockComponents.Sources.Constant(k=28696.23, trim_T_overrides...))
   # Subcomponent trim_el of type BlockComponents.Sources.Constant
   trim_el_overrides = __pop_subcomponent_overrides!(__overrides, "trim_el")
-  push!(__systems, @named trim_el = BlockComponents.Sources.Constant(k=0, trim_el_overrides...))
+  push!(__systems, @named trim_el = BlockComponents.Sources.Constant(k=0.0459, trim_el_overrides...))
   # Subcomponent trim_ail of type BlockComponents.Sources.Constant
   trim_ail_overrides = __pop_subcomponent_overrides!(__overrides, "trim_ail")
   push!(__systems, @named trim_ail = BlockComponents.Sources.Constant(k=0, trim_ail_overrides...))
@@ -165,17 +190,64 @@ Pose is fed to MultibodyComponents.ShapefileVisualizer for STL rendering.
   # Subcomponent control_lef of type BlockComponents.Math.Add
   control_lef_overrides = __pop_subcomponent_overrides!(__overrides, "control_lef")
   push!(__systems, @named control_lef = BlockComponents.Math.Add(k1=1, k2=1, control_lef_overrides...))
-  # Subcomponent pose of type F16ModelWorkshop.Utils.SignalPoseSource
-  pose_overrides = __pop_subcomponent_overrides!(__overrides, "pose")
-  push!(__systems, @named pose = F16ModelWorkshop.Utils.SignalPoseSource(pose_overrides...))
-  # Subcomponent viz of type MultibodyComponents.ShapefileVisualizer
-  viz_overrides = __pop_subcomponent_overrides!(__overrides, "viz")
-  push!(__systems, @named viz = MultibodyComponents.ShapefileVisualizer(shapefile="assets/object/F-16.obj", shape_scale=1.4, color=[0.6, 0.6, 0.6, 1.0], shape_transform=[1 0 0 -32.9; 0 1 0 2.5; 0 0 1 0.1; 0 0 0 1], viz_overrides...))
 
   ### Check there are no unmatched overrides
   isempty(__overrides) || throw(ArgumentError("overides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
 
   ### Guesses
+  __guesses[f16plant.vt] = (152.4)
+  __guesses[f16plant.alt] = (3000.0)
+  __guesses[f16plant.theta] = (-0.017)
+  __guesses[f16plant.phi] = (0.0)
+  __guesses[f16plant.psi] = (0.0)
+  __guesses[f16plant.alpha] = (-0.01695)
+  __guesses[f16plant.beta] = (0.0)
+  __guesses[f16plant.P] = (0.0)
+  __guesses[f16plant.Q] = (0.0)
+  __guesses[f16plant.R] = (0.0)
+  __guesses[f16plant.T] = (28696.23)
+  __guesses[f16plant.rho] = (0.909)
+  __guesses[f16plant.qbar] = (10557.0)
+  __guesses[f16plant.Udot] = (0.0)
+  __guesses[f16plant.el_rad] = (0.0008)
+  __guesses[f16plant.ail_rad] = (0.0)
+  __guesses[f16plant.rud_rad] = (0.0)
+  __guesses[f16plant.lef_rad] = (0.0)
+  __guesses[f16plant.x_lon] = ([-0.01695, 0.0002873, 0.0008, 0.0])
+  __guesses[f16plant.x_lat] = ([0.0, 0.0, 0.0, 0.0, 0.0])
+  __guesses[f16plant.C_lon] = ([-0.10262, -0.28126, 0.057741])
+  __guesses[f16plant.C_lat] = ([0.0, 0.0, 0.0])
+  __guesses[f16plant.y_out] = ([0.0, 0.0, 3000.0, 0.0, -0.017, 0.0, 152.4, -0.01695, 0.0, 0.0, 0.0, 0.0])
+  __guesses[f16plant.u_in] = ([28696.23, 0.0459, 0.0, 0.0, 0.0])
+  __guesses[demux.u] = ([0.0, 0.0, 3000.0, 0.0, -0.017, 0.0, 152.4, -0.01695, 0.0, 0.0, 0.0, 0.0])
+  __guesses[demux.y1] = ([0.0, 0.0, 3000.0])
+  __guesses[demux.y2] = ([0.0, -0.017, 0.0])
+  __guesses[demux.y3] = ([152.4, -0.01695, 0.0])
+  __guesses[demux.y4] = ([0.0, 0.0, 0.0])
+  __guesses[demux_pos.u] = ([0.0, 0.0, 3000.0])
+  __guesses[demux_att.u] = ([0.0, -0.017, 0.0])
+  __guesses[demux_air.u] = ([152.4, -0.01695, 0.0])
+  __guesses[demux_rate.u] = ([0.0, 0.0, 0.0])
+  __guesses[controller.x] = (fill(0.0, 12))
+  __guesses[controller.u] = (fill(0.0, 12))
+  __guesses[controller.y] = (fill(0.0, 5))
+  __guesses[mux.u1] = (28696.23)
+  __guesses[mux.u2] = (0.0459)
+  __guesses[mux.u3] = (0.0)
+  __guesses[mux.u4] = (0.0)
+  __guesses[mux.u5] = (0.0)
+  __guesses[error1.u2] = (0.0)
+  __guesses[error2.u2] = (0.0)
+  __guesses[error3.u2] = (3000.0)
+  __guesses[error4.u2] = (0.0)
+  __guesses[error5.u2] = (-0.017)
+  __guesses[error6.u2] = (0.0)
+  __guesses[error7.u2] = (152.4)
+  __guesses[error8.u2] = (-0.01695)
+  __guesses[error9.u2] = (0.0)
+  __guesses[error10.u2] = (0.0)
+  __guesses[error11.u2] = (0.0)
+  __guesses[error12.u2] = (0.0)
 
   ### Initialization Equations
 
@@ -183,6 +255,28 @@ Pose is fed to MultibodyComponents.ShapefileVisualizer for STL rendering.
   __assertions = []
 
   ### Equations
+  push!(__eqs, connect(control_T.y, :uT, mux.u1))
+  push!(__eqs, connect(control_el.y, :uEl, mux.u2))
+  push!(__eqs, connect(control_ail.y, :uAil, mux.u3))
+  push!(__eqs, connect(control_rud.y, :uRud, mux.u4))
+  push!(__eqs, connect(control_lef.y, :uLef, mux.u5))
+  push!(__eqs, connect(demux_pos.y1, :yn, error1.u2))
+  push!(__eqs, connect(demux_pos.y2, :ye, error2.u2))
+  push!(__eqs, connect(demux_pos.y3, :yalt, error3.u2))
+  push!(__eqs, connect(demux_att.y1, :yphi, error4.u2))
+  push!(__eqs, connect(demux_att.y2, :ypitch, error5.u2))
+  push!(__eqs, connect(demux_att.y3, :ypsi, error6.u2))
+  push!(__eqs, connect(demux_air.y1, :yvt, error7.u2))
+  push!(__eqs, connect(demux_air.y2, :yalpha, error8.u2))
+  push!(__eqs, connect(demux_air.y3, :ybeta, error9.u2))
+  push!(__eqs, connect(demux_rate.y1, :yP, error10.u2))
+  push!(__eqs, connect(demux_rate.y2, :yQ, error11.u2))
+  push!(__eqs, connect(demux_rate.y3, :yR, error12.u2))
+  push!(__eqs, connect(f16plant.y_out, demux.u))
+  push!(__eqs, connect(demux.y1, demux_pos.u))
+  push!(__eqs, connect(demux.y2, demux_att.u))
+  push!(__eqs, connect(demux.y3, demux_air.u))
+  push!(__eqs, connect(demux.y4, demux_rate.u))
   push!(__eqs, connect(ref_npos.y, error1.u1))
   push!(__eqs, connect(ref_epos.y, error2.u1))
   push!(__eqs, connect(ref_alt.y, error3.u1))
@@ -195,54 +289,48 @@ Pose is fed to MultibodyComponents.ShapefileVisualizer for STL rendering.
   push!(__eqs, connect(ref_P.y, error10.u1))
   push!(__eqs, connect(ref_Q.y, error11.u1))
   push!(__eqs, connect(ref_R.y, error12.u1))
-  push!(__eqs, connect(f16plant.npos_out, error1.u2))
-  push!(__eqs, connect(f16plant.epos_out, error2.u2))
-  push!(__eqs, connect(f16plant.alt_out, error3.u2))
-  push!(__eqs, connect(f16plant.phi_out, error4.u2))
-  push!(__eqs, connect(f16plant.theta_out, error5.u2))
-  push!(__eqs, connect(f16plant.psi_out, error6.u2))
-  push!(__eqs, connect(f16plant.vt_out, error7.u2))
-  push!(__eqs, connect(f16plant.alpha_out, error8.u2))
-  push!(__eqs, connect(f16plant.beta_out, error9.u2))
-  push!(__eqs, connect(f16plant.P_out, error10.u2))
-  push!(__eqs, connect(f16plant.Q_out, error11.u2))
-  push!(__eqs, connect(f16plant.R_out, error12.u2))
-  push!(__eqs, connect(error1.y, controller.u[1]))
-  push!(__eqs, connect(error2.y, controller.u[2]))
-  push!(__eqs, connect(error3.y, controller.u[3]))
-  push!(__eqs, connect(error4.y, controller.u[4]))
-  push!(__eqs, connect(error5.y, controller.u[5]))
-  push!(__eqs, connect(error6.y, controller.u[6]))
-  push!(__eqs, connect(error7.y, controller.u[7]))
-  push!(__eqs, connect(error8.y, controller.u[8]))
-  push!(__eqs, connect(error9.y, controller.u[9]))
-  push!(__eqs, connect(error10.y, controller.u[10]))
-  push!(__eqs, connect(error11.y, controller.u[11]))
-  push!(__eqs, connect(error12.y, controller.u[12]))
-  push!(__eqs, connect(controller.y[1], control_T.u1))
+  push!(__eqs, connect(demux_pos.y1, error1.u2))
+  push!(__eqs, connect(demux_pos.y2, error2.u2))
+  push!(__eqs, connect(demux_pos.y3, error3.u2))
+  push!(__eqs, connect(demux_att.y1, error4.u2))
+  push!(__eqs, connect(demux_att.y2, error5.u2))
+  push!(__eqs, connect(demux_att.y3, error6.u2))
+  push!(__eqs, connect(demux_air.y1, error7.u2))
+  push!(__eqs, connect(demux_air.y2, error8.u2))
+  push!(__eqs, connect(demux_air.y3, error9.u2))
+  push!(__eqs, connect(demux_rate.y1, error10.u2))
+  push!(__eqs, connect(demux_rate.y2, error11.u2))
+  push!(__eqs, connect(demux_rate.y3, error12.u2))
+  push!(__eqs, connect(error1.y, controller.u))
+  push!(__eqs, connect(error2.y, controller.u))
+  push!(__eqs, connect(error3.y, controller.u))
+  push!(__eqs, connect(error4.y, controller.u))
+  push!(__eqs, connect(error5.y, controller.u))
+  push!(__eqs, connect(error6.y, controller.u))
+  push!(__eqs, connect(error7.y, controller.u))
+  push!(__eqs, connect(error8.y, controller.u))
+  push!(__eqs, connect(error9.y, controller.u))
+  push!(__eqs, connect(error10.y, controller.u))
+  push!(__eqs, connect(error11.y, controller.u))
+  push!(__eqs, connect(error12.y, controller.u))
+  push!(__eqs, connect(controller.y, control_T.u1))
   push!(__eqs, connect(trim_T.y, control_T.u2))
-  push!(__eqs, connect(control_T.y, f16plant.T_in))
-  push!(__eqs, connect(controller.y[2], control_el.u1))
+  push!(__eqs, connect(control_T.y, mux.u1))
+  push!(__eqs, connect(controller.y, control_el.u1))
   push!(__eqs, connect(trim_el.y, control_el.u2))
-  push!(__eqs, connect(control_el.y, f16plant.el_in))
-  push!(__eqs, connect(controller.y[3], control_ail.u1))
+  push!(__eqs, connect(control_el.y, mux.u2))
+  push!(__eqs, connect(controller.y, control_ail.u1))
   push!(__eqs, connect(trim_ail.y, control_ail.u2))
-  push!(__eqs, connect(control_ail.y, f16plant.ail_in))
-  push!(__eqs, connect(controller.y[4], control_rud.u1))
+  push!(__eqs, connect(control_ail.y, mux.u3))
+  push!(__eqs, connect(controller.y, control_rud.u1))
   push!(__eqs, connect(trim_rud.y, control_rud.u2))
-  push!(__eqs, connect(control_rud.y, f16plant.rud_in))
-  push!(__eqs, connect(controller.y[5], control_lef.u1))
+  push!(__eqs, connect(control_rud.y, mux.u4))
+  push!(__eqs, connect(controller.y, control_lef.u1))
   push!(__eqs, connect(trim_lef.y, control_lef.u2))
-  push!(__eqs, connect(control_lef.y, f16plant.lef_in))
-  push!(__eqs, connect(f16plant.npos_out, pose.pos[1]))
-  push!(__eqs, connect(f16plant.alt_out, pose.pos[2]))
-  push!(__eqs, connect(f16plant.epos_out, pose.pos[3]))
-  push!(__eqs, connect(f16plant.phi_out, pose.ang[1]))
-  push!(__eqs, connect(f16plant.theta_out, pose.ang[2]))
-  push!(__eqs, connect(f16plant.psi_out, pose.ang[3]))
-  push!(__eqs, connect(pose.frame_a, viz.frame_a))
+  push!(__eqs, connect(control_lef.y, mux.u5))
+  push!(__eqs, connect(mux.y, f16plant.u_in))
 
   # Return completely constructed System
   return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
-export F16VizClosedLoop
+export ClosedLoopVectorMuxedModel

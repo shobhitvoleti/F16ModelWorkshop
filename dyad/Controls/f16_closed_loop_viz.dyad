@@ -1,0 +1,867 @@
+"Closed-loop pitch recovery with 3-D OBJ visualizer (array-based plant via Mux5 + two-stage Demux)"
+test component F16ClosedLoopViz
+  # ---- Plant (10° pitch perturbation), vector I/O ----
+  f16plant = F16ModelWorkshop.Plant.F16PlantModel(alt_init = 3000, theta_init = 10 * pi / 180) {^f16plant}
+  # ---- Vector routing: 5 scalar commands → u_in[1:5]; y_out[1:12] → 4×3 → 12 scalars ----
+  mux = F16ModelWorkshop.Utils.Mux5() {^mux}
+  # Stage 1: split the 12-state output into 4 groups of 3
+  demux = F16ModelWorkshop.Utils.Demux4x3() {^demux}
+  # Stage 2: split each group into scalars
+  demux_pos = F16ModelWorkshop.Utils.Demux3() {^demux_pos} # [npos, epos, alt]
+  demux_att = F16ModelWorkshop.Utils.Demux3() {^demux_att} # [phi, theta, psi]
+  demux_air = F16ModelWorkshop.Utils.Demux3() {^demux_air} # [vt, alpha, beta]
+  demux_rate = F16ModelWorkshop.Utils.Demux3() {^demux_rate} # [P, Q, R]
+  # ---- LQG controller ----
+  controller = BlockComponents.Continuous.StateSpace(nx = 12, nu = 12, ny = 5, A = ControllerA, B = ControllerB, C = ControllerC, D = ControllerD, x0 = fill(0.0, 12), u0 = fill(0.0, 12), y0 = fill(0.0, 5)) {^controller}
+  # ---- Reference setpoints ----
+  ref_npos = BlockComponents.Sources.Constant(k = 0) {^ref_npos}
+  ref_epos = BlockComponents.Sources.Constant(k = 0) {^ref_epos}
+  ref_alt = BlockComponents.Sources.Constant(k = 3000) {^ref_alt}
+  ref_phi = BlockComponents.Sources.Constant(k = 0) {^ref_phi}
+  ref_theta = BlockComponents.Sources.Constant(k = -0.0169500) {^ref_theta}
+  ref_psi = BlockComponents.Sources.Constant(k = 0) {^ref_psi}
+  ref_vt = BlockComponents.Sources.Constant(k = 152.4) {^ref_vt}
+  ref_alpha = BlockComponents.Sources.Constant(k = -0.0169500) {^ref_alpha}
+  ref_beta = BlockComponents.Sources.Constant(k = 0) {^ref_beta}
+  ref_P = BlockComponents.Sources.Constant(k = 0) {^ref_P}
+  ref_Q = BlockComponents.Sources.Constant(k = 0) {^ref_Q}
+  ref_R = BlockComponents.Sources.Constant(k = 0) {^ref_R}
+  # ---- Error blocks (ref − measurement) ----
+  error1 = BlockComponents.Math.Add(k1 = 1, k2 = -1) {^error1}
+  error2 = BlockComponents.Math.Add(k1 = 1, k2 = -1) {^error2}
+  error3 = BlockComponents.Math.Add(k1 = 1, k2 = -1) {^error3}
+  error4 = BlockComponents.Math.Add(k1 = 1, k2 = -1) {^error4}
+  error5 = BlockComponents.Math.Add(k1 = 1, k2 = -1) {^error5}
+  error6 = BlockComponents.Math.Add(k1 = 1, k2 = -1) {^error6}
+  error7 = BlockComponents.Math.Add(k1 = 1, k2 = -1) {^error7}
+  error8 = BlockComponents.Math.Add(k1 = 1, k2 = -1) {^error8}
+  error9 = BlockComponents.Math.Add(k1 = 1, k2 = -1) {^error9}
+  error10 = BlockComponents.Math.Add(k1 = 1, k2 = -1) {^error10}
+  error11 = BlockComponents.Math.Add(k1 = 1, k2 = -1) {^error11}
+  error12 = BlockComponents.Math.Add(k1 = 1, k2 = -1) {^error12}
+  # ---- Trim feedforward ----
+  trim_T = BlockComponents.Sources.Constant(k = 28696.2327) {^trim_T}
+  trim_el = BlockComponents.Sources.Constant(k = 2.6304783) {^trim_el}
+  trim_ail = BlockComponents.Sources.Constant(k = 0) {^trim_ail}
+  trim_rud = BlockComponents.Sources.Constant(k = 0) {^trim_rud}
+  trim_lef = BlockComponents.Sources.Constant(k = 0) {^trim_lef}
+  # ---- Control adders (controller output + trim) ----
+  control_T = BlockComponents.Math.Add(k1 = 1, k2 = 1) {^control_T}
+  control_el = BlockComponents.Math.Add(k1 = 1, k2 = 1) {^control_el}
+  control_ail = BlockComponents.Math.Add(k1 = 1, k2 = 1) {^control_ail}
+  control_rud = BlockComponents.Math.Add(k1 = 1, k2 = 1) {^control_rud}
+  control_lef = BlockComponents.Math.Add(k1 = 1, k2 = 1) {^control_lef}
+  # ---- 3-D visualization ----
+  pose = F16ModelWorkshop.Utils.SignalPoseSource() {^pose}
+  viz = MultibodyComponents.ShapefileVisualizer(shapefile = joinpath("assets", "object", "F-16.obj"), shape_scale = 1.4, shape_transform = MultibodyComponents.Rp2T(MultibodyComponents.RotXYZ(0, 0, 0), [-32.9, 2.5, 0.1])) {^viz}
+relations
+  # ===== Plant vector output → stage-1 demux (y_out = [npos,epos,alt,phi,theta,psi,vt,alpha,beta,P,Q,R]) =====
+  connect(f16plant.y_out, demux.u) {^id45}
+  # ===== Stage-1 groups (3-vectors) → stage-2 demuxers =====
+  connect(demux.y1, demux_pos.u) {^id46} # [npos, epos, alt]
+  connect(demux.y2, demux_att.u) {^id47} # [phi, theta, psi]
+  connect(demux.y3, demux_air.u) {^id48} # [vt, alpha, beta]
+  connect(demux.y4, demux_rate.u) {^id49} # [P, Q, R]
+  # ===== Reference setpoints → error.u1 =====
+  connect(ref_npos.y, error1.u1) {^id50}
+  connect(ref_epos.y, error2.u1) {^id51}
+  connect(ref_alt.y, error3.u1) {^id52}
+  connect(ref_phi.y, error4.u1) {^id53}
+  connect(ref_theta.y, error5.u1) {^id54}
+  connect(ref_psi.y, error6.u1) {^id55}
+  connect(ref_vt.y, error7.u1) {^id56}
+  connect(ref_alpha.y, error8.u1) {^id57}
+  connect(ref_beta.y, error9.u1) {^id58}
+  connect(ref_P.y, error10.u1) {^id59}
+  connect(ref_Q.y, error11.u1) {^id60}
+  connect(ref_R.y, error12.u1) {^id61}
+  # ===== Stage-2 demuxed measurements → error.u2 =====
+  connect(demux_pos.y1, error1.u2) {^id62} # npos
+  connect(demux_pos.y2, error2.u2) {^id63} # epos
+  connect(demux_pos.y3, error3.u2) {^id64} # alt
+  connect(demux_att.y1, error4.u2) {^id65} # phi
+  connect(demux_att.y2, error5.u2) {^id66} # theta
+  connect(demux_att.y3, error6.u2) {^id67} # psi
+  connect(demux_air.y1, error7.u2) {^id68} # vt
+  connect(demux_air.y2, error8.u2) {^id69} # alpha
+  connect(demux_air.y3, error9.u2) {^id70} # beta
+  connect(demux_rate.y1, error10.u2) {^id71} # P
+  connect(demux_rate.y2, error11.u2) {^id72} # Q
+  connect(demux_rate.y3, error12.u2) {^id73} # R
+  # ===== Errors → controller (indexed: each scalar error → controller.u[k]) =====
+  connect(error1.y, controller.u) {^id74}
+  connect(error2.y, controller.u) {^id75}
+  connect(error3.y, controller.u) {^id76}
+  connect(error4.y, controller.u) {^id77}
+  connect(error5.y, controller.u) {^id78}
+  connect(error6.y, controller.u) {^id79}
+  connect(error7.y, controller.u) {^id80}
+  connect(error8.y, controller.u) {^id81}
+  connect(error9.y, controller.u) {^id82}
+  connect(error10.y, controller.u) {^id83}
+  connect(error11.y, controller.u) {^id84}
+  connect(error12.y, controller.u) {^id85}
+  # ===== Controller + trim → mux → plant u_in[1:5] = [T, el, ail, rud, lef] =====
+  connect(controller.y, control_T.u1) {^id86}
+  connect(trim_T.y, control_T.u2) {^id87}
+  connect(control_T.y, mux.u1) {^id88}
+  connect(controller.y, control_el.u1) {^id89}
+  connect(trim_el.y, control_el.u2) {^id90}
+  connect(control_el.y, mux.u2) {^id91}
+  connect(controller.y, control_ail.u1) {^id92}
+  connect(trim_ail.y, control_ail.u2) {^id93}
+  connect(control_ail.y, mux.u3) {^id94}
+  connect(controller.y, control_rud.u1) {^id95}
+  connect(trim_rud.y, control_rud.u2) {^id96}
+  connect(control_rud.y, mux.u4) {^id97}
+  connect(controller.y, control_lef.u1) {^id98}
+  connect(trim_lef.y, control_lef.u2) {^id99}
+  connect(control_lef.y, mux.u5) {^id100}
+  connect(mux.y, f16plant.u_in) {^id101}
+  # ===== Stage-2 outputs → pose source (NED → Y-up), indexed scalar → array element =====
+  connect(demux_pos.y1, pose.pos) {^id102} # npos  → x
+  connect(demux_pos.y3, pose.pos) {^id103} # alt   → y
+  connect(demux_pos.y2, pose.pos) {^id104} # epos  → z
+  connect(demux_att.y1, pose.ang) {^id105} # roll  (phi)
+  connect(demux_att.y2, pose.ang) {^id106} # pitch (theta)
+  connect(demux_att.y3, pose.ang) {^id107} # yaw   (psi)
+  # ===== Pose → visualizer =====
+  connect(pose.frame_a, viz.frame_a) {^id108}
+metadata {
+  "_links": {
+    "f16plant": {
+      "Dyad": {
+        "placement": {
+          "diagram": {
+            "iconName": "default",
+            "x1": 1000,
+            "y1": 1042,
+            "x2": 1100,
+            "y2": 1142,
+            "rot": 0
+          }
+        },
+        "tags": []
+      }
+    },
+    "mux": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 880, "y1": 1042, "x2": 980, "y2": 1142, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "demux": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 30, "y1": 87.5, "x2": 130, "y2": 187.5, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "demux_pos": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 172.5, "y1": 50, "x2": 272.5, "y2": 150, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "demux_att": {
+      "Dyad": {
+        "placement": {
+          "diagram": {
+            "iconName": "default",
+            "x1": 172.5,
+            "y1": 770,
+            "x2": 272.5,
+            "y2": 870,
+            "rot": 0
+          }
+        },
+        "tags": []
+      }
+    },
+    "demux_air": {
+      "Dyad": {
+        "placement": {
+          "diagram": {
+            "iconName": "default",
+            "x1": 172.5,
+            "y1": 1762,
+            "x2": 272.5,
+            "y2": 1862,
+            "rot": 0
+          }
+        },
+        "tags": []
+      }
+    },
+    "demux_rate": {
+      "Dyad": {
+        "placement": {
+          "diagram": {
+            "iconName": "default",
+            "x1": 172.5,
+            "y1": 2122,
+            "x2": 272.5,
+            "y2": 2222,
+            "rot": 0
+          }
+        },
+        "tags": []
+      }
+    },
+    "controller": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 580, "y1": 1312, "x2": 680, "y2": 1412, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "ref_npos": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 170, "y1": 1010, "x2": 270, "y2": 1110, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "ref_epos": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 170, "y1": 170, "x2": 270, "y2": 270, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "ref_alt": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 170, "y1": 410, "x2": 270, "y2": 510, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "ref_phi": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 170, "y1": 290, "x2": 270, "y2": 390, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "ref_theta": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 170, "y1": 1250, "x2": 270, "y2": 1350, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "ref_psi": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 170, "y1": 530, "x2": 270, "y2": 630, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "ref_vt": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 170, "y1": 1642, "x2": 270, "y2": 1742, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "ref_alpha": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 170, "y1": 650, "x2": 270, "y2": 750, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "ref_beta": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 170, "y1": 1402, "x2": 270, "y2": 1502, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "ref_P": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 170, "y1": 1522, "x2": 270, "y2": 1622, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "ref_Q": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 170, "y1": 890, "x2": 270, "y2": 990, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "ref_R": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 170, "y1": 2002, "x2": 270, "y2": 2102, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "error1": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 440, "y1": 1040, "x2": 540, "y2": 1140, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "error2": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 440, "y1": 20, "x2": 540, "y2": 120, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "error3": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 440, "y1": 440, "x2": 540, "y2": 540, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "error4": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 440, "y1": 832, "x2": 540, "y2": 932, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "error5": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 440, "y1": 1312, "x2": 540, "y2": 1412, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "error6": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 440, "y1": 1160, "x2": 540, "y2": 1260, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "error7": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 440, "y1": 1852, "x2": 540, "y2": 1952, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "error8": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 440, "y1": 1732, "x2": 540, "y2": 1832, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "error9": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 440, "y1": 1972, "x2": 540, "y2": 2072, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "error10": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 440, "y1": 2212, "x2": 540, "y2": 2312, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "error11": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 440, "y1": 2092, "x2": 540, "y2": 2192, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "error12": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 440, "y1": 2332, "x2": 540, "y2": 2432, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "trim_T": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 580, "y1": 832, "x2": 680, "y2": 932, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "trim_el": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 580, "y1": 1192, "x2": 680, "y2": 1292, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "trim_ail": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 580, "y1": 1072, "x2": 680, "y2": 1172, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "trim_rud": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 580, "y1": 952, "x2": 680, "y2": 1052, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "trim_lef": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 580, "y1": 1460, "x2": 680, "y2": 1560, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "control_T": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 720, "y1": 802, "x2": 820, "y2": 902, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "control_el": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 720, "y1": 1162, "x2": 820, "y2": 1262, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "control_ail": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 720, "y1": 1042, "x2": 820, "y2": 1142, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "control_rud": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 720, "y1": 922, "x2": 820, "y2": 1022, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "control_lef": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 720, "y1": 1342, "x2": 820, "y2": 1442, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "pose": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 440, "y1": 712, "x2": 540, "y2": 812, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "viz": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 580, "y1": 712, "x2": 680, "y2": 812, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "id45": {
+      "Dyad": {
+        "edges": [
+          {
+            "S": 1,
+            "M": [
+              {"x": 1110, "y": 1092},
+              {"x": 1110, "y": 2482},
+              {"x": 20, "y": 2482},
+              {"x": 20, "y": 137.5}
+            ],
+            "E": 2
+          }
+        ],
+        "renderStyle": "standard"
+      }
+    },
+    "id46": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id47": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 160, "y": 125}, {"x": 160, "y": 820}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id48": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 150, "y": 150}, {"x": 150, "y": 1812}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id49": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 140, "y": 175}, {"x": 140, "y": 2172}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id50": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id51": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 420, "y": 220}, {"x": 420, "y": 40}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id52": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id53": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 400, "y": 340}, {"x": 400, "y": 852}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id54": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 355, "y": 1300}, {"x": 355, "y": 1332}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id55": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 390, "y": 580}, {"x": 390, "y": 1180}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id56": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 340, "y": 1692}, {"x": 340, "y": 1872}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id57": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 370, "y": 700}, {"x": 370, "y": 1752}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id58": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 350, "y": 1452}, {"x": 350, "y": 1992}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id59": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 330, "y": 1572}, {"x": 330, "y": 2232}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id60": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 360, "y": 940}, {"x": 360, "y": 2112}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id61": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 300, "y": 2052}, {"x": 300, "y": 2352}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id62": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 410, "y": 70}, {"x": 410, "y": 1120}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id63": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id64": {
+      "Dyad": {
+        "edges": [
+          {"S": 1, "M": [], "E": -1},
+          {"S": -1, "M": [], "E": -2},
+          {"S": -2, "M": [], "E": 2}
+        ],
+        "junctions": [{"x": 410, "y": 130}, {"x": 410, "y": 520}],
+        "renderStyle": "standard"
+      }
+    },
+    "id65": {
+      "Dyad": {
+        "edges": [
+          {"S": 1, "M": [], "E": -1},
+          {"S": -1, "M": [], "E": -2},
+          {"S": -2, "M": [], "E": 2}
+        ],
+        "junctions": [{"x": 380, "y": 790}, {"x": 380, "y": 912}],
+        "renderStyle": "standard"
+      }
+    },
+    "id66": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [], "E": -1}, {"S": -1, "M": [{"x": 380, "y": 1392}], "E": 2}],
+        "junctions": [{"x": 380, "y": 820}],
+        "renderStyle": "standard"
+      }
+    },
+    "id67": {
+      "Dyad": {
+        "edges": [
+          {"S": 1, "M": [], "E": -1},
+          {"S": -1, "M": [], "E": -2},
+          {"S": -2, "M": [], "E": 2}
+        ],
+        "junctions": [{"x": 380, "y": 850}, {"x": 380, "y": 1240}],
+        "renderStyle": "standard"
+      }
+    },
+    "id68": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 320, "y": 1782}, {"x": 320, "y": 1932}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id69": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id70": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 310, "y": 1842}, {"x": 310, "y": 2052}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id71": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 310, "y": 2142}, {"x": 310, "y": 2292}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id72": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id73": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 290, "y": 2202}, {"x": 290, "y": 2412}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id74": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [], "E": -1}, {"S": -1, "M": [{"x": 560, "y": 1362}], "E": 2}],
+        "junctions": [{"x": 560, "y": 1090}],
+        "renderStyle": "standard"
+      }
+    },
+    "id75": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 560, "y": 70}], "E": -1}, {"S": -1, "M": [], "E": 2}],
+        "junctions": [{"x": 560, "y": 1362}],
+        "renderStyle": "standard"
+      }
+    },
+    "id76": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [], "E": -1}, {"S": -1, "M": [{"x": 560, "y": 1362}], "E": 2}],
+        "junctions": [{"x": 560, "y": 490}],
+        "renderStyle": "standard"
+      }
+    },
+    "id77": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [], "E": -1}, {"S": -1, "M": [{"x": 560, "y": 1362}], "E": 2}],
+        "junctions": [{"x": 560, "y": 882}],
+        "renderStyle": "standard"
+      }
+    },
+    "id78": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id79": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [], "E": -1}, {"S": -1, "M": [{"x": 560, "y": 1362}], "E": 2}],
+        "junctions": [{"x": 560, "y": 1210}],
+        "renderStyle": "standard"
+      }
+    },
+    "id80": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [], "E": -1}, {"S": -1, "M": [{"x": 560, "y": 1362}], "E": 2}],
+        "junctions": [{"x": 560, "y": 1902}],
+        "renderStyle": "standard"
+      }
+    },
+    "id81": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [], "E": -1}, {"S": -1, "M": [{"x": 560, "y": 1362}], "E": 2}],
+        "junctions": [{"x": 560, "y": 1782}],
+        "renderStyle": "standard"
+      }
+    },
+    "id82": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [], "E": -1}, {"S": -1, "M": [{"x": 560, "y": 1362}], "E": 2}],
+        "junctions": [{"x": 560, "y": 2022}],
+        "renderStyle": "standard"
+      }
+    },
+    "id83": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [], "E": -1}, {"S": -1, "M": [{"x": 560, "y": 1362}], "E": 2}],
+        "junctions": [{"x": 560, "y": 2262}],
+        "renderStyle": "standard"
+      }
+    },
+    "id84": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [], "E": -1}, {"S": -1, "M": [{"x": 560, "y": 1362}], "E": 2}],
+        "junctions": [{"x": 560, "y": 2142}],
+        "renderStyle": "standard"
+      }
+    },
+    "id85": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 560, "y": 2382}, {"x": 560, "y": 1362}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id86": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [], "E": -1}, {"S": -1, "M": [{"x": 700, "y": 822}], "E": 2}],
+        "junctions": [{"x": 700, "y": 1362}],
+        "renderStyle": "standard"
+      }
+    },
+    "id87": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id88": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 850, "y": 852}, {"x": 850, "y": 1047}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id89": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 700, "y": 1362}], "E": -1}, {"S": -1, "M": [], "E": 2}],
+        "junctions": [{"x": 700, "y": 1182}],
+        "renderStyle": "standard"
+      }
+    },
+    "id90": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id91": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 850, "y": 1212}, {"x": 850, "y": 1068}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id92": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 700, "y": 1362}], "E": -1}, {"S": -1, "M": [], "E": 2}],
+        "junctions": [{"x": 700, "y": 1062}],
+        "renderStyle": "standard"
+      }
+    },
+    "id93": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id94": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id95": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 700, "y": 1362}], "E": -1}, {"S": -1, "M": [], "E": 2}],
+        "junctions": [{"x": 700, "y": 942}],
+        "renderStyle": "standard"
+      }
+    },
+    "id96": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id97": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 840, "y": 972}, {"x": 840, "y": 1114}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id98": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id99": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 700, "y": 1510}, {"x": 700, "y": 1422}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id100": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 860, "y": 1392}, {"x": 860, "y": 1137}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id101": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id102": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 410, "y": 70}], "E": -1}, {"S": -1, "M": [], "E": 2}],
+        "junctions": [{"x": 410, "y": 737}],
+        "renderStyle": "standard"
+      }
+    },
+    "id103": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 410, "y": 130}, {"x": 410, "y": 737}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id104": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [], "E": -1}, {"S": -1, "M": [{"x": 410, "y": 737}], "E": 2}],
+        "junctions": [{"x": 410, "y": 100}],
+        "renderStyle": "standard"
+      }
+    },
+    "id105": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id106": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 380, "y": 820}, {"x": 380, "y": 790}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id107": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 380, "y": 850}, {"x": 380, "y": 790}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id108": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}}
+  }
+}
+end
+
+analysis F16ClosedLoopVizAnalysis
+  extends TransientAnalysis(stop = 30.0)
+  model = F16ClosedLoopViz()
+relations
+end

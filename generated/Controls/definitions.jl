@@ -17,6 +17,7 @@ if isfile(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Controls
 end
 
 import BlockComponents
+import DiscreteComponents
 import DyadControlSystems
 import DyadData
 import DyadInterface
@@ -196,13 +197,15 @@ component.
 end
 
 include("ClosedLoopModel_definition.jl")
+include("ClosedLoopVectorMuxedModel_definition.jl")
 include("F16ClosedLoopPerturbed_definition.jl")
-include("F16ClosedLoopVizMiniAnalysis_definition.jl")
-include("F16ClosedLoopVizMini_definition.jl")
+include("F16ClosedLoopVizAnalysis_definition.jl")
+include("F16ClosedLoopViz_definition.jl")
+include("F16LQGControllerAnalysisVectorMuxed_definition.jl")
 include("F16LQGControllerAnalysis_definition.jl")
+include("F16OpenLoopVizAnalysis_definition.jl")
+include("F16OpenLoopViz_definition.jl")
 include("F16OpenLoop_definition.jl")
-include("F16VizClosedLoopAnalysis_definition.jl")
-include("F16VizClosedLoop_definition.jl")
 include("Scenario0ClosedLoop_definition.jl")
 include("Scenario1ClosedLoop_definition.jl")
 include("Scenario1OpenLoop_definition.jl")

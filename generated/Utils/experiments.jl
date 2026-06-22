@@ -10,5 +10,7 @@ end
 
 
 include("Demux12_experiment.jl")
+include("Demux3_experiment.jl")
+include("Demux4x3_experiment.jl")
 include("Mux5_experiment.jl")
 include("SignalPoseSource_experiment.jl")

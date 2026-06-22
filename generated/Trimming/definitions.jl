@@ -17,6 +17,7 @@ if isfile(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Trimming
 end
 
 import BlockComponents
+import DiscreteComponents
 import DyadControlSystems
 import DyadData
 import DyadInterface
@@ -197,7 +198,9 @@ end
 
 include("F16OpenLoopTrimAnalysis_definition.jl")
 include("F16OpenLoopTrim_definition.jl")
-include("F16TrimV3Analysis_definition.jl")
-include("F16TrimV3_definition.jl")
+include("F16TrimAnalysis_definition.jl")
+include("F16Trim_definition.jl")
+include("F16TrimmedPlantLinkedAnalysis_definition.jl")
+include("F16TrimmedPlantLinked_definition.jl")
 include("F16VizTrimAnalysis_definition.jl")
 include("F16VizTrim_definition.jl")

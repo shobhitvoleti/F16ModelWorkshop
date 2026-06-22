@@ -10,8 +10,9 @@ end
 
 
 include("ClosedLoopModel_experiment.jl")
+include("ClosedLoopVectorMuxedModel_experiment.jl")
 include("F16ClosedLoopPerturbed_experiment.jl")
-include("F16ClosedLoopVizMini_experiment.jl")
+include("F16ClosedLoopViz_experiment.jl")
+include("F16OpenLoopViz_experiment.jl")
 include("F16OpenLoop_experiment.jl")
-include("F16VizClosedLoop_experiment.jl")
 include("TestClosedLoopModel_experiment.jl")

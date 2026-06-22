@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000">
+  <defs>
+    <linearGradient id="demuxGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#5b9bd5;stop-opacity:0.15" />
+      <stop offset="100%" style="stop-color:#5b9bd5;stop-opacity:0.05" />
+    </linearGradient>
+  </defs>
+
+  <!-- Trapezoid body: narrow on left (input), wide on right (outputs) -->
+  <polygon
+    points="150,400 850,10 850,990 150,600"
+    fill="url(#demuxGrad)"
+    stroke="#5b9bd5"
+    stroke-width="6"
+    stroke-linejoin="round"
+  />
+
+  <!-- Input signal line from port edge to trapezoid left face -->
+  <line x1="100" y1="500" x2="150" y2="500"
+        stroke="#5b9bd5" stroke-width="4" />
+
+  <!-- Diverging lines inside the trapezoid: input to each output -->
+  <g stroke="#5b9bd5" stroke-width="3" stroke-opacity="0.5" fill="none">
+    <line x1="150" y1="500" x2="850" y2="125" />
+    <line x1="150" y1="500" x2="850" y2="375" />
+    <line x1="150" y1="500" x2="850" y2="625" />
+    <line x1="150" y1="500" x2="850" y2="875" />
+  </g>
+
+  <!-- Output signal lines from trapezoid right face to port edges -->
+  <g stroke="#5b9bd5" stroke-width="4" fill="none">
+    <line x1="850" y1="125" x2="900" y2="125" />
+    <line x1="850" y1="375" x2="900" y2="375" />
+    <line x1="850" y1="625" x2="900" y2="625" />
+    <line x1="850" y1="875" x2="900" y2="875" />
+  </g>
+
+  <!-- Input port dot (vector) -->
+  <circle cx="100" cy="500" r="18" fill="#2e75b6" />
+  <circle cx="100" cy="500" r="10" fill="white" />
+  <circle cx="100" cy="500" r="6"  fill="#2e75b6" />
+
+  <!-- Output port dots (vectors) -->
+  <circle cx="900" cy="125" r="18" fill="#2e75b6" />
+  <circle cx="900" cy="125" r="10" fill="white" />
+  <circle cx="900" cy="125" r="6"  fill="#2e75b6" />
+  <circle cx="900" cy="375" r="18" fill="#2e75b6" />
+  <circle cx="900" cy="375" r="10" fill="white" />
+  <circle cx="900" cy="375" r="6"  fill="#2e75b6" />
+  <circle cx="900" cy="625" r="18" fill="#2e75b6" />
+  <circle cx="900" cy="625" r="10" fill="white" />
+  <circle cx="900" cy="625" r="6"  fill="#2e75b6" />
+  <circle cx="900" cy="875" r="18" fill="#2e75b6" />
+  <circle cx="900" cy="875" r="10" fill="white" />
+  <circle cx="900" cy="875" r="6"  fill="#2e75b6" />
+
+  <!-- Input label -->
+  <text x="75" y="500" font-family="monospace" font-size="48" fill="#2e75b6"
+        text-anchor="end" dominant-baseline="middle">u</text>
+
+  <!-- Output labels -->
+  <g font-family="monospace" font-size="48" fill="#2e75b6" text-anchor="start" dominant-baseline="middle">
+    <text x="925" y="125">y1</text>
+    <text x="925" y="375">y2</text>
+    <text x="925" y="625">y3</text>
+    <text x="925" y="875">y4</text>
+  </g>
+
+  <!-- Title -->
+  <text x="500" y="500" font-family="sans-serif" font-weight="bold" font-size="64"
+        fill="#2e75b6" text-anchor="middle" dominant-baseline="middle" opacity="0.6">
+    DEMUX
+  </text>
+</svg>

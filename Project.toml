@@ -1,13 +1,12 @@
 name = "F16ModelWorkshop"
 uuid = "583a9d02-f083-4e13-8666-022e634a307d"
 version = "0.1.0"
-authors = [
-  " <>"
-]
+authors = [" <>"]
 
 [deps]
 BlockComponents = "1ef5d832-be8e-447f-9f2c-8b5d17d15fd3"
 ControlSystemsBase = "aaaaaaaa-a6ca-5380-bf3e-84a91bcd477e"
+DiscreteComponents = "b5590941-51af-4a5a-9bca-5ae7cd448b75"
 DyadControlSystems = "6f9e59d0-2838-4fee-9bce-c163a6c9592b"
 DyadData = "cab12561-e36c-4498-ae70-c9a5e79fef2a"
 DyadInterface = "99806f68-afab-45ca-9d8c-ceff6bc61f54"
@@ -29,11 +28,19 @@ RotationalComponents = "824fa3ed-d7dc-4365-8bdf-ac77a1ac2011"
 Rotations = "6038ab10-8711-5258-84ad-4b1120ba62dc"
 RuntimeGeneratedFunctions = "7e49a35a-f44a-4d26-94aa-eba1b4ca6b47"
 Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
+SynchToolkit = "f500ffa8-9682-42ac-8d34-0ca7926c2e94"
+TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 ThermalComponents = "084a29d9-4f48-4925-95b4-b7d4c79725f4"
 TranslationalComponents = "42acc370-819b-4877-bdd6-eb3294461f5d"
 
+[sources]
+DiscreteComponents = {rev = "main", url = "https://github.com/JuliaComputing/DiscreteComponents.git"}
+MultibodyComponents = {rev = "main", url = "https://github.com/JuliaComputing/MultibodyComponents.jl.git"}
+SynchToolkit = {rev = "main", url = "https://github.com/JuliaComputing/SynchToolkit.jl.git"}
+
 [compat]
 BlockComponents = "=4.0.9"
+DiscreteComponents = "0.1.0"
 DyadData = "2.0.1"
 ElectricalComponents = "=2.2.1"
 FileIO = "1.19.0"
@@ -51,12 +58,8 @@ Symbolics = "7.22.0"
 ThermalComponents = "=2.0.5"
 TranslationalComponents = "=2.4.2"
 
-[sources.MultibodyComponents]
-url = "https://github.com/JuliaComputing/MultibodyComponents.jl.git"
-rev = "main"
-
 [dyad]
-kernel = "3.1.0-rc2"
+kernel = "3.1.1"
 
 [extras]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
@@ -65,9 +68,4 @@ Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = [
-  "CSV",
-  "DataFrames",
-  "Plots",
-  "Test"
-]
+test = ["CSV", "DataFrames", "Plots", "Test"]

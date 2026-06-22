@@ -9,10 +9,10 @@ component F16ClosedLoopPerturbed
   ref_epos = BlockComponents.Sources.Constant(k = 0) {^ref_epos}
   ref_alt = BlockComponents.Sources.Constant(k = 3000) {^ref_alt}
   ref_phi = BlockComponents.Sources.Constant(k = 0) {^ref_phi}
-  ref_theta = BlockComponents.Sources.Constant(k = -0.0170) {^ref_theta}
+  ref_theta = BlockComponents.Sources.Constant(k = -0.0169500) {^ref_theta}
   ref_psi = BlockComponents.Sources.Constant(k = 0) {^ref_psi}
   ref_vt = BlockComponents.Sources.Constant(k = 152.4) {^ref_vt}
-  ref_alpha = BlockComponents.Sources.Constant(k = -0.0170) {^ref_alpha}
+  ref_alpha = BlockComponents.Sources.Constant(k = -0.0169500) {^ref_alpha}
   ref_beta = BlockComponents.Sources.Constant(k = 0) {^ref_beta}
   ref_P = BlockComponents.Sources.Constant(k = 0) {^ref_P}
   ref_Q = BlockComponents.Sources.Constant(k = 0) {^ref_Q}
@@ -29,8 +29,8 @@ component F16ClosedLoopPerturbed
   error10 = BlockComponents.Math.Add(k1 = 1, k2 = -1) {^error10}
   error11 = BlockComponents.Math.Add(k1 = 1, k2 = -1) {^error11}
   error12 = BlockComponents.Math.Add(k1 = 1, k2 = -1) {^error12}
-  trim_T = BlockComponents.Sources.Constant(k = 44482.2) {^trim_T}
-  trim_el = BlockComponents.Sources.Constant(k = 0) {^trim_el}
+  trim_T = BlockComponents.Sources.Constant(k = 28696.2327) {^trim_T}
+  trim_el = BlockComponents.Sources.Constant(k = 2.6304783) {^trim_el}
   trim_ail = BlockComponents.Sources.Constant(k = 0) {^trim_ail}
   trim_rud = BlockComponents.Sources.Constant(k = 0) {^trim_rud}
   trim_lef = BlockComponents.Sources.Constant(k = 0) {^trim_lef}
@@ -574,7 +574,7 @@ end
 
 analysis Scenario1ClosedLoop
   "Closed-loop response to 10° pitch perturbation with LQG controller"
-  extends TransientAnalysis(stop = 0.0)
-  model = ClosedLoopModel()
+  extends TransientAnalysis(stop = 10.0)
+  model = F16ClosedLoopPerturbed()
 relations
 end

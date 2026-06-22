@@ -17,6 +17,8 @@ end
 
 @testset "`F16ModelWorkshop.Utils`" begin
 include("Demux12_test.jl")
+include("Demux3_test.jl")
+include("Demux4x3_test.jl")
 include("Mux5_test.jl")
 include("SignalPoseSource_test.jl")
 end

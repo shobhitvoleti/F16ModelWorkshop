@@ -8,11 +8,11 @@ using DyadInterface
 using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel
 using ModelingToolkit: SymbolicT, toggle_namespacing
 using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
-@kwdef mutable struct Scenario1ClosedLoopSpec <: AbstractTransientAnalysisSpec
-  name::Symbol = :Scenario1ClosedLoop
+@kwdef mutable struct F16ClosedLoopVizAnalysisSpec <: AbstractTransientAnalysisSpec
+  name::Symbol = :F16ClosedLoopVizAnalysis
   var"alg"::ODEAlg.Type = ODEAlg.Auto()
   var"start"::Float64 = 0
-  var"stop"::Float64 = 10.0
+  var"stop"::Float64 = 30.0
   var"abstol"::Float64 = 0.000001
   var"reltol"::Float64 = 0.000001
   var"saveat"::Float64 = 0
@@ -24,12 +24,11 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
   var"respecialize"::Bool = false
   var"verbose"::DEVerbosity.Type = DEVerbosity.Standard()
   var"log_file"::String = ""
-  # Scenario 1: Closed-Loop Model with LQG controller feedback.
-  # Demonstrates controller stabilization from 10° pitch perturbation.
-  var"model"::Union{Nothing, System} = F16ModelWorkshop.Controls.F16ClosedLoopPerturbed(; name=:F16ClosedLoopPerturbed)
+  # Closed-loop pitch recovery with 3-D OBJ visualizer (array-based plant via Mux5 + two-stage Demux)
+  var"model"::Union{Nothing, System} = F16ModelWorkshop.Controls.F16ClosedLoopViz(; name=:F16ClosedLoopViz)
 end
 
-function DyadInterface.run_analysis(spec::Scenario1ClosedLoopSpec)
+function DyadInterface.run_analysis(spec::F16ClosedLoopVizAnalysisSpec)
   overrides = Dict{SymbolicT, SymbolicT}()
   no_namespace_model = toggle_namespacing(spec.model, false)
   base_spec = TransientAnalysisSpec(;
@@ -38,5 +37,5 @@ function DyadInterface.run_analysis(spec::Scenario1ClosedLoopSpec)
   run_analysis(base_spec)
 end
 
-Scenario1ClosedLoop(;kwargs...) = run_analysis(Scenario1ClosedLoopSpec(;kwargs...))
-export Scenario1ClosedLoop, Scenario1ClosedLoopSpec
+F16ClosedLoopVizAnalysis(;kwargs...) = run_analysis(F16ClosedLoopVizAnalysisSpec(;kwargs...))
+export F16ClosedLoopVizAnalysis, F16ClosedLoopVizAnalysisSpec

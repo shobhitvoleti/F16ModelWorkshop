@@ -76,7 +76,7 @@ Demonstrates controller stabilization from 10° pitch perturbation.
   push!(__systems, @named ref_phi = BlockComponents.Sources.Constant(k=0, ref_phi_overrides...))
   # Subcomponent ref_theta of type BlockComponents.Sources.Constant
   ref_theta_overrides = __pop_subcomponent_overrides!(__overrides, "ref_theta")
-  push!(__systems, @named ref_theta = BlockComponents.Sources.Constant(k=-0.017, ref_theta_overrides...))
+  push!(__systems, @named ref_theta = BlockComponents.Sources.Constant(k=-0.01695, ref_theta_overrides...))
   # Subcomponent ref_psi of type BlockComponents.Sources.Constant
   ref_psi_overrides = __pop_subcomponent_overrides!(__overrides, "ref_psi")
   push!(__systems, @named ref_psi = BlockComponents.Sources.Constant(k=0, ref_psi_overrides...))
@@ -85,7 +85,7 @@ Demonstrates controller stabilization from 10° pitch perturbation.
   push!(__systems, @named ref_vt = BlockComponents.Sources.Constant(k=152.4, ref_vt_overrides...))
   # Subcomponent ref_alpha of type BlockComponents.Sources.Constant
   ref_alpha_overrides = __pop_subcomponent_overrides!(__overrides, "ref_alpha")
-  push!(__systems, @named ref_alpha = BlockComponents.Sources.Constant(k=-0.017, ref_alpha_overrides...))
+  push!(__systems, @named ref_alpha = BlockComponents.Sources.Constant(k=-0.01695, ref_alpha_overrides...))
   # Subcomponent ref_beta of type BlockComponents.Sources.Constant
   ref_beta_overrides = __pop_subcomponent_overrides!(__overrides, "ref_beta")
   push!(__systems, @named ref_beta = BlockComponents.Sources.Constant(k=0, ref_beta_overrides...))
@@ -136,10 +136,10 @@ Demonstrates controller stabilization from 10° pitch perturbation.
   push!(__systems, @named error12 = BlockComponents.Math.Add(k1=1, k2=-1, error12_overrides...))
   # Subcomponent trim_T of type BlockComponents.Sources.Constant
   trim_T_overrides = __pop_subcomponent_overrides!(__overrides, "trim_T")
-  push!(__systems, @named trim_T = BlockComponents.Sources.Constant(k=44482.2, trim_T_overrides...))
+  push!(__systems, @named trim_T = BlockComponents.Sources.Constant(k=28696.2327, trim_T_overrides...))
   # Subcomponent trim_el of type BlockComponents.Sources.Constant
   trim_el_overrides = __pop_subcomponent_overrides!(__overrides, "trim_el")
-  push!(__systems, @named trim_el = BlockComponents.Sources.Constant(k=0, trim_el_overrides...))
+  push!(__systems, @named trim_el = BlockComponents.Sources.Constant(k=2.6304783, trim_el_overrides...))
   # Subcomponent trim_ail of type BlockComponents.Sources.Constant
   trim_ail_overrides = __pop_subcomponent_overrides!(__overrides, "trim_ail")
   push!(__systems, @named trim_ail = BlockComponents.Sources.Constant(k=0, trim_ail_overrides...))

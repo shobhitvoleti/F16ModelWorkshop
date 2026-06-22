@@ -36,163 +36,48 @@ component ClosedLoopModel
   control_rud = BlockComponents.Math.Add(k1 = 1, k2 = 1) {^control_rud}
   control_lef = BlockComponents.Math.Add(k1 = 1, k2 = 1) {^control_lef}
 relations
-  # Trim operating point guesses for LQG linearization
-  # Plant differential states
-  guess f16plant.npos = 0.0
-  guess f16plant.epos = 0.0
   guess f16plant.vt = 152.4
   guess f16plant.alt = 3000.0
-  guess f16plant.phi = 0.0
   guess f16plant.theta = -0.0170
+  guess f16plant.phi = 0.0
   guess f16plant.psi = 0.0
   guess f16plant.alpha = -0.01695
   guess f16plant.beta = 0.0
   guess f16plant.P = 0.0
   guess f16plant.Q = 0.0
   guess f16plant.R = 0.0
-  # Plant control inputs
   guess f16plant.T = 28696.23
-  guess f16plant.el = 0.0459
-  guess f16plant.ail = 0.0
-  guess f16plant.rud = 0.0
-  guess f16plant.lef = 0.0
-  # Trig intermediates
-  guess f16plant.sa = -0.01695
-  guess f16plant.ca = 1.0
-  guess f16plant.sb = 0.0
-  guess f16plant.cb = 1.0
-  guess f16plant.st = -0.0170
-  guess f16plant.ct = 1.0
-  guess f16plant.tt = -0.0170
-  guess f16plant.sphi = 0.0
-  guess f16plant.cphi = 1.0
-  guess f16plant.spsi = 0.0
-  guess f16plant.cpsi = 1.0
-  # Body velocities
-  guess f16plant.U = 152.4
-  guess f16plant.V = 0.0
-  guess f16plant.W = -2.583
-  # Atmosphere
   guess f16plant.rho = 0.909
   guess f16plant.qbar = 10557.0
-  # Rad conversions
+  guess f16plant.Udot = 0.0
   guess f16plant.el_rad = 0.0008
   guess f16plant.ail_rad = 0.0
   guess f16plant.rud_rad = 0.0
   guess f16plant.lef_rad = 0.0
-  guess f16plant.alpha_rad = -0.01695
-  guess f16plant.beta_rad = 0.0
-  # Aero coefficients
   guess f16plant.Cx_tot = -0.103
   guess f16plant.Cy_tot = 0.0
-  guess f16plant.Cz_tot = -0.281
-  guess f16plant.Cl_tot = 0.0
-  guess f16plant.Cm_tot = 0.058
-  guess f16plant.Cn_tot = 0.0
-  # Force accelerations
-  guess f16plant.Udot = 0.0
-  guess f16plant.Vdot = 0.0
-  guess f16plant.Wdot = 0.9
-  # Moments
-  guess f16plant.L_tot = 0.0
-  guess f16plant.M_tot = 58612.0
-  guess f16plant.N_tot = 0.0
-  guess f16plant.denom = 1.1e9
-  # Plant input connectors
+  guess f16plant.npos_out = 0.0
+  guess f16plant.epos_out = 0.0
+  guess controller.x = fill(0.0, 12)
+  guess controller.u = fill(0.0, 12)
+  guess controller.y = fill(0.0, 5)
   guess f16plant.T_in = 28696.23
   guess f16plant.el_in = 0.0459
   guess f16plant.ail_in = 0.0
   guess f16plant.rud_in = 0.0
   guess f16plant.lef_in = 0.0
-  # Plant output connectors
-  guess f16plant.npos_out = 0.0
-  guess f16plant.epos_out = 0.0
-  guess f16plant.alt_out = 3000.0
-  guess f16plant.phi_out = 0.0
-  guess f16plant.theta_out = -0.0170
-  guess f16plant.psi_out = 0.0
-  guess f16plant.vt_out = 152.4
-  guess f16plant.alpha_out = -0.01695
-  guess f16plant.beta_out = 0.0
-  guess f16plant.P_out = 0.0
-  guess f16plant.Q_out = 0.0
-  guess f16plant.R_out = 0.0
-  # Controller states and I/O
-  guess controller.x = fill(0.0, 12)
-  guess controller.u = fill(0.0, 12)
-  guess controller.y = fill(0.0, 5)
-  # Reference source outputs
-  guess ref_npos.y = 0.0
-  guess ref_epos.y = 0.0
-  guess ref_alt.y = 3000.0
-  guess ref_phi.y = 0.0
-  guess ref_theta.y = -0.0170
-  guess ref_psi.y = 0.0
-  guess ref_vt.y = 152.4
-  guess ref_alpha.y = -0.01695
-  guess ref_beta.y = 0.0
-  guess ref_P.y = 0.0
-  guess ref_Q.y = 0.0
-  guess ref_R.y = 0.0
-  # Trim source outputs
-  guess trim_T.y = 28696.23
-  guess trim_el.y = 0.0459
-  guess trim_ail.y = 0.0
-  guess trim_rud.y = 0.0
-  guess trim_lef.y = 0.0
-  # Error block variables (at trim, all errors = 0)
-  guess error1.u1 = 0.0
   guess error1.u2 = 0.0
-  guess error1.y = 0.0
-  guess error2.u1 = 0.0
   guess error2.u2 = 0.0
-  guess error2.y = 0.0
-  guess error3.u1 = 3000.0
   guess error3.u2 = 3000.0
-  guess error3.y = 0.0
-  guess error4.u1 = 0.0
   guess error4.u2 = 0.0
-  guess error4.y = 0.0
-  guess error5.u1 = -0.0170
   guess error5.u2 = -0.0170
-  guess error5.y = 0.0
-  guess error6.u1 = 0.0
   guess error6.u2 = 0.0
-  guess error6.y = 0.0
-  guess error7.u1 = 152.4
   guess error7.u2 = 152.4
-  guess error7.y = 0.0
-  guess error8.u1 = -0.01695
   guess error8.u2 = -0.01695
-  guess error8.y = 0.0
-  guess error9.u1 = 0.0
   guess error9.u2 = 0.0
-  guess error9.y = 0.0
-  guess error10.u1 = 0.0
   guess error10.u2 = 0.0
-  guess error10.y = 0.0
-  guess error11.u1 = 0.0
   guess error11.u2 = 0.0
-  guess error11.y = 0.0
-  guess error12.u1 = 0.0
   guess error12.u2 = 0.0
-  guess error12.y = 0.0
-  # Control adder variables (at trim, controller output = 0)
-  guess control_T.u1 = 0.0
-  guess control_T.u2 = 28696.23
-  guess control_T.y = 28696.23
-  guess control_el.u1 = 0.0
-  guess control_el.u2 = 0.0459
-  guess control_el.y = 0.0459
-  guess control_ail.u1 = 0.0
-  guess control_ail.u2 = 0.0
-  guess control_ail.y = 0.0
-  guess control_rud.u1 = 0.0
-  guess control_rud.u2 = 0.0
-  guess control_rud.y = 0.0
-  guess control_lef.u1 = 0.0
-  guess control_lef.u2 = 0.0
-  guess control_lef.y = 0.0
   uT: analysis_point(control_T.y, f16plant.T_in)
   uEl: analysis_point(control_el.y, f16plant.el_in)
   uAil: analysis_point(control_ail.y, f16plant.ail_in)

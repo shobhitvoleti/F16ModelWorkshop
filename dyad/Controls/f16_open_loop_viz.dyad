@@ -1,0 +1,40 @@
+"Open-loop pitch perturbation with 3-D OBJ visualizer (constant trim commands, no feedback)"
+test component F16OpenLoopViz
+  # ---- Plant (10° pitch perturbation), vector I/O ----
+  plant = F16ModelWorkshop.Plant.F16PlantModel(alt_init = 3000, theta_init = 10 * pi / 180)
+  # ---- Constant trim commands: [T(N), el(deg), ail(deg), rud(deg), lef(deg)] ----
+  T_cmd = BlockComponents.Sources.Constant(k = 28696.2327)
+  el_cmd = BlockComponents.Sources.Constant(k = 2.6304783)
+  ail_cmd = BlockComponents.Sources.Constant(k = 0)
+  rud_cmd = BlockComponents.Sources.Constant(k = 0)
+  lef_cmd = BlockComponents.Sources.Constant(k = 0)
+  # ---- Signal routing: 5 scalar commands → u_in[1:5] ----
+  mux = F16ModelWorkshop.Utils.Mux5()
+  # ---- Pose source (converts signals → Frame3D) ----
+  pose = F16ModelWorkshop.Utils.SignalPoseSource()
+  # ---- 3-D visualization ----
+  viz = MultibodyComponents.ShapefileVisualizer(shapefile = joinpath("assets", "object", "F-16.obj"), shape_scale = 1.4, shape_transform = MultibodyComponents.Rp2T(MultibodyComponents.RotXYZ(0, 0, 0), [-32.9, 2.5, 0.1]))
+relations
+  # ===== Constant trim commands → mux → plant u_in[1:5] = [T, el, ail, rud, lef] =====
+  connect(T_cmd.y, mux.u1)
+  connect(el_cmd.y, mux.u2)
+  connect(ail_cmd.y, mux.u3)
+  connect(rud_cmd.y, mux.u4)
+  connect(lef_cmd.y, mux.u5)
+  connect(mux.y, plant.u_in)
+  # ===== Plant outputs → pose source (NED → Y-up) =====
+  connect(plant.y_out[1], pose.pos[1]) # npos → x
+  connect(plant.y_out[3], pose.pos[2]) # alt  → y
+  connect(plant.y_out[2], pose.pos[3]) # epos → z
+  connect(plant.y_out[4], pose.ang[1]) # roll  (phi)
+  connect(plant.y_out[5], pose.ang[2]) # pitch (theta)
+  connect(plant.y_out[6], pose.ang[3]) # yaw   (psi)
+  # ===== Pose → visualizer =====
+  connect(pose.frame_a, viz.frame_a)
+end
+
+analysis F16OpenLoopVizAnalysis
+  extends TransientAnalysis(stop = 30.0)
+  model = F16OpenLoopViz()
+relations
+end

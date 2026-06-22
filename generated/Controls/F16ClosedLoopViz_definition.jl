@@ -7,16 +7,16 @@
 import Moshi as __Ext__Moshi
 
 @doc Markdown.doc"""
-   F16ClosedLoopVizMini(; name)
+   F16ClosedLoopViz(; name)
 
-Closed-loop pitch recovery with 3-D OBJ visualizer
+Closed-loop pitch recovery with 3-D OBJ visualizer (array-based plant via Mux5 + two-stage Demux)
 """
-@component function F16ClosedLoopVizMini(; name = nothing, kwargs...)
+@component function F16ClosedLoopViz(; name = nothing, kwargs...)
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
   
-    @named model = F16ClosedLoopVizMini()
+    @named model = F16ClosedLoopViz()
   """))
 
   __overrides = __build_overrides(kwargs)
@@ -55,9 +55,27 @@ Closed-loop pitch recovery with 3-D OBJ visualizer
   __constants = Any[]
 
   ### Components
-  # Subcomponent f16plant of type F16ModelWorkshop.Plant.F16PlantIO
+  # Subcomponent f16plant of type F16ModelWorkshop.Plant.F16PlantModel
   f16plant_overrides = __pop_subcomponent_overrides!(__overrides, "f16plant")
-  push!(__systems, @named f16plant = F16ModelWorkshop.Plant.F16PlantIO(alt_init=3000, theta_init=10 * pi / 180, f16plant_overrides...))
+  push!(__systems, @named f16plant = F16ModelWorkshop.Plant.F16PlantModel(alt_init=3000, theta_init=10 * pi / 180, f16plant_overrides...))
+  # Subcomponent mux of type F16ModelWorkshop.Utils.Mux5
+  mux_overrides = __pop_subcomponent_overrides!(__overrides, "mux")
+  push!(__systems, @named mux = F16ModelWorkshop.Utils.Mux5(mux_overrides...))
+  # Subcomponent demux of type F16ModelWorkshop.Utils.Demux4x3
+  demux_overrides = __pop_subcomponent_overrides!(__overrides, "demux")
+  push!(__systems, @named demux = F16ModelWorkshop.Utils.Demux4x3(demux_overrides...))
+  # Subcomponent demux_pos of type F16ModelWorkshop.Utils.Demux3
+  demux_pos_overrides = __pop_subcomponent_overrides!(__overrides, "demux_pos")
+  push!(__systems, @named demux_pos = F16ModelWorkshop.Utils.Demux3(demux_pos_overrides...))
+  # Subcomponent demux_att of type F16ModelWorkshop.Utils.Demux3
+  demux_att_overrides = __pop_subcomponent_overrides!(__overrides, "demux_att")
+  push!(__systems, @named demux_att = F16ModelWorkshop.Utils.Demux3(demux_att_overrides...))
+  # Subcomponent demux_air of type F16ModelWorkshop.Utils.Demux3
+  demux_air_overrides = __pop_subcomponent_overrides!(__overrides, "demux_air")
+  push!(__systems, @named demux_air = F16ModelWorkshop.Utils.Demux3(demux_air_overrides...))
+  # Subcomponent demux_rate of type F16ModelWorkshop.Utils.Demux3
+  demux_rate_overrides = __pop_subcomponent_overrides!(__overrides, "demux_rate")
+  push!(__systems, @named demux_rate = F16ModelWorkshop.Utils.Demux3(demux_rate_overrides...))
   # Subcomponent controller of type BlockComponents.Continuous.StateSpace
   controller_overrides = __pop_subcomponent_overrides!(__overrides, "controller")
   push!(__systems, @named controller = BlockComponents.Continuous.StateSpace(nx=12, nu=12, ny=5, A=ControllerA, B=ControllerB, C=ControllerC, D=ControllerD, x0=fill(0.0, 12), u0=fill(0.0, 12), y0=fill(0.0, 5), controller_overrides...))
@@ -75,7 +93,7 @@ Closed-loop pitch recovery with 3-D OBJ visualizer
   push!(__systems, @named ref_phi = BlockComponents.Sources.Constant(k=0, ref_phi_overrides...))
   # Subcomponent ref_theta of type BlockComponents.Sources.Constant
   ref_theta_overrides = __pop_subcomponent_overrides!(__overrides, "ref_theta")
-  push!(__systems, @named ref_theta = BlockComponents.Sources.Constant(k=-0.017, ref_theta_overrides...))
+  push!(__systems, @named ref_theta = BlockComponents.Sources.Constant(k=-0.01695, ref_theta_overrides...))
   # Subcomponent ref_psi of type BlockComponents.Sources.Constant
   ref_psi_overrides = __pop_subcomponent_overrides!(__overrides, "ref_psi")
   push!(__systems, @named ref_psi = BlockComponents.Sources.Constant(k=0, ref_psi_overrides...))
@@ -84,7 +102,7 @@ Closed-loop pitch recovery with 3-D OBJ visualizer
   push!(__systems, @named ref_vt = BlockComponents.Sources.Constant(k=152.4, ref_vt_overrides...))
   # Subcomponent ref_alpha of type BlockComponents.Sources.Constant
   ref_alpha_overrides = __pop_subcomponent_overrides!(__overrides, "ref_alpha")
-  push!(__systems, @named ref_alpha = BlockComponents.Sources.Constant(k=-0.017, ref_alpha_overrides...))
+  push!(__systems, @named ref_alpha = BlockComponents.Sources.Constant(k=-0.01695, ref_alpha_overrides...))
   # Subcomponent ref_beta of type BlockComponents.Sources.Constant
   ref_beta_overrides = __pop_subcomponent_overrides!(__overrides, "ref_beta")
   push!(__systems, @named ref_beta = BlockComponents.Sources.Constant(k=0, ref_beta_overrides...))
@@ -135,10 +153,10 @@ Closed-loop pitch recovery with 3-D OBJ visualizer
   push!(__systems, @named error12 = BlockComponents.Math.Add(k1=1, k2=-1, error12_overrides...))
   # Subcomponent trim_T of type BlockComponents.Sources.Constant
   trim_T_overrides = __pop_subcomponent_overrides!(__overrides, "trim_T")
-  push!(__systems, @named trim_T = BlockComponents.Sources.Constant(k=44482.2, trim_T_overrides...))
+  push!(__systems, @named trim_T = BlockComponents.Sources.Constant(k=28696.2327, trim_T_overrides...))
   # Subcomponent trim_el of type BlockComponents.Sources.Constant
   trim_el_overrides = __pop_subcomponent_overrides!(__overrides, "trim_el")
-  push!(__systems, @named trim_el = BlockComponents.Sources.Constant(k=0, trim_el_overrides...))
+  push!(__systems, @named trim_el = BlockComponents.Sources.Constant(k=2.6304783, trim_el_overrides...))
   # Subcomponent trim_ail of type BlockComponents.Sources.Constant
   trim_ail_overrides = __pop_subcomponent_overrides!(__overrides, "trim_ail")
   push!(__systems, @named trim_ail = BlockComponents.Sources.Constant(k=0, trim_ail_overrides...))
@@ -181,6 +199,11 @@ Closed-loop pitch recovery with 3-D OBJ visualizer
   __assertions = []
 
   ### Equations
+  push!(__eqs, connect(f16plant.y_out, demux.u))
+  push!(__eqs, connect(demux.y1, demux_pos.u))
+  push!(__eqs, connect(demux.y2, demux_att.u))
+  push!(__eqs, connect(demux.y3, demux_air.u))
+  push!(__eqs, connect(demux.y4, demux_rate.u))
   push!(__eqs, connect(ref_npos.y, error1.u1))
   push!(__eqs, connect(ref_epos.y, error2.u1))
   push!(__eqs, connect(ref_alt.y, error3.u1))
@@ -193,54 +216,55 @@ Closed-loop pitch recovery with 3-D OBJ visualizer
   push!(__eqs, connect(ref_P.y, error10.u1))
   push!(__eqs, connect(ref_Q.y, error11.u1))
   push!(__eqs, connect(ref_R.y, error12.u1))
-  push!(__eqs, connect(f16plant.npos_out, error1.u2))
-  push!(__eqs, connect(f16plant.epos_out, error2.u2))
-  push!(__eqs, connect(f16plant.alt_out, error3.u2))
-  push!(__eqs, connect(f16plant.phi_out, error4.u2))
-  push!(__eqs, connect(f16plant.theta_out, error5.u2))
-  push!(__eqs, connect(f16plant.psi_out, error6.u2))
-  push!(__eqs, connect(f16plant.vt_out, error7.u2))
-  push!(__eqs, connect(f16plant.alpha_out, error8.u2))
-  push!(__eqs, connect(f16plant.beta_out, error9.u2))
-  push!(__eqs, connect(f16plant.P_out, error10.u2))
-  push!(__eqs, connect(f16plant.Q_out, error11.u2))
-  push!(__eqs, connect(f16plant.R_out, error12.u2))
-  push!(__eqs, connect(error1.y, controller.u[1]))
-  push!(__eqs, connect(error2.y, controller.u[2]))
-  push!(__eqs, connect(error3.y, controller.u[3]))
-  push!(__eqs, connect(error4.y, controller.u[4]))
-  push!(__eqs, connect(error5.y, controller.u[5]))
-  push!(__eqs, connect(error6.y, controller.u[6]))
-  push!(__eqs, connect(error7.y, controller.u[7]))
-  push!(__eqs, connect(error8.y, controller.u[8]))
-  push!(__eqs, connect(error9.y, controller.u[9]))
-  push!(__eqs, connect(error10.y, controller.u[10]))
-  push!(__eqs, connect(error11.y, controller.u[11]))
-  push!(__eqs, connect(error12.y, controller.u[12]))
-  push!(__eqs, connect(controller.y[1], control_T.u1))
+  push!(__eqs, connect(demux_pos.y1, error1.u2))
+  push!(__eqs, connect(demux_pos.y2, error2.u2))
+  push!(__eqs, connect(demux_pos.y3, error3.u2))
+  push!(__eqs, connect(demux_att.y1, error4.u2))
+  push!(__eqs, connect(demux_att.y2, error5.u2))
+  push!(__eqs, connect(demux_att.y3, error6.u2))
+  push!(__eqs, connect(demux_air.y1, error7.u2))
+  push!(__eqs, connect(demux_air.y2, error8.u2))
+  push!(__eqs, connect(demux_air.y3, error9.u2))
+  push!(__eqs, connect(demux_rate.y1, error10.u2))
+  push!(__eqs, connect(demux_rate.y2, error11.u2))
+  push!(__eqs, connect(demux_rate.y3, error12.u2))
+  push!(__eqs, connect(error1.y, controller.u))
+  push!(__eqs, connect(error2.y, controller.u))
+  push!(__eqs, connect(error3.y, controller.u))
+  push!(__eqs, connect(error4.y, controller.u))
+  push!(__eqs, connect(error5.y, controller.u))
+  push!(__eqs, connect(error6.y, controller.u))
+  push!(__eqs, connect(error7.y, controller.u))
+  push!(__eqs, connect(error8.y, controller.u))
+  push!(__eqs, connect(error9.y, controller.u))
+  push!(__eqs, connect(error10.y, controller.u))
+  push!(__eqs, connect(error11.y, controller.u))
+  push!(__eqs, connect(error12.y, controller.u))
+  push!(__eqs, connect(controller.y, control_T.u1))
   push!(__eqs, connect(trim_T.y, control_T.u2))
-  push!(__eqs, connect(control_T.y, f16plant.T_in))
-  push!(__eqs, connect(controller.y[2], control_el.u1))
+  push!(__eqs, connect(control_T.y, mux.u1))
+  push!(__eqs, connect(controller.y, control_el.u1))
   push!(__eqs, connect(trim_el.y, control_el.u2))
-  push!(__eqs, connect(control_el.y, f16plant.el_in))
-  push!(__eqs, connect(controller.y[3], control_ail.u1))
+  push!(__eqs, connect(control_el.y, mux.u2))
+  push!(__eqs, connect(controller.y, control_ail.u1))
   push!(__eqs, connect(trim_ail.y, control_ail.u2))
-  push!(__eqs, connect(control_ail.y, f16plant.ail_in))
-  push!(__eqs, connect(controller.y[4], control_rud.u1))
+  push!(__eqs, connect(control_ail.y, mux.u3))
+  push!(__eqs, connect(controller.y, control_rud.u1))
   push!(__eqs, connect(trim_rud.y, control_rud.u2))
-  push!(__eqs, connect(control_rud.y, f16plant.rud_in))
-  push!(__eqs, connect(controller.y[5], control_lef.u1))
+  push!(__eqs, connect(control_rud.y, mux.u4))
+  push!(__eqs, connect(controller.y, control_lef.u1))
   push!(__eqs, connect(trim_lef.y, control_lef.u2))
-  push!(__eqs, connect(control_lef.y, f16plant.lef_in))
-  push!(__eqs, connect(f16plant.npos_out, pose.pos[1]))
-  push!(__eqs, connect(f16plant.alt_out, pose.pos[2]))
-  push!(__eqs, connect(f16plant.epos_out, pose.pos[3]))
-  push!(__eqs, connect(f16plant.phi_out, pose.ang[1]))
-  push!(__eqs, connect(f16plant.theta_out, pose.ang[2]))
-  push!(__eqs, connect(f16plant.psi_out, pose.ang[3]))
+  push!(__eqs, connect(control_lef.y, mux.u5))
+  push!(__eqs, connect(mux.y, f16plant.u_in))
+  push!(__eqs, connect(demux_pos.y1, pose.pos))
+  push!(__eqs, connect(demux_pos.y3, pose.pos))
+  push!(__eqs, connect(demux_pos.y2, pose.pos))
+  push!(__eqs, connect(demux_att.y1, pose.ang))
+  push!(__eqs, connect(demux_att.y2, pose.ang))
+  push!(__eqs, connect(demux_att.y3, pose.ang))
   push!(__eqs, connect(pose.frame_a, viz.frame_a))
 
   # Return completely constructed System
   return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
-export F16ClosedLoopVizMini
+export F16ClosedLoopViz

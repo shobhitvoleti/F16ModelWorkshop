@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000">
+  <!-- Monochrome animated F-16 plant icon:
+       u_in control bus (left) → 6-DOF airframe → y_out state bus (right). -->
+
+  <!-- Component body -->
+  <rect x="150" y="120" width="700" height="760" rx="60" ry="60"
+        fill="#2e75b6" fill-opacity="0.06" stroke="#2e75b6" stroke-width="6" />
+
+  <!-- Input port: u_in (control bus, vector) -->
+  <line x1="100" y1="500" x2="150" y2="500" stroke="#2e75b6" stroke-width="4" />
+  <circle cx="100" cy="500" r="16" fill="#2e75b6" />
+  <circle cx="100" cy="500" r="8"  fill="white" />
+  <circle cx="100" cy="500" r="4"  fill="#2e75b6" />
+  <text x="180" y="455" font-family="monospace" font-size="42" fill="#2e75b6"
+        text-anchor="start" dominant-baseline="middle">u_in</text>
+
+  <!-- Output port: y_out (state bus, vector) -->
+  <line x1="850" y1="500" x2="900" y2="500" stroke="#2e75b6" stroke-width="4" />
+  <circle cx="900" cy="500" r="16" fill="#2e75b6" />
+  <circle cx="900" cy="500" r="8"  fill="white" />
+  <circle cx="900" cy="500" r="4"  fill="#2e75b6" />
+  <text x="820" y="455" font-family="monospace" font-size="42" fill="#2e75b6"
+        text-anchor="end" dominant-baseline="middle">y_out</text>
+
+  <!-- Faint heading/envelope ring -->
+  <circle cx="500" cy="460" r="235" fill="none" stroke="#2e75b6" stroke-width="4"
+          stroke-opacity="0.22" stroke-dasharray="10 20" />
+
+  <!-- Animated F-16 planform -->
+  <g transform="translate(500,460)">
+    <!-- weave (yaw oscillation) -->
+    <g>
+      <animateTransform attributeName="transform" type="rotate"
+                        values="-8;8;-8" dur="6s" repeatCount="indefinite" />
+      <!-- bob -->
+      <g>
+        <animateTransform attributeName="transform" type="translate"
+                          values="0,-12; 0,12; 0,-12" dur="5s" repeatCount="indefinite" />
+        <!-- scale up and orient nose toward top -->
+        <g transform="scale(6) rotate(-90)" fill="#2e75b6" fill-opacity="0.9" stroke="none">
+          <!-- fuselage -->
+          <path d="M 46,0 L 14,5 L -44,5 L -52,0 L -44,-5 L 14,-5 Z" />
+          <!-- main wings -->
+          <path d="M 12,5 L 6,34 L -10,34 L -14,5 Z" />
+          <path d="M 12,-5 L 6,-34 L -10,-34 L -14,-5 Z" />
+          <!-- tailplanes -->
+          <path d="M -36,5 L -44,20 L -52,20 L -48,5 Z" />
+          <path d="M -36,-5 L -44,-20 L -52,-20 L -48,-5 Z" />
+          <!-- vertical fin -->
+          <path d="M -40,0 L -56,0 L -58,-12 L -46,-2 Z" />
+          <!-- canopy -->
+          <path d="M 26,0 L 18,3 L 8,0 L 18,-3 Z" fill-opacity="0.45" />
+        </g>
+      </g>
+    </g>
+  </g>
+
+  <!-- Label -->
+  <text x="500" y="835" font-family="sans-serif" font-weight="bold" font-size="48"
+        fill="#2e75b6" text-anchor="middle" dominant-baseline="middle" opacity="0.7">F-16</text>
+</svg>

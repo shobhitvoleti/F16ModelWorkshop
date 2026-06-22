@@ -8,11 +8,11 @@ using DyadInterface
 using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel
 using ModelingToolkit: SymbolicT, toggle_namespacing
 using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
-@kwdef mutable struct F16ClosedLoopVizMiniAnalysisSpec <: AbstractTransientAnalysisSpec
-  name::Symbol = :F16ClosedLoopVizMiniAnalysis
+@kwdef mutable struct F16TrimmedPlantLinkedAnalysisSpec <: AbstractTransientAnalysisSpec
+  name::Symbol = :F16TrimmedPlantLinkedAnalysis
   var"alg"::ODEAlg.Type = ODEAlg.Auto()
   var"start"::Float64 = 0
-  var"stop"::Float64 = 30.0
+  var"stop"::Float64 = 10.0
   var"abstol"::Float64 = 0.000001
   var"reltol"::Float64 = 0.000001
   var"saveat"::Float64 = 0
@@ -24,11 +24,23 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
   var"respecialize"::Bool = false
   var"verbose"::DEVerbosity.Type = DEVerbosity.Standard()
   var"log_file"::String = ""
-  # Closed-loop pitch recovery with 3-D OBJ visualizer
-  var"model"::Union{Nothing, System} = F16ModelWorkshop.Controls.F16ClosedLoopVizMini(; name=:F16ClosedLoopVizMini)
+  # Trimmed-plant scenario.
+  # 
+  # Every control input (Constant `k`) and plant initial condition (`*_init`)
+  # defaults to `F16ModelWorkshop.load_trim`, reading `trim/trim_point.toml` at
+  # build time. Workflow:
+  #   1. Run `F16ModelWorkshop.TrimPlantAnalysis()` to compute the trim and write
+  #      `trim/trim_point.toml` (keyed by this component's instance paths —
+  #      `T_cmd.k`, ..., `plant.alpha_init`).
+  #   2. Run `F16TrimmedPlantLinkedAnalysis` — the values are loaded from the file
+  #      at build time and the states hold steady at the trim. Re-run step 1 and the
+  #      next build picks up the new operating point automatically.
+  # 
+  # Signal flow: Constants -> Mux5 -> F16PlantModel
+  var"model"::Union{Nothing, System} = F16ModelWorkshop.Trimming.F16TrimmedPlantLinked(; name=:F16TrimmedPlantLinked)
 end
 
-function DyadInterface.run_analysis(spec::F16ClosedLoopVizMiniAnalysisSpec)
+function DyadInterface.run_analysis(spec::F16TrimmedPlantLinkedAnalysisSpec)
   overrides = Dict{SymbolicT, SymbolicT}()
   no_namespace_model = toggle_namespacing(spec.model, false)
   base_spec = TransientAnalysisSpec(;
@@ -37,5 +49,5 @@ function DyadInterface.run_analysis(spec::F16ClosedLoopVizMiniAnalysisSpec)
   run_analysis(base_spec)
 end
 
-F16ClosedLoopVizMiniAnalysis(;kwargs...) = run_analysis(F16ClosedLoopVizMiniAnalysisSpec(;kwargs...))
-export F16ClosedLoopVizMiniAnalysis, F16ClosedLoopVizMiniAnalysisSpec
+F16TrimmedPlantLinkedAnalysis(;kwargs...) = run_analysis(F16TrimmedPlantLinkedAnalysisSpec(;kwargs...))
+export F16TrimmedPlantLinkedAnalysis, F16TrimmedPlantLinkedAnalysisSpec
