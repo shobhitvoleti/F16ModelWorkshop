@@ -11,7 +11,7 @@ import Moshi as __Ext__Moshi
 
 Scenario 1: Disturbance Rejection - Open-Loop vs Closed-Loop
 
-Open-loop model in this file. Closed-loop model in scenario2_closed_loop.dyad.
+Open-loop model in this file. Closed-loop model in scenario1_closed_loop.dyad.
 Both demonstrate LQG controller effectiveness against 10° pitch perturbation.
 """
 @component function F16OpenLoop(; name = nothing, kwargs...)

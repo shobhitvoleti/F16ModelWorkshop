@@ -26,7 +26,7 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
   var"log_file"::String = ""
   # Scenario 1: Disturbance Rejection - Open-Loop vs Closed-Loop
   # 
-  # Open-loop model in this file. Closed-loop model in scenario2_closed_loop.dyad.
+  # Open-loop model in this file. Closed-loop model in scenario1_closed_loop.dyad.
   # Both demonstrate LQG controller effectiveness against 10° pitch perturbation.
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Controls.F16OpenLoop(; name=:F16OpenLoop)
 end

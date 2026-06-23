@@ -9,16 +9,18 @@ import Moshi as __Ext__Moshi
 @doc Markdown.doc"""
    ClosedLoopVectorMuxedModel(; name)
 
-Mux/demux variant of ClosedLoopVectorModel.
+Mux/demux variant of ClosedLoopModel.
 
-Identical plant, controller, reference, error, trim and control blocks, but the
+Same controller, reference, error, trim and control blocks as ClosedLoopModel,
+but the scalar F16PlantIO is replaced with the vector-I/O F16PlantModel and the
 plant-boundary wiring is routed through a Mux5 (5 control outputs -> u_in[1:5])
-and a Demux12 (y_out[1:12] -> 12 scalar measurements). The 17 analysis points
-are kept SCALAR and relocated onto the mux-input / demux-output edges:
-  control_X.y --[uX AP]--> mux.uX          (mux.y -> f16plant.u_in, pass-through)
-  demux.yK   --[yK AP]--> errorN.u2        (f16plant.y_out -> demux.u, pass-through)
-Since Mux5/Demux12 are pure algebraic pass-throughs, the linearized plant the
-LQG analysis sees is unchanged. Tests whether mux/demux breaks AP name resolution.
+and a two-stage demux (Demux4x3 splits y_out[1:12] into four [3] arrays, then
+four Demux3 split those into 12 scalar measurements). The 17 analysis points are
+kept SCALAR and relocated onto the mux-input / demux-output edges:
+  control_X.y --[uX AP]--> mux.uX           (mux.y -> f16plant.u_in, pass-through)
+  demux_*.yK  --[yK AP]--> errorN.u2        (f16plant.y_out -> demux -> demux_*, pass-through)
+Since the mux/demux blocks are pure algebraic pass-throughs, the linearized plant
+the LQG analysis sees is unchanged. Tests whether mux/demux breaks AP name resolution.
 """
 @component function ClosedLoopVectorMuxedModel(; name = nothing, kwargs...)
   isnothing(name) && throw(ArgumentError("""
