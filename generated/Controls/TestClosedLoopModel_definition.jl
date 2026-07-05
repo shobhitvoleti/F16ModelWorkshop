@@ -55,115 +55,115 @@ import Moshi as __Ext__Moshi
   ### Components
   # Subcomponent f16plant of type F16ModelWorkshop.Plant.F16PlantIO
   f16plant_overrides = __pop_subcomponent_overrides!(__overrides, "f16plant")
-  push!(__systems, @named f16plant = F16ModelWorkshop.Plant.F16PlantIO(alt_init=3000, alpha_init=-0.01695, f16plant_overrides...))
+  push!(__systems, @named f16plant = F16ModelWorkshop.Plant.F16PlantIO(; alt_init=Float64(3000), alpha_init=-0.01695, f16plant_overrides...))
   # Subcomponent controller of type BlockComponents.Continuous.StateSpace
   controller_overrides = __pop_subcomponent_overrides!(__overrides, "controller")
-  push!(__systems, @named controller = BlockComponents.Continuous.StateSpace(nx=12, nu=12, ny=5, A=ControllerA, B=ControllerB, C=ControllerC, D=ControllerD, x0=fill(0.0, 12), u0=fill(0.0, 12), y0=fill(0.0, 5), controller_overrides...))
+  push!(__systems, @named controller = BlockComponents.Continuous.StateSpace(; nx=12, nu=12, ny=5, A=ControllerA, B=ControllerB, C=ControllerC, D=ControllerD, x0=fill(0.0, 12), u0=fill(0.0, 12), y0=fill(0.0, 5), controller_overrides...))
   # Subcomponent ref_npos of type BlockComponents.Sources.Constant
   ref_npos_overrides = __pop_subcomponent_overrides!(__overrides, "ref_npos")
-  push!(__systems, @named ref_npos = BlockComponents.Sources.Constant(k=missing, ref_npos_overrides...))
+  push!(__systems, @named ref_npos = BlockComponents.Sources.Constant(; k=missing, ref_npos_overrides...))
   # Subcomponent ref_epos of type BlockComponents.Sources.Constant
   ref_epos_overrides = __pop_subcomponent_overrides!(__overrides, "ref_epos")
-  push!(__systems, @named ref_epos = BlockComponents.Sources.Constant(k=missing, ref_epos_overrides...))
+  push!(__systems, @named ref_epos = BlockComponents.Sources.Constant(; k=missing, ref_epos_overrides...))
   # Subcomponent ref_alt of type BlockComponents.Sources.Constant
   ref_alt_overrides = __pop_subcomponent_overrides!(__overrides, "ref_alt")
-  push!(__systems, @named ref_alt = BlockComponents.Sources.Constant(k=3000, ref_alt_overrides...))
+  push!(__systems, @named ref_alt = BlockComponents.Sources.Constant(; k=Float64(3000), ref_alt_overrides...))
   # Subcomponent ref_phi of type BlockComponents.Sources.Constant
   ref_phi_overrides = __pop_subcomponent_overrides!(__overrides, "ref_phi")
-  push!(__systems, @named ref_phi = BlockComponents.Sources.Constant(k=0, ref_phi_overrides...))
+  push!(__systems, @named ref_phi = BlockComponents.Sources.Constant(; k=Float64(0), ref_phi_overrides...))
   # Subcomponent ref_theta of type BlockComponents.Sources.Constant
   ref_theta_overrides = __pop_subcomponent_overrides!(__overrides, "ref_theta")
-  push!(__systems, @named ref_theta = BlockComponents.Sources.Constant(k=-0.017, ref_theta_overrides...))
+  push!(__systems, @named ref_theta = BlockComponents.Sources.Constant(; k=-0.017, ref_theta_overrides...))
   # Subcomponent ref_psi of type BlockComponents.Sources.Constant
   ref_psi_overrides = __pop_subcomponent_overrides!(__overrides, "ref_psi")
-  push!(__systems, @named ref_psi = BlockComponents.Sources.Constant(k=0, ref_psi_overrides...))
+  push!(__systems, @named ref_psi = BlockComponents.Sources.Constant(; k=Float64(0), ref_psi_overrides...))
   # Subcomponent ref_vt of type BlockComponents.Sources.Constant
   ref_vt_overrides = __pop_subcomponent_overrides!(__overrides, "ref_vt")
-  push!(__systems, @named ref_vt = BlockComponents.Sources.Constant(k=152.4, ref_vt_overrides...))
+  push!(__systems, @named ref_vt = BlockComponents.Sources.Constant(; k=152.4, ref_vt_overrides...))
   # Subcomponent ref_alpha of type BlockComponents.Sources.Constant
   ref_alpha_overrides = __pop_subcomponent_overrides!(__overrides, "ref_alpha")
-  push!(__systems, @named ref_alpha = BlockComponents.Sources.Constant(k=-0.01695, ref_alpha_overrides...))
+  push!(__systems, @named ref_alpha = BlockComponents.Sources.Constant(; k=-0.01695, ref_alpha_overrides...))
   # Subcomponent ref_beta of type BlockComponents.Sources.Constant
   ref_beta_overrides = __pop_subcomponent_overrides!(__overrides, "ref_beta")
-  push!(__systems, @named ref_beta = BlockComponents.Sources.Constant(k=0, ref_beta_overrides...))
+  push!(__systems, @named ref_beta = BlockComponents.Sources.Constant(; k=Float64(0), ref_beta_overrides...))
   # Subcomponent ref_P of type BlockComponents.Sources.Constant
   ref_P_overrides = __pop_subcomponent_overrides!(__overrides, "ref_P")
-  push!(__systems, @named ref_P = BlockComponents.Sources.Constant(k=0, ref_P_overrides...))
+  push!(__systems, @named ref_P = BlockComponents.Sources.Constant(; k=Float64(0), ref_P_overrides...))
   # Subcomponent ref_Q of type BlockComponents.Sources.Constant
   ref_Q_overrides = __pop_subcomponent_overrides!(__overrides, "ref_Q")
-  push!(__systems, @named ref_Q = BlockComponents.Sources.Constant(k=0, ref_Q_overrides...))
+  push!(__systems, @named ref_Q = BlockComponents.Sources.Constant(; k=Float64(0), ref_Q_overrides...))
   # Subcomponent ref_R of type BlockComponents.Sources.Constant
   ref_R_overrides = __pop_subcomponent_overrides!(__overrides, "ref_R")
-  push!(__systems, @named ref_R = BlockComponents.Sources.Constant(k=0, ref_R_overrides...))
+  push!(__systems, @named ref_R = BlockComponents.Sources.Constant(; k=Float64(0), ref_R_overrides...))
   # Subcomponent error1 of type BlockComponents.Math.Add
   error1_overrides = __pop_subcomponent_overrides!(__overrides, "error1")
-  push!(__systems, @named error1 = BlockComponents.Math.Add(k1=1, k2=-1, error1_overrides...))
+  push!(__systems, @named error1 = BlockComponents.Math.Add(; k1=Float64(1), k2=Float64(-1), error1_overrides...))
   # Subcomponent error2 of type BlockComponents.Math.Add
   error2_overrides = __pop_subcomponent_overrides!(__overrides, "error2")
-  push!(__systems, @named error2 = BlockComponents.Math.Add(k1=1, k2=-1, error2_overrides...))
+  push!(__systems, @named error2 = BlockComponents.Math.Add(; k1=Float64(1), k2=Float64(-1), error2_overrides...))
   # Subcomponent error3 of type BlockComponents.Math.Add
   error3_overrides = __pop_subcomponent_overrides!(__overrides, "error3")
-  push!(__systems, @named error3 = BlockComponents.Math.Add(k1=1, k2=-1, error3_overrides...))
+  push!(__systems, @named error3 = BlockComponents.Math.Add(; k1=Float64(1), k2=Float64(-1), error3_overrides...))
   # Subcomponent error4 of type BlockComponents.Math.Add
   error4_overrides = __pop_subcomponent_overrides!(__overrides, "error4")
-  push!(__systems, @named error4 = BlockComponents.Math.Add(k1=1, k2=-1, error4_overrides...))
+  push!(__systems, @named error4 = BlockComponents.Math.Add(; k1=Float64(1), k2=Float64(-1), error4_overrides...))
   # Subcomponent error5 of type BlockComponents.Math.Add
   error5_overrides = __pop_subcomponent_overrides!(__overrides, "error5")
-  push!(__systems, @named error5 = BlockComponents.Math.Add(k1=1, k2=-1, error5_overrides...))
+  push!(__systems, @named error5 = BlockComponents.Math.Add(; k1=Float64(1), k2=Float64(-1), error5_overrides...))
   # Subcomponent error6 of type BlockComponents.Math.Add
   error6_overrides = __pop_subcomponent_overrides!(__overrides, "error6")
-  push!(__systems, @named error6 = BlockComponents.Math.Add(k1=1, k2=-1, error6_overrides...))
+  push!(__systems, @named error6 = BlockComponents.Math.Add(; k1=Float64(1), k2=Float64(-1), error6_overrides...))
   # Subcomponent error7 of type BlockComponents.Math.Add
   error7_overrides = __pop_subcomponent_overrides!(__overrides, "error7")
-  push!(__systems, @named error7 = BlockComponents.Math.Add(k1=1, k2=-1, error7_overrides...))
+  push!(__systems, @named error7 = BlockComponents.Math.Add(; k1=Float64(1), k2=Float64(-1), error7_overrides...))
   # Subcomponent error8 of type BlockComponents.Math.Add
   error8_overrides = __pop_subcomponent_overrides!(__overrides, "error8")
-  push!(__systems, @named error8 = BlockComponents.Math.Add(k1=1, k2=-1, error8_overrides...))
+  push!(__systems, @named error8 = BlockComponents.Math.Add(; k1=Float64(1), k2=Float64(-1), error8_overrides...))
   # Subcomponent error9 of type BlockComponents.Math.Add
   error9_overrides = __pop_subcomponent_overrides!(__overrides, "error9")
-  push!(__systems, @named error9 = BlockComponents.Math.Add(k1=1, k2=-1, error9_overrides...))
+  push!(__systems, @named error9 = BlockComponents.Math.Add(; k1=Float64(1), k2=Float64(-1), error9_overrides...))
   # Subcomponent error10 of type BlockComponents.Math.Add
   error10_overrides = __pop_subcomponent_overrides!(__overrides, "error10")
-  push!(__systems, @named error10 = BlockComponents.Math.Add(k1=1, k2=-1, error10_overrides...))
+  push!(__systems, @named error10 = BlockComponents.Math.Add(; k1=Float64(1), k2=Float64(-1), error10_overrides...))
   # Subcomponent error11 of type BlockComponents.Math.Add
   error11_overrides = __pop_subcomponent_overrides!(__overrides, "error11")
-  push!(__systems, @named error11 = BlockComponents.Math.Add(k1=1, k2=-1, error11_overrides...))
+  push!(__systems, @named error11 = BlockComponents.Math.Add(; k1=Float64(1), k2=Float64(-1), error11_overrides...))
   # Subcomponent error12 of type BlockComponents.Math.Add
   error12_overrides = __pop_subcomponent_overrides!(__overrides, "error12")
-  push!(__systems, @named error12 = BlockComponents.Math.Add(k1=1, k2=-1, error12_overrides...))
+  push!(__systems, @named error12 = BlockComponents.Math.Add(; k1=Float64(1), k2=Float64(-1), error12_overrides...))
   # Subcomponent trim_T of type BlockComponents.Sources.Constant
   trim_T_overrides = __pop_subcomponent_overrides!(__overrides, "trim_T")
-  push!(__systems, @named trim_T = BlockComponents.Sources.Constant(k=28696.23, trim_T_overrides...))
+  push!(__systems, @named trim_T = BlockComponents.Sources.Constant(; k=28696.23, trim_T_overrides...))
   # Subcomponent trim_el of type BlockComponents.Sources.Constant
   trim_el_overrides = __pop_subcomponent_overrides!(__overrides, "trim_el")
-  push!(__systems, @named trim_el = BlockComponents.Sources.Constant(k=0.0459, trim_el_overrides...))
+  push!(__systems, @named trim_el = BlockComponents.Sources.Constant(; k=0.0459, trim_el_overrides...))
   # Subcomponent trim_ail of type BlockComponents.Sources.Constant
   trim_ail_overrides = __pop_subcomponent_overrides!(__overrides, "trim_ail")
-  push!(__systems, @named trim_ail = BlockComponents.Sources.Constant(k=0, trim_ail_overrides...))
+  push!(__systems, @named trim_ail = BlockComponents.Sources.Constant(; k=Float64(0), trim_ail_overrides...))
   # Subcomponent trim_rud of type BlockComponents.Sources.Constant
   trim_rud_overrides = __pop_subcomponent_overrides!(__overrides, "trim_rud")
-  push!(__systems, @named trim_rud = BlockComponents.Sources.Constant(k=0, trim_rud_overrides...))
+  push!(__systems, @named trim_rud = BlockComponents.Sources.Constant(; k=Float64(0), trim_rud_overrides...))
   # Subcomponent trim_lef of type BlockComponents.Sources.Constant
   trim_lef_overrides = __pop_subcomponent_overrides!(__overrides, "trim_lef")
-  push!(__systems, @named trim_lef = BlockComponents.Sources.Constant(k=0, trim_lef_overrides...))
+  push!(__systems, @named trim_lef = BlockComponents.Sources.Constant(; k=Float64(0), trim_lef_overrides...))
   # Subcomponent control_T of type BlockComponents.Math.Add
   control_T_overrides = __pop_subcomponent_overrides!(__overrides, "control_T")
-  push!(__systems, @named control_T = BlockComponents.Math.Add(k1=1, k2=1, control_T_overrides...))
+  push!(__systems, @named control_T = BlockComponents.Math.Add(; k1=Float64(1), k2=Float64(1), control_T_overrides...))
   # Subcomponent control_el of type BlockComponents.Math.Add
   control_el_overrides = __pop_subcomponent_overrides!(__overrides, "control_el")
-  push!(__systems, @named control_el = BlockComponents.Math.Add(k1=1, k2=1, control_el_overrides...))
+  push!(__systems, @named control_el = BlockComponents.Math.Add(; k1=Float64(1), k2=Float64(1), control_el_overrides...))
   # Subcomponent control_ail of type BlockComponents.Math.Add
   control_ail_overrides = __pop_subcomponent_overrides!(__overrides, "control_ail")
-  push!(__systems, @named control_ail = BlockComponents.Math.Add(k1=1, k2=1, control_ail_overrides...))
+  push!(__systems, @named control_ail = BlockComponents.Math.Add(; k1=Float64(1), k2=Float64(1), control_ail_overrides...))
   # Subcomponent control_rud of type BlockComponents.Math.Add
   control_rud_overrides = __pop_subcomponent_overrides!(__overrides, "control_rud")
-  push!(__systems, @named control_rud = BlockComponents.Math.Add(k1=1, k2=1, control_rud_overrides...))
+  push!(__systems, @named control_rud = BlockComponents.Math.Add(; k1=Float64(1), k2=Float64(1), control_rud_overrides...))
   # Subcomponent control_lef of type BlockComponents.Math.Add
   control_lef_overrides = __pop_subcomponent_overrides!(__overrides, "control_lef")
-  push!(__systems, @named control_lef = BlockComponents.Math.Add(k1=1, k2=1, control_lef_overrides...))
+  push!(__systems, @named control_lef = BlockComponents.Math.Add(; k1=Float64(1), k2=Float64(1), control_lef_overrides...))
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
 
   ### Guesses
   __guesses[f16plant.npos] = (0.0)

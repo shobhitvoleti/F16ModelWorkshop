@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000">
+  <defs>
+    <linearGradient id="body" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#F1F5F9"/>
+      <stop offset="100%" stop-color="#E2E8F0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Body -->
+  <rect x="150" y="150" width="700" height="700" rx="40" fill="url(#body)" stroke="#334155" stroke-width="6"/>
+
+  <!-- Port stubs -->
+  <line x1="150" y1="500" x2="100" y2="500" stroke="#334155" stroke-width="4"/>
+  <line x1="850" y1="500" x2="900" y2="500" stroke="#334155" stroke-width="4"/>
+
+  <!-- Baseline axis -->
+  <line x1="230" y1="700" x2="790" y2="700" stroke="#CBD5E1" stroke-width="4"/>
+
+  <!-- Faint continuous signal -->
+  <polyline points="250,470 276,405.3 302,365.4 328,365.4 354,405.3 380,470 406,534.7 432,574.6 458,574.6 484,534.7 510,470 536,405.3 562,365.4 588,365.4 614,405.3 640,470 666,534.7 692,574.6 718,574.6 744,534.7 770,470"
+    fill="none" stroke="#94A3B8" stroke-width="5" opacity="0.55"/>
+
+  <!-- ZOH staircase -->
+  <path d="M 250 470 H 302 V 365.4 H 354 V 405.3 H 406 V 534.7 H 458 V 574.6 H 510 V 470 H 562 V 365.4 H 614 V 405.3 H 666 V 534.7 H 718 V 574.6 H 770 V 470"
+    fill="none" stroke="#334155" stroke-width="8" stroke-linejoin="round" stroke-linecap="round"/>
+
+  <!-- Marker stepping along the held signal -->
+  <circle r="14" fill="#334155">
+    <animateMotion dur="5s" repeatCount="indefinite"
+      path="M 250 470 H 302 V 365.4 H 354 V 405.3 H 406 V 534.7 H 458 V 574.6 H 510 V 470 H 562 V 365.4 H 614 V 405.3 H 666 V 534.7 H 718 V 574.6 H 770 V 470"/>
+  </circle>
+
+  <!-- Ports -->
+  <circle cx="100" cy="500" r="18" fill="#334155"/><circle cx="100" cy="500" r="10" fill="#FFFFFF"/><circle cx="100" cy="500" r="6" fill="#334155"/>
+  <circle cx="900" cy="500" r="18" fill="#334155"/><circle cx="900" cy="500" r="10" fill="#FFFFFF"/><circle cx="900" cy="500" r="6" fill="#334155"/>
+
+  <!-- Labels -->
+  <text x="165" y="470" font-family="monospace" font-size="44" fill="#64748B" text-anchor="start">u</text>
+  <text x="835" y="470" font-family="monospace" font-size="44" fill="#64748B" text-anchor="end">y</text>
+  <text x="500" y="230" font-family="sans-serif" font-weight="bold" font-size="64" fill="#334155" text-anchor="middle" opacity="0.5">ZOH</text>
+</svg>

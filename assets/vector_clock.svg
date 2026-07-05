@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000">
+  <defs>
+    <linearGradient id="body" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#F1F5F9"/>
+      <stop offset="100%" stop-color="#E2E8F0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Body -->
+  <rect x="150" y="150" width="700" height="700" rx="40" fill="url(#body)" stroke="#334155" stroke-width="6"/>
+
+  <!-- Output stub (left) -->
+  <line x1="150" y1="500" x2="100" y2="500" stroke="#334155" stroke-width="4"/>
+
+  <!-- Clock face -->
+  <circle cx="500" cy="470" r="250" fill="#F8FAFC" stroke="#334155" stroke-width="6"/>
+
+  <!-- Hour ticks -->
+  <g stroke="#64748B" stroke-width="5" stroke-linecap="round">
+    <line x1="500" y1="230" x2="500" y2="265"/>
+    <line x1="620" y1="262.2" x2="602.5" y2="292.5"/>
+    <line x1="707.8" y1="350" x2="677.5" y2="367.5"/>
+    <line x1="740" y1="470" x2="705" y2="470"/>
+    <line x1="707.8" y1="590" x2="677.5" y2="572.5"/>
+    <line x1="620" y1="677.8" x2="602.5" y2="647.5"/>
+    <line x1="500" y1="710" x2="500" y2="675"/>
+    <line x1="380" y1="677.8" x2="397.5" y2="647.5"/>
+    <line x1="292.2" y1="590" x2="322.5" y2="572.5"/>
+    <line x1="260" y1="470" x2="295" y2="470"/>
+    <line x1="292.2" y1="350" x2="322.5" y2="367.5"/>
+    <line x1="380" y1="262.2" x2="397.5" y2="292.5"/>
+  </g>
+
+  <!-- Hour hand -->
+  <g>
+    <line x1="500" y1="470" x2="500" y2="360" stroke="#334155" stroke-width="12" stroke-linecap="round"/>
+    <animateTransform attributeName="transform" type="rotate" from="0 500 470" to="360 500 470" dur="24s" repeatCount="indefinite"/>
+  </g>
+
+  <!-- Minute hand -->
+  <g>
+    <line x1="500" y1="470" x2="500" y2="285" stroke="#334155" stroke-width="7" stroke-linecap="round"/>
+    <animateTransform attributeName="transform" type="rotate" from="0 500 470" to="360 500 470" dur="4s" repeatCount="indefinite"/>
+  </g>
+
+  <!-- Hub -->
+  <circle cx="500" cy="470" r="18" fill="#334155"/>
+
+  <!-- Period label -->
+  <text x="500" y="800" font-family="monospace" font-size="60" fill="#334155" text-anchor="middle">dt</text>
+
+  <!-- Output port (vector) -->
+  <circle cx="100" cy="500" r="18" fill="#334155"/>
+  <circle cx="100" cy="500" r="10" fill="#FFFFFF"/>
+  <circle cx="100" cy="500" r="6"  fill="#334155"/>
+  <text x="165" y="470" font-family="monospace" font-size="44" fill="#64748B" text-anchor="start">y</text>
+</svg>

@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000">
+  <defs>
+    <linearGradient id="body" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#F1F5F9"/>
+      <stop offset="100%" stop-color="#E2E8F0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Body -->
+  <rect x="150" y="150" width="700" height="700" rx="40" fill="url(#body)" stroke="#334155" stroke-width="6"/>
+
+  <!-- Port stubs -->
+  <line x1="150" y1="500" x2="100" y2="500" stroke="#334155" stroke-width="4"/>
+  <line x1="850" y1="500" x2="900" y2="500" stroke="#334155" stroke-width="4"/>
+
+  <!-- Baseline axis -->
+  <line x1="230" y1="700" x2="790" y2="700" stroke="#CBD5E1" stroke-width="4"/>
+
+  <!-- Faint continuous signal -->
+  <polyline points="250,470 276,405.3 302,365.4 328,365.4 354,405.3 380,470 406,534.7 432,574.6 458,574.6 484,534.7 510,470 536,405.3 562,365.4 588,365.4 614,405.3 640,470 666,534.7 692,574.6 718,574.6 744,534.7 770,470"
+    fill="none" stroke="#94A3B8" stroke-width="5" opacity="0.6"/>
+
+  <!-- Sample stems -->
+  <g stroke="#334155" stroke-width="4">
+    <line x1="250" y1="700" x2="250" y2="470"/>
+    <line x1="302" y1="700" x2="302" y2="365.4"/>
+    <line x1="354" y1="700" x2="354" y2="405.3"/>
+    <line x1="406" y1="700" x2="406" y2="534.7"/>
+    <line x1="458" y1="700" x2="458" y2="574.6"/>
+    <line x1="510" y1="700" x2="510" y2="470"/>
+    <line x1="562" y1="700" x2="562" y2="365.4"/>
+    <line x1="614" y1="700" x2="614" y2="405.3"/>
+    <line x1="666" y1="700" x2="666" y2="534.7"/>
+    <line x1="718" y1="700" x2="718" y2="574.6"/>
+    <line x1="770" y1="700" x2="770" y2="470"/>
+  </g>
+
+  <!-- Sample dots -->
+  <g fill="#334155">
+    <circle cx="250" cy="470" r="11"/>
+    <circle cx="302" cy="365.4" r="11"/>
+    <circle cx="354" cy="405.3" r="11"/>
+    <circle cx="406" cy="534.7" r="11"/>
+    <circle cx="458" cy="574.6" r="11"/>
+    <circle cx="510" cy="470" r="11"/>
+    <circle cx="562" cy="365.4" r="11"/>
+    <circle cx="614" cy="405.3" r="11"/>
+    <circle cx="666" cy="534.7" r="11"/>
+    <circle cx="718" cy="574.6" r="11"/>
+    <circle cx="770" cy="470" r="11"/>
+  </g>
+
+  <!-- Scanning sampling cursor (left -> right) -->
+  <line x1="250" y1="300" x2="250" y2="700" stroke="#334155" stroke-width="4" opacity="0.5">
+    <animate attributeName="x1" values="250;770;250" dur="4s" repeatCount="indefinite"/>
+    <animate attributeName="x2" values="250;770;250" dur="4s" repeatCount="indefinite"/>
+  </line>
+
+  <!-- Ports -->
+  <circle cx="100" cy="500" r="18" fill="#334155"/><circle cx="100" cy="500" r="10" fill="#FFFFFF"/><circle cx="100" cy="500" r="6" fill="#334155"/>
+  <circle cx="900" cy="500" r="18" fill="#334155"/><circle cx="900" cy="500" r="10" fill="#FFFFFF"/><circle cx="900" cy="500" r="6" fill="#334155"/>
+
+  <!-- Labels -->
+  <text x="165" y="470" font-family="monospace" font-size="44" fill="#64748B" text-anchor="start">u</text>
+  <text x="835" y="470" font-family="monospace" font-size="44" fill="#64748B" text-anchor="end">y</text>
+  <text x="500" y="230" font-family="sans-serif" font-weight="bold" font-size="52" fill="#334155" text-anchor="middle" opacity="0.5">SAMPLE</text>
+</svg>

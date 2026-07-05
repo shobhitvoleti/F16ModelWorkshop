@@ -9,10 +9,14 @@ if isfile(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Controls
 end
 
 
+include("ClockedZero_experiment.jl")
 include("ClosedLoopModel_experiment.jl")
 include("ClosedLoopVectorMuxedModel_experiment.jl")
+include("DiscreteStateSpace_experiment.jl")
 include("F16ClosedLoopPerturbed_experiment.jl")
 include("F16ClosedLoopViz_experiment.jl")
+include("F16DiscreteClosedLoop_experiment.jl")
 include("F16OpenLoopViz_experiment.jl")
 include("F16OpenLoop_experiment.jl")
 include("TestClosedLoopModel_experiment.jl")
+include("TestDiscreteStateSpace_experiment.jl")
