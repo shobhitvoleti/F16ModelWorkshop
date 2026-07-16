@@ -8,11 +8,11 @@ using DyadInterface
 using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel
 using ModelingToolkit: SymbolicT, toggle_namespacing
 using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
-@kwdef mutable struct Scenario1DiscreteClosedLoopSpec <: AbstractTransientAnalysisSpec
-  name::Symbol = :Scenario1DiscreteClosedLoop
+@kwdef mutable struct F16DiscreteClosedLoopVizAnalysisSpec <: AbstractTransientAnalysisSpec
+  name::Symbol = :F16DiscreteClosedLoopVizAnalysis
   var"alg"::ODEAlg.Type = ODEAlg.Auto()
   var"start"::Float64 = 0
-  var"stop"::Float64 = 10.0
+  var"stop"::Float64 = 30.0
   var"abstol"::Float64 = 0.000001
   var"reltol"::Float64 = 0.000001
   var"saveat"::Float64 = 0
@@ -24,27 +24,11 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
   var"respecialize"::Bool = false
   var"verbose"::DEVerbosity.Type = DEVerbosity.Standard()
   var"log_file"::String = ""
-  # Discrete-time (sampled-data) F16 closed loop.
-  # 
-  # Sampled version of `ClosedLoopModel`: the continuous LQG controller is replaced
-  # by the clocked `DiscreteStateSpace`, fed the ZOH-discretized matrices
-  # (`DiscreteControllerA/B/C/D` from `F16DiscreteLQGControllerAnalysis`, Ts=ControllerTs).
-  # Trim is folded into the controller output operating point (`y0 = trim_vals`), so
-  # `controller.y` is the absolute control command — no external feedforward.
-  # 
-  # Signal flow (all vector ports):
-  #   ref - measurement --> err (12 ch)
-  #   err --> sample (100 Hz) --> controller       continuous -> clocked (12 ch)
-  #   controller --> zoh --> f16plant.u_in         clocked -> continuous (5 ch)
-  # 
-  # The 100 Hz clock is planted on `controller.u` and propagated to the samplers and
-  # holds by clock inference.
-  # 
-  # Scenario: 10 deg initial pitch perturbation about trim.
-  var"model"::Union{Nothing, System} = F16ModelWorkshop.Controls.F16DiscreteClosedLoop(; name=:F16DiscreteClosedLoop)
+  # Discrete-time (sampled-data) closed-loop pitch recovery with 3-D OBJ visualizer (pose source + shapefile visualizer)
+  var"model"::Union{Nothing, System} = F16ModelWorkshop.Controls.F16DiscreteClosedLoopViz(; name=:F16DiscreteClosedLoopViz)
 end
 
-function DyadInterface.run_analysis(spec::Scenario1DiscreteClosedLoopSpec)
+function DyadInterface.run_analysis(spec::F16DiscreteClosedLoopVizAnalysisSpec)
   overrides = Dict{SymbolicT, SymbolicT}()
   no_namespace_model = toggle_namespacing(spec.model, false)
   
@@ -54,5 +38,5 @@ function DyadInterface.run_analysis(spec::Scenario1DiscreteClosedLoopSpec)
   run_analysis(base_spec)
 end
 
-Scenario1DiscreteClosedLoop(;kwargs...) = run_analysis(Scenario1DiscreteClosedLoopSpec(;kwargs...))
-export Scenario1DiscreteClosedLoop, Scenario1DiscreteClosedLoopSpec
+F16DiscreteClosedLoopVizAnalysis(;kwargs...) = run_analysis(F16DiscreteClosedLoopVizAnalysisSpec(;kwargs...))
+export F16DiscreteClosedLoopVizAnalysis, F16DiscreteClosedLoopVizAnalysisSpec

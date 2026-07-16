@@ -36,7 +36,7 @@ ThermalComponents = "084a29d9-4f48-4925-95b4-b7d4c79725f4"
 TranslationalComponents = "42acc370-819b-4877-bdd6-eb3294461f5d"
 
 [sources.DiscreteComponents]
-rev = "17e91b1a2c99434c7e30fa1bd335cfd9c04c08dc"
+rev = "main"
 url = "https://github.com/JuliaComputing/DiscreteComponents.git"
 
 [sources.MultibodyComponents]
@@ -68,7 +68,7 @@ ThermalComponents = "=2.0.5"
 TranslationalComponents = "=2.4.2"
 
 [dyad]
-kernel = "3.2.0-rc2"
+kernel = "3.2.1"
 
 [extras]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"

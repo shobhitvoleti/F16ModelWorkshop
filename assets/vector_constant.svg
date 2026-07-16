@@ -22,10 +22,10 @@
   <!-- Level reference drop -->
   <line x1="230" y1="420" x2="230" y2="700" stroke="#64748B" stroke-width="3" stroke-dasharray="12 12"/>
 
-  <!-- Traveling marker (flows toward the right output) -->
-  <circle r="15" fill="#334155">
-    <animateMotion dur="3s" repeatCount="indefinite" path="M 230 420 L 745 420"/>
-    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="3s" repeatCount="indefinite"/>
+  <!-- Output stream: single slow marker along the constant level -->
+  <circle r="13" fill="#334155">
+    <animateMotion dur="4s" repeatCount="indefinite" path="M 230 420 L 745 420"/>
+    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="4s" repeatCount="indefinite"/>
   </circle>
 
   <!-- Output port (vector) -->

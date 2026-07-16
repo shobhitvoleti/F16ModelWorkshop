@@ -14,21 +14,15 @@
   <line x1="50"  y1="760" x2="500" y2="500" stroke="#64748B" stroke-width="7"/>
   <line x1="500" y1="500" x2="950" y2="500" stroke="#334155" stroke-width="7"/>
 
-  <!-- Traveling markers: inputs -> node -> output (left to right) -->
-  <circle r="13" fill="#64748B">
-    <animateMotion dur="1.6s" repeatCount="indefinite" path="M 50 230 L 500 500"/>
+  <!-- Signal flow: two inputs combine into one output -->
+  <circle r="12" fill="#64748B">
+    <animateMotion dur="3s" repeatCount="indefinite" path="M 50 230 L 500 500"/>
   </circle>
-  <circle r="13" fill="#64748B">
-    <animateMotion dur="1.6s" repeatCount="indefinite" path="M 50 760 L 500 500"/>
+  <circle r="12" fill="#64748B">
+    <animateMotion dur="3s" repeatCount="indefinite" path="M 50 760 L 500 500"/>
   </circle>
-  <circle r="13" fill="#334155">
-    <animateMotion dur="1.6s" repeatCount="indefinite" path="M 500 500 L 950 500"/>
-  </circle>
-
-  <!-- Expanding pulse ring from the node -->
-  <circle cx="500" cy="500" r="95" fill="none" stroke="#334155" stroke-width="4">
-    <animate attributeName="r" values="95;150" dur="2.2s" repeatCount="indefinite"/>
-    <animate attributeName="opacity" values="0.55;0" dur="2.2s" repeatCount="indefinite"/>
+  <circle r="12" fill="#334155">
+    <animateMotion dur="3s" repeatCount="indefinite" path="M 500 500 L 950 500"/>
   </circle>
 
   <!-- Summation node -->

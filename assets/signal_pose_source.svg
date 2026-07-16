@@ -31,21 +31,15 @@
     <circle r="255" fill="none" stroke="#2e75b6" stroke-width="6" stroke-opacity="0.5" />
 
     <!-- Outer gimbal ring (animated roll) -->
-    <ellipse rx="255" ry="105" fill="none" stroke="#2e75b6" stroke-width="4" stroke-opacity="0.45">
-      <animateTransform attributeName="transform" type="rotate"
-                        from="0" to="360" dur="11s" repeatCount="indefinite" />
-    </ellipse>
+    <ellipse rx="255" ry="105" fill="none" stroke="#2e75b6" stroke-width="4" stroke-opacity="0.45" />
 
     <!-- Inner gimbal ring (animated pitch) -->
-    <ellipse rx="105" ry="255" fill="none" stroke="#2e75b6" stroke-width="4" stroke-opacity="0.45">
-      <animateTransform attributeName="transform" type="rotate"
-                        from="360" to="0" dur="15s" repeatCount="indefinite" />
-    </ellipse>
+    <ellipse rx="105" ry="255" fill="none" stroke="#2e75b6" stroke-width="4" stroke-opacity="0.45" />
 
-    <!-- Rotating 3-axis triad (the pose/attitude) -->
+    <!-- 3-axis triad (the pose/attitude), slow rotation -->
     <g>
       <animateTransform attributeName="transform" type="rotate"
-                        from="0" to="360" dur="8s" repeatCount="indefinite" />
+                        from="0" to="360" dur="16s" repeatCount="indefinite" />
       <!-- up axis -->
       <line x1="0" y1="0" x2="0" y2="-205" stroke="#2e75b6" stroke-width="9" />
       <circle cx="0" cy="-205" r="15" fill="#2e75b6" />

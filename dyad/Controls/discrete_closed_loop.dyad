@@ -1,42 +1,27 @@
 """
-Discrete-time F16 closed loop.
+Discrete-time (sampled-data) F16 closed loop.
 
-Sampled-data version of the continuous `ClosedLoopModel`: the continuous LQG
-`BlockComponents.Continuous.StateSpace` controller is replaced with the pure-Dyad
-clocked `DiscreteStateSpace`, fed with the ZOH-discretized controller matrices
-(`DiscreteControllerA/B/C/D`) produced by `F16DiscreteLQGControllerAnalysis`
-(disc="zoh", Ts=ControllerTs).
+Sampled version of `ClosedLoopModel`: the continuous LQG controller is replaced
+by the clocked `DiscreteStateSpace`, fed the ZOH-discretized matrices
+(`DiscreteControllerA/B/C/D` from `F16DiscreteLQGControllerAnalysis`, Ts=ControllerTs).
+Trim is folded into the controller output operating point (`y0 = trim_vals`), so
+`controller.y` is the absolute control command — no external feedforward.
 
-Every signal path is wired vector-to-vector. Vector arithmetic uses
-`Utils.VectorConstant` (reference source) and `Utils.VectorAdd` (error, `k2=-1`);
-the clock-crossing uses `MultiSampler` (continuous -> clocked, 12 ch) and
-`MultiZeroOrderHold` (clocked -> continuous, 5 ch). The control-surface trim is
-folded into the controller's output operating point (`y0 = trim_vals`), so the
-strictly-proper controller emits the absolute control `u = C*x + trim` directly
-and wires straight to the plant through the ZOH — no external feedforward add.
-All blocks are templated like `MatrixGain` (structural channel count,
-whole-vector equations), so no per-channel scalar wiring is needed.
+Signal flow (all vector ports):
+  ref - measurement --> err (12 ch)
+  err --> sample (100 Hz) --> controller       continuous -> clocked (12 ch)
+  controller --> zoh --> f16plant.u_in         clocked -> continuous (5 ch)
 
-Topology (mirrors ClosedLoopModel, vector-port plant `F16PlantModel`):
-  ref.y --> err.u1;  f16plant.y_out --> err.u2           error = ref - measurement (12)
-  err.y --> sample.u;  sample.y --> controller.u          continuous -> clocked (12)
-  controller.y --> zoh.u;  zoh.y --> f16plant.u_in        clocked -> continuous (5)
+The 100 Hz clock is planted on `controller.u` and propagated to the samplers and
+holds by clock inference.
 
-The controller output already carries the trim via `y0`, so `controller.y` is the
-absolute control command applied to the plant.
-
-The 100 Hz `PeriodicClock` is planted on one controller input node
-(`controller.u[1]`); the shared block clock propagates the sample rate across the
-whole controller vector partition and to each per-channel Sampler/ZeroOrderHold
-via clock inference.
-
-Scenario: 10 deg initial pitch perturbation about the trim attitude.
+Scenario: 10 deg initial pitch perturbation about trim.
 """
 component F16DiscreteClosedLoop
   "Vector-I/O F16 plant; 10 deg initial pitch perturbation about trim."
   f16plant = F16ModelWorkshop.Plant.F16PlantModel(alt_init = 3000, theta_init = 0.17453292519943295) {^f16plant}
   "Discrete (ZOH) LQG controller as a clocked state-space block; trim folded into the output operating point y0."
-  controller = DiscreteStateSpace(nx = 12, nu = 12, ny = 5, A = DiscreteControllerA, B = DiscreteControllerB, C = DiscreteControllerC, D = DiscreteControllerD, y0 = trim_vals) {^controller}
+  controller = DiscreteComponents.DiscreteStateSpace(nx = 12, nu = 12, ny = 5, A = DiscreteControllerA, B = DiscreteControllerB, C = DiscreteControllerC, D = DiscreteControllerD, y0 = trim_vals) {^controller}
   "Controller sample clock (100 Hz), vector: one clock per controller input."
   clk = F16ModelWorkshop.VectorBlocks.VectorClock(n = 12, dt = ControllerTs) {^clk}
   "Reference set-points for the 12 measured states (vector source)."
@@ -47,19 +32,18 @@ component F16DiscreteClosedLoop
   sample = F16ModelWorkshop.VectorBlocks.MultiSampler(n = 12) {^sample}
   "Vector zero-order hold bridging clocked controller output -> continuous control (5 ch)."
   zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(n = 5) {^zoh}
-  "Reference values [npos, epos, alt, phi, theta, psi, vt, alpha, beta, P, Q, R] loaded from the trim TOML."
+  "Reference set-points for the 12 states [npos, epos, alt, phi, theta, psi, vt, alpha, beta, P, Q, R], from the trim TOML."
   structural parameter ref_vals::Real[12] = [F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.npos_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.epos_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.alt_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.phi_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.theta_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.psi_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.vt_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.alpha_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.beta_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.P_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.Q_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.R_init")]
-  "Trim control [T(N), el(deg), ail(deg), rud(deg), lef(deg)] loaded from the trim TOML; used as controller output operating point."
+  "Trim control [T(N), el(deg), ail(deg), rud(deg), lef(deg)], from the trim TOML; used as controller output operating point."
   structural parameter trim_vals::Real[5] = [F16ModelWorkshop.load_trim("trim/trim_point.toml", "T_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "el_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "ail_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "rud_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "lef_cmd.k")]
 relations
-  # Measurement -> error -> sampler -> clocked controller input (all vector-to-vector)
-  connect(ref.y, err.u1) {^id10}
-  connect(f16plant.y_out, err.u2) {^id11}
-  connect(err.y, sample.u) {^id12}
-  connect(sample.y, controller.u) {^id13}
-  connect(controller.y, zoh.u) {^id18}
-  connect(zoh.y, f16plant.u_in) {^id15}
-  connect(clk.y, controller.u) {^id16}
+  connect(ref.y, err.u1) {^id8}
+  connect(f16plant.y_out, err.u2) {^id9}
+  connect(err.y, sample.u) {^id10}
+  connect(sample.y, controller.u) {^id11}
+  connect(controller.y, zoh.u) {^id12}
+  connect(zoh.y, f16plant.u_in) {^id13}
+  connect(clk.y, controller.u) {^id14}
 metadata {
   "_links": {
     "f16plant": {
@@ -118,33 +102,30 @@ metadata {
         "tags": []
       }
     },
-    "id10": {
+    "id8": {
       "Dyad": {
         "edges": [{"S": 1, "M": [{"x": 510, "y": 120}, {"x": 510, "y": 143}], "E": 2}],
         "renderStyle": "standard"
       }
     },
-    "id11": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id12": {
+    "id9": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id10": {
       "Dyad": {
         "edges": [{"S": 1, "M": [{"x": 630, "y": 170}, {"x": 630, "y": 420}], "E": 2}],
         "renderStyle": "standard"
       }
     },
-    "id13": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id15": {
-      "Dyad": {
-        "edges": [{"S": 1, "M": [{"x": 160, "y": 420}, {"x": 160, "y": 196}], "E": 2}],
-        "renderStyle": "standard"
-      }
+    "id11": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id12": {"Dyad": {"renderStyle": "standard", "edges": [{"S": 1, "E": 2, "M": []}]}},
+    "id13": {
+      "Dyad": {"edges": [{"S": 1, "M": [{"x": 80, "y": 420}, {"x": 80, "y": 196}], "E": 2}]}
     },
-    "id16": {
+    "id14": {
       "Dyad": {
         "edges": [{"S": 1, "M": [{"x": 390, "y": 550}, {"x": 390, "y": 420}], "E": 2}],
         "renderStyle": "standard"
       }
-    },
-    "id18": {"Dyad": {"renderStyle": "standard", "edges": [{"S": 1, "E": 2, "M": []}]}}
+    }
   }
 }
 end

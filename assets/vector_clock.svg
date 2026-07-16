@@ -31,16 +31,17 @@
     <line x1="380" y1="262.2" x2="397.5" y2="292.5"/>
   </g>
 
-  <!-- Hour hand -->
-  <g>
+  <!-- Hour hand (static) -->
+  <g transform="rotate(-60 500 470)">
     <line x1="500" y1="470" x2="500" y2="360" stroke="#334155" stroke-width="12" stroke-linecap="round"/>
-    <animateTransform attributeName="transform" type="rotate" from="0 500 470" to="360 500 470" dur="24s" repeatCount="indefinite"/>
   </g>
 
-  <!-- Minute hand -->
+  <!-- Minute hand: discrete ticks (periodic clock) -->
   <g>
     <line x1="500" y1="470" x2="500" y2="285" stroke="#334155" stroke-width="7" stroke-linecap="round"/>
-    <animateTransform attributeName="transform" type="rotate" from="0 500 470" to="360 500 470" dur="4s" repeatCount="indefinite"/>
+    <animateTransform attributeName="transform" type="rotate" calcMode="discrete"
+      dur="12s" repeatCount="indefinite"
+      values="0 500 470;30 500 470;60 500 470;90 500 470;120 500 470;150 500 470;180 500 470;210 500 470;240 500 470;270 500 470;300 500 470;330 500 470"/>
   </g>
 
   <!-- Hub -->

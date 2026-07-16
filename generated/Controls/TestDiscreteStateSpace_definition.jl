@@ -64,9 +64,9 @@ Minimal validation: 1-state discrete integrator (A=1, B=0.1, C=1) at dt=0.1 s; o
   # Subcomponent clk of type DiscreteComponents.PeriodicClock
   clk_overrides = __pop_subcomponent_overrides!(__overrides, "clk")
   push!(__systems, @named clk = DiscreteComponents.PeriodicClock(; dt=0.1, clk_overrides...))
-  # Subcomponent sys of type F16ModelWorkshop.Controls.DiscreteStateSpace
+  # Subcomponent sys of type DiscreteComponents.DiscreteStateSpace
   sys_overrides = __pop_subcomponent_overrides!(__overrides, "sys")
-  push!(__systems, @named sys = F16ModelWorkshop.Controls.DiscreteStateSpace(; nx=1, nu=1, ny=1, A=fill(1.0, 1, 1), B=fill(0.1, 1, 1), C=fill(1.0, 1, 1), sys_overrides...))
+  push!(__systems, @named sys = DiscreteComponents.DiscreteStateSpace(; nx=1, nu=1, ny=1, A=fill(1.0, 1, 1), B=fill(0.1, 1, 1), C=fill(1.0, 1, 1), sys_overrides...))
   # Subcomponent zoh of type DiscreteComponents.ZeroOrderHold
   zoh_overrides = __pop_subcomponent_overrides!(__overrides, "zoh")
   push!(__systems, @named zoh = DiscreteComponents.ZeroOrderHold(; zoh_overrides...))

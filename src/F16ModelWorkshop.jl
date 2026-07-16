@@ -18,6 +18,12 @@ include("discrete_controller.jl")
 # parameter defaults (see dyad/Trimming/f16_trimmed_plant_linked.dyad).
 include("trim_io.jl")
 
+# Stevens & Lewis F-16 aerodynamic tables and reference buildup (Step 0 data
+# package). Defined BEFORE the generated code so Dyad components can reference
+# the tables and interpolation functions.
+include("f16_aero_data.jl")
+include("f16_aero.jl")
+
 include("../generated/module.jl")
 
 # Defined AFTER the generated code: references the generated Trimming.F16Trim model.

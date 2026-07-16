@@ -24,10 +24,12 @@
   <path d="M 250 470 H 302 V 365.4 H 354 V 405.3 H 406 V 534.7 H 458 V 574.6 H 510 V 470 H 562 V 365.4 H 614 V 405.3 H 666 V 534.7 H 718 V 574.6 H 770 V 470"
     fill="none" stroke="#334155" stroke-width="8" stroke-linejoin="round" stroke-linecap="round"/>
 
-  <!-- Marker stepping along the held signal -->
-  <circle r="14" fill="#334155">
-    <animateMotion dur="5s" repeatCount="indefinite"
-      path="M 250 470 H 302 V 365.4 H 354 V 405.3 H 406 V 534.7 H 458 V 574.6 H 510 V 470 H 562 V 365.4 H 614 V 405.3 H 666 V 534.7 H 718 V 574.6 H 770 V 470"/>
+  <!-- Held-value marker: glides along each tread, jumps instantly at every sample instant -->
+  <circle r="11" fill="#334155">
+    <animateMotion dur="8s" repeatCount="indefinite" calcMode="linear"
+      path="M 250 470 H 302 V 365.4 H 354 V 405.3 H 406 V 534.7 H 458 V 574.6 H 510 V 470 H 562 V 365.4 H 614 V 405.3 H 666 V 534.7 H 718 V 574.6 H 770 V 470"
+      keyPoints="0;0.0383;0.1154;0.1537;0.1831;0.2214;0.3168;0.3551;0.3845;0.4228;0.5;0.5383;0.6154;0.6537;0.6831;0.7214;0.8168;0.8551;0.8845;0.9228;1"
+      keyTimes="0;0.1;0.1;0.2;0.2;0.3;0.3;0.4;0.4;0.5;0.5;0.6;0.6;0.7;0.7;0.8;0.8;0.9;0.9;1;1"/>
   </circle>
 
   <!-- Ports -->

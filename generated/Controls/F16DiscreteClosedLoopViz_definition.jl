@@ -7,25 +7,9 @@
 import Moshi as __Ext__Moshi
 
 @doc Markdown.doc"""
-   F16DiscreteClosedLoop(; name, ref_vals, trim_vals)
+   F16DiscreteClosedLoopViz(; name, ref_vals, trim_vals)
 
-Discrete-time (sampled-data) F16 closed loop.
-
-Sampled version of `ClosedLoopModel`: the continuous LQG controller is replaced
-by the clocked `DiscreteStateSpace`, fed the ZOH-discretized matrices
-(`DiscreteControllerA/B/C/D` from `F16DiscreteLQGControllerAnalysis`, Ts=ControllerTs).
-Trim is folded into the controller output operating point (`y0 = trim_vals`), so
-`controller.y` is the absolute control command — no external feedforward.
-
-Signal flow (all vector ports):
-  ref - measurement --> err (12 ch)
-  err --> sample (100 Hz) --> controller       continuous -> clocked (12 ch)
-  controller --> zoh --> f16plant.u_in         clocked -> continuous (5 ch)
-
-The 100 Hz clock is planted on `controller.u` and propagated to the samplers and
-holds by clock inference.
-
-Scenario: 10 deg initial pitch perturbation about trim.
+Discrete-time (sampled-data) closed-loop pitch recovery with 3-D OBJ visualizer (pose source + shapefile visualizer)
 
 ## Parameters:
 
@@ -34,12 +18,12 @@ Scenario: 10 deg initial pitch perturbation about trim.
 | `ref_vals`         | Reference set-points for the 12 states [npos, epos, alt, phi, theta, psi, vt, alpha, beta, P, Q, R], from the trim TOML.                         | --  |   [F16ModelWo...t.R_init")] |
 | `trim_vals`         | Trim control [T(N), el(deg), ail(deg), rud(deg), lef(deg)], from the trim TOML; used as controller output operating point.                         | --  |   [F16ModelWo...ef_cmd.k")] |
 """
-@component function F16DiscreteClosedLoop(; name = nothing, ref_vals=[F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.npos_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.epos_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.alt_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.phi_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.theta_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.psi_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.vt_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.alpha_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.beta_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.P_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.Q_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.R_init")], trim_vals=[F16ModelWorkshop.load_trim("trim/trim_point.toml", "T_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "el_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "ail_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "rud_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "lef_cmd.k")], kwargs...)
+@component function F16DiscreteClosedLoopViz(; name = nothing, ref_vals=[F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.npos_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.epos_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.alt_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.phi_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.theta_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.psi_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.vt_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.alpha_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.beta_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.P_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.Q_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.R_init")], trim_vals=[F16ModelWorkshop.load_trim("trim/trim_point.toml", "T_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "el_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "ail_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "rud_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "lef_cmd.k")], kwargs...)
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
   
-    @named model = F16DiscreteClosedLoop()
+    @named model = F16DiscreteClosedLoopViz()
   """))
 
   __overrides = __build_overrides(kwargs)
@@ -99,6 +83,18 @@ Scenario: 10 deg initial pitch perturbation about trim.
   # Subcomponent zoh of type F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold
   zoh_overrides = __pop_subcomponent_overrides!(__overrides, "zoh")
   push!(__systems, @named zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(; n=5, zoh_overrides...))
+  # Subcomponent demux of type F16ModelWorkshop.Utils.Demux4x3
+  demux_overrides = __pop_subcomponent_overrides!(__overrides, "demux")
+  push!(__systems, @named demux = F16ModelWorkshop.Utils.Demux4x3(; demux_overrides...))
+  # Subcomponent demux_pos of type F16ModelWorkshop.Utils.Demux3
+  demux_pos_overrides = __pop_subcomponent_overrides!(__overrides, "demux_pos")
+  push!(__systems, @named demux_pos = F16ModelWorkshop.Utils.Demux3(; demux_pos_overrides...))
+  # Subcomponent pose of type F16ModelWorkshop.Utils.SignalPoseSource
+  pose_overrides = __pop_subcomponent_overrides!(__overrides, "pose")
+  push!(__systems, @named pose = F16ModelWorkshop.Utils.SignalPoseSource(; pose_overrides...))
+  # Subcomponent viz of type MultibodyComponents.ShapefileVisualizer
+  viz_overrides = __pop_subcomponent_overrides!(__overrides, "viz")
+  push!(__systems, @named viz = MultibodyComponents.ShapefileVisualizer(; shapefile=joinpath("assets", "object", "F-16.obj"), shape_scale=1.4, shape_transform=MultibodyComponents.Rp2T(MultibodyComponents.RotXYZ(0, 0, 0), [-32.9, 2.5, 0.1]), viz_overrides...))
 
   ### Check there are no unmatched overrides
   isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
@@ -118,8 +114,18 @@ Scenario: 10 deg initial pitch perturbation about trim.
   push!(__eqs, connect(controller.y, zoh.u))
   push!(__eqs, connect(zoh.y, f16plant.u_in))
   push!(__eqs, connect(clk.y, controller.u))
+  push!(__eqs, connect(ref.y, err.u1))
+  push!(__eqs, connect(f16plant.y_out, err.u2))
+  push!(__eqs, connect(err.y, sample.u))
+  push!(__eqs, connect(sample.y, controller.u))
+  push!(__eqs, connect(controller.y, zoh.u))
+  push!(__eqs, connect(zoh.y, f16plant.u_in))
+  push!(__eqs, connect(clk.y, controller.u))
+  push!(__eqs, connect(pose.frame_a, viz.frame_a))
+  push!(__eqs, connect(f16plant.y_out, demux.u))
+  push!(__eqs, connect(demux.y1, pose.pos))
 
   # Return completely constructed System
   return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
-export F16DiscreteClosedLoop
+export F16DiscreteClosedLoopViz
