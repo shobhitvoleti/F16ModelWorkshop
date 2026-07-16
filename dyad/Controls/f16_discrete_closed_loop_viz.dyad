@@ -1,0 +1,83 @@
+"Discrete-time (sampled-data) closed-loop pitch recovery with 3-D OBJ visualizer (pose source + shapefile visualizer)"
+test component F16DiscreteClosedLoopViz
+  extends F16DiscreteClosedLoop
+  # ---- Stage-1 demux: 12-state plant output -> four 3-vector groups ----
+  demux = F16ModelWorkshop.Utils.Demux4x3() {^demux}
+  # ---- Stage-2 demux: split the groups needed for the pose into scalars ----
+  demux_pos = F16ModelWorkshop.Utils.Demux3() {^demux_pos} # [npos, epos, alt]
+  # ---- Pose source (converts plant signals -> Frame3D) ----
+  pose = F16ModelWorkshop.Utils.SignalPoseSource() {^pose}
+  # ---- 3-D visualization ----
+  viz = MultibodyComponents.ShapefileVisualizer(shapefile = joinpath("assets", "object", "F-16.obj"), shape_scale = 1.4, shape_transform = MultibodyComponents.Rp2T(MultibodyComponents.RotXYZ(0, 0, 0), [-32.9, 2.5, 0.1])) {^viz}
+relations
+  # ===== Plant vector output -> stage-1 demux (y_out = [npos,epos,alt,phi,theta,psi,vt,alpha,beta,P,Q,R]) =====
+  connect(ref.y, err.u1) {^id5}
+  # ===== Stage-1 groups needed for the pose -> stage-2 demuxers =====
+  connect(f16plant.y_out, err.u2) {^id6} # [npos, epos, alt]
+  connect(err.y, sample.u) {^id7} # [phi, theta, psi]
+  # ===== Stage-2 scalars -> pose source (NED -> Y-up) =====
+  connect(sample.y, controller.u) {^id8} # npos -> x
+  connect(controller.y, zoh.u) {^id9} # alt  -> y
+  connect(zoh.y, f16plant.u_in) {^id10} # epos -> z
+  connect(clk.y, controller.u) {^id11} # roll  (phi)
+  # ===== Pose -> visualizer =====
+  connect(pose.frame_a, viz.frame_a) {^id12}
+  connect(demux.u, f16plant.y_out) {^id13}
+  connect(demux.y1, pose.pos) {^id14}
+metadata {
+  "_links": {
+    "demux": {
+      "Dyad": {"placement": {"diagram": {"x1": 600, "y1": 450, "x2": 700, "y2": 550}}}
+    },
+    "demux_pos": {
+      "Dyad": {"placement": {"diagram": {"x1": 600, "y1": 10, "x2": 700, "y2": 110}}}
+    },
+    "pose": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 740, "y1": 120, "x2": 840, "y2": 220, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "viz": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 890, "y1": 120, "x2": 990, "y2": 220, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "id5": {
+      "Dyad": {"edges": [{"S": 1, "M": [{"x": 510, "y": 120}, {"x": 510, "y": 143}], "E": 2}]}
+    },
+    "id6": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
+    "id7": {
+      "Dyad": {"edges": [{"S": 1, "M": [{"x": 630, "y": 170}, {"x": 630, "y": 420}], "E": 2}]}
+    },
+    "id8": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
+    "id9": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
+    "id10": {
+      "Dyad": {"edges": [{"S": 1, "M": [{"x": 80, "y": 420}, {"x": 80, "y": 196}], "E": 2}]}
+    },
+    "id11": {
+      "Dyad": {"edges": [{"S": 1, "M": [{"x": 390, "y": 550}, {"x": 390, "y": 420}], "E": 2}]}
+    },
+    "id12": {},
+    "id13": {
+      "Dyad": {"edges": [{"S": 1, "M": [{"x": 460, "y": 500}, {"x": 460, "y": 196}], "E": 2}]}
+    },
+    "id14": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 710, "y": 462.5}, {"x": 710, "y": 145}], "E": 2}]
+      }
+    }
+  }
+}
+end
+
+analysis F16DiscreteClosedLoopVizAnalysis
+  extends TransientAnalysis(stop = 30.0)
+  model = F16DiscreteClosedLoopViz()
+relations
+end

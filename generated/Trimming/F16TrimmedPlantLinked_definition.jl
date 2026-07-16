@@ -69,28 +69,28 @@ Signal flow: Constants -> Mux5 -> F16PlantModel
   ### Components
   # Subcomponent T_cmd of type BlockComponents.Sources.Constant
   T_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "T_cmd")
-  push!(__systems, @named T_cmd = BlockComponents.Sources.Constant(k=F16ModelWorkshop.load_trim("trim/trim_point.toml", "T_cmd.k"), T_cmd_overrides...))
+  push!(__systems, @named T_cmd = BlockComponents.Sources.Constant(; k=F16ModelWorkshop.load_trim("trim/trim_point.toml", "T_cmd.k"), T_cmd_overrides...))
   # Subcomponent el_cmd of type BlockComponents.Sources.Constant
   el_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "el_cmd")
-  push!(__systems, @named el_cmd = BlockComponents.Sources.Constant(k=F16ModelWorkshop.load_trim("trim/trim_point.toml", "el_cmd.k"), el_cmd_overrides...))
+  push!(__systems, @named el_cmd = BlockComponents.Sources.Constant(; k=F16ModelWorkshop.load_trim("trim/trim_point.toml", "el_cmd.k"), el_cmd_overrides...))
   # Subcomponent ail_cmd of type BlockComponents.Sources.Constant
   ail_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "ail_cmd")
-  push!(__systems, @named ail_cmd = BlockComponents.Sources.Constant(k=F16ModelWorkshop.load_trim("trim/trim_point.toml", "ail_cmd.k"), ail_cmd_overrides...))
+  push!(__systems, @named ail_cmd = BlockComponents.Sources.Constant(; k=F16ModelWorkshop.load_trim("trim/trim_point.toml", "ail_cmd.k"), ail_cmd_overrides...))
   # Subcomponent rud_cmd of type BlockComponents.Sources.Constant
   rud_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "rud_cmd")
-  push!(__systems, @named rud_cmd = BlockComponents.Sources.Constant(k=F16ModelWorkshop.load_trim("trim/trim_point.toml", "rud_cmd.k"), rud_cmd_overrides...))
+  push!(__systems, @named rud_cmd = BlockComponents.Sources.Constant(; k=F16ModelWorkshop.load_trim("trim/trim_point.toml", "rud_cmd.k"), rud_cmd_overrides...))
   # Subcomponent lef_cmd of type BlockComponents.Sources.Constant
   lef_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "lef_cmd")
-  push!(__systems, @named lef_cmd = BlockComponents.Sources.Constant(k=F16ModelWorkshop.load_trim("trim/trim_point.toml", "lef_cmd.k"), lef_cmd_overrides...))
+  push!(__systems, @named lef_cmd = BlockComponents.Sources.Constant(; k=F16ModelWorkshop.load_trim("trim/trim_point.toml", "lef_cmd.k"), lef_cmd_overrides...))
   # Subcomponent mux of type F16ModelWorkshop.Utils.Mux5
   mux_overrides = __pop_subcomponent_overrides!(__overrides, "mux")
-  push!(__systems, @named mux = F16ModelWorkshop.Utils.Mux5(mux_overrides...))
+  push!(__systems, @named mux = F16ModelWorkshop.Utils.Mux5(; mux_overrides...))
   # Subcomponent plant of type F16ModelWorkshop.Plant.F16PlantModel
   plant_overrides = __pop_subcomponent_overrides!(__overrides, "plant")
-  push!(__systems, @named plant = F16ModelWorkshop.Plant.F16PlantModel(npos_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.npos_init"), epos_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.epos_init"), alt_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.alt_init"), phi_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.phi_init"), theta_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.theta_init"), psi_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.psi_init"), vt_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.vt_init"), alpha_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.alpha_init"), beta_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.beta_init"), P_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.P_init"), Q_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.Q_init"), R_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.R_init"), plant_overrides...))
+  push!(__systems, @named plant = F16ModelWorkshop.Plant.F16PlantModel(; npos_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.npos_init"), epos_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.epos_init"), alt_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.alt_init"), phi_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.phi_init"), theta_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.theta_init"), psi_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.psi_init"), vt_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.vt_init"), alpha_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.alpha_init"), beta_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.beta_init"), P_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.P_init"), Q_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.Q_init"), R_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.R_init"), plant_overrides...))
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
 
   ### Guesses
 

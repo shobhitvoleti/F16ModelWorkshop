@@ -1,0 +1,20 @@
+<svg width="1000" height="1000" viewBox="0 0 1000 1000" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0)">
+<rect width="1000" height="1000" fill="white"/>
+<rect x="4" y="4" width="992" height="992" stroke="#A1A1AA" stroke-width="8"/>
+<!-- Partitioned state matrix [A B; C D] -->
+<line x1="500" y1="170" x2="500" y2="830" stroke="#A1A1AA" stroke-width="10"/>
+<line x1="170" y1="500" x2="830" y2="500" stroke="#A1A1AA" stroke-width="10"/>
+<text x="330" y="390" font-family="Arial, Helvetica, sans-serif" font-size="210" font-weight="bold" font-style="italic" fill="#131316" text-anchor="middle">A</text>
+<text x="670" y="390" font-family="Arial, Helvetica, sans-serif" font-size="210" font-weight="bold" font-style="italic" fill="#131316" text-anchor="middle">B</text>
+<text x="330" y="730" font-family="Arial, Helvetica, sans-serif" font-size="210" font-weight="bold" font-style="italic" fill="#131316" text-anchor="middle">C</text>
+<text x="670" y="730" font-family="Arial, Helvetica, sans-serif" font-size="210" font-weight="bold" font-style="italic" fill="#131316" text-anchor="middle">D</text>
+<!-- z-domain badge marking discrete-time state space -->
+<text x="860" y="910" font-family="Arial, Helvetica, sans-serif" font-size="110" font-style="italic" fill="#A1A1AA" text-anchor="end">z</text>
+</g>
+<defs>
+<clipPath id="clip0">
+<rect width="1000" height="1000" fill="white"/>
+</clipPath>
+</defs>
+</svg>

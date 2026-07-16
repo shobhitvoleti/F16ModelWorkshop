@@ -59,28 +59,28 @@ Demux outputs: [npos, epos, alt, phi, theta, psi, vt, alpha, beta, P, Q, R]
   ### Components
   # Subcomponent T_cmd of type BlockComponents.Sources.Constant
   T_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "T_cmd")
-  push!(__systems, @named T_cmd = BlockComponents.Sources.Constant(k=28696.23, T_cmd_overrides...))
+  push!(__systems, @named T_cmd = BlockComponents.Sources.Constant(; k=28696.23, T_cmd_overrides...))
   # Subcomponent el_cmd of type BlockComponents.Sources.Constant
   el_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "el_cmd")
-  push!(__systems, @named el_cmd = BlockComponents.Sources.Constant(k=2.6305, el_cmd_overrides...))
+  push!(__systems, @named el_cmd = BlockComponents.Sources.Constant(; k=2.6305, el_cmd_overrides...))
   # Subcomponent ail_cmd of type BlockComponents.Sources.Constant
   ail_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "ail_cmd")
-  push!(__systems, @named ail_cmd = BlockComponents.Sources.Constant(k=0.0, ail_cmd_overrides...))
+  push!(__systems, @named ail_cmd = BlockComponents.Sources.Constant(; k=Float64(0.0), ail_cmd_overrides...))
   # Subcomponent rud_cmd of type BlockComponents.Sources.Constant
   rud_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "rud_cmd")
-  push!(__systems, @named rud_cmd = BlockComponents.Sources.Constant(k=0.0, rud_cmd_overrides...))
+  push!(__systems, @named rud_cmd = BlockComponents.Sources.Constant(; k=Float64(0.0), rud_cmd_overrides...))
   # Subcomponent lef_cmd of type BlockComponents.Sources.Constant
   lef_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "lef_cmd")
-  push!(__systems, @named lef_cmd = BlockComponents.Sources.Constant(k=0.0, lef_cmd_overrides...))
+  push!(__systems, @named lef_cmd = BlockComponents.Sources.Constant(; k=Float64(0.0), lef_cmd_overrides...))
   # Subcomponent mux of type F16ModelWorkshop.Utils.Mux5
   mux_overrides = __pop_subcomponent_overrides!(__overrides, "mux")
-  push!(__systems, @named mux = F16ModelWorkshop.Utils.Mux5(mux_overrides...))
+  push!(__systems, @named mux = F16ModelWorkshop.Utils.Mux5(; mux_overrides...))
   # Subcomponent plant of type F16ModelWorkshop.Plant.F16PlantModel
   plant_overrides = __pop_subcomponent_overrides!(__overrides, "plant")
-  push!(__systems, @named plant = F16ModelWorkshop.Plant.F16PlantModel(alt_init=3000.0, vt_init=152.4, alpha_init=-0.01695, theta_init=-0.01695, beta_init=0.0, phi_init=0.0, psi_init=0.0, P_init=0.0, Q_init=0.0, R_init=0.0, plant_overrides...))
+  push!(__systems, @named plant = F16ModelWorkshop.Plant.F16PlantModel(; alt_init=Float64(3000.0), vt_init=152.4, alpha_init=-0.01695, theta_init=-0.01695, beta_init=Float64(0.0), phi_init=Float64(0.0), psi_init=Float64(0.0), P_init=Float64(0.0), Q_init=Float64(0.0), R_init=Float64(0.0), plant_overrides...))
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
 
   ### Guesses
 

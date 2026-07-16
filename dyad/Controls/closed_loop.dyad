@@ -622,3 +622,20 @@ analysis F16LQGControllerAnalysis
   model = ClosedLoopModel()
 relations
 end
+
+"""
+Discrete-time variant of `F16LQGControllerAnalysis`.
+
+Identical LQG design weights, but requests a ZOH-discretized controller at the
+sample time `ControllerTs` (100 Hz) via the `disc`/`Ts` keywords of
+`DyadControlSystems.LQGAnalysis`. The resulting feedback controller (`asol.Cfb`)
+is a discrete NamedStateSpace whose A/B/C/D matrices feed the pure-Dyad
+`DiscreteStateSpace` block in the discrete closed loop. This makes the disc="zoh"
+LQG path the single source of truth for the discrete controller matrices
+(no post-hoc `c2d`).
+"""
+analysis F16DiscreteLQGControllerAnalysis
+  extends DyadControlSystems.LQGAnalysis(measurement = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"], controlled_output = ["yn", "ye", "yalt", "ypitch", "yvt", "yalpha", "ybeta", "yQ"], control_input = ["uT", "uEl", "uAil", "uRud", "uLef"], loop_openings = [], q1_diag = [0.1, 0.1, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0], q2_diag = [0.1, 0.1, 0.1, 0.1, 0.1], r1_diag = [0.01, 0.01, 0.01, 0.01, 0.01], r2_diag = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01], duration = -1.0, disc = "zoh", Ts = ControllerTs)
+  model = ClosedLoopModel()
+relations
+end

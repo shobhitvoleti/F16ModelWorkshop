@@ -1,0 +1,95 @@
+"""
+Vector constant source: emits a fixed `n`-vector on its output.
+
+Vector analogue of `BlockComponents.Sources.Constant`, templated like
+`MatrixGain` (structural dimension, array output via comprehension). Lets a
+constant reference/offset vector be connected whole to a vector input port
+instead of instantiating `n` scalar `Constant` blocks and wiring them per
+channel.
+
+Connectors:
+- `y :: RealOutput[n]` — constant output vector, `y = k`.
+"""
+component VectorConstant
+  "Output connectors."
+  y = [RealOutput() for i in 1:n] {^y}
+  "Number of channels."
+  structural parameter n::Integer = 1
+  "Constant output vector."
+  parameter k::Real[n] = zeros(n)
+relations
+  y = k
+metadata {
+  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/vector_constant.svg"}},
+  "_links": {
+    "y": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 550, "rot": 0}
+        },
+        "tags": []
+      }
+    }
+  }
+}
+end
+
+"""
+Vector weighted adder: `y = k1*u1 + k2*u2`, elementwise over `n` channels.
+
+Vector analogue of `BlockComponents.Math.Add` (same `k1`/`k2` gain parameters),
+templated like `MatrixGain`. With `k2 = -1` it is a vector feedback/error block
+(`y = u1 - u2`); with `k2 = 1` it is a vector sum. Lets two vector ports be
+combined whole instead of instantiating `n` scalar `Add` blocks and wiring them
+per channel.
+
+Connectors:
+- `u1 :: RealInput[n]`  — first input vector.
+- `u2 :: RealInput[n]`  — second input vector.
+- `y  :: RealOutput[n]` — weighted sum `k1*u1 + k2*u2`.
+"""
+component VectorAdd
+  "First input vector."
+  u1 = [RealInput() for i in 1:n] {^u1}
+  "Second input vector."
+  u2 = [RealInput() for i in 1:n] {^u2}
+  "Output connectors."
+  y = [RealOutput() for i in 1:n] {^y}
+  "Number of channels."
+  structural parameter n::Integer = 1
+  "Gain on the first input."
+  parameter k1::Real = 1.0
+  "Gain on the second input."
+  parameter k2::Real = 1.0
+relations
+  y = k1 * u1 + k2 * u2
+metadata {
+  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/vector_add.svg"}},
+  "_links": {
+    "u1": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 0, "y1": 180, "x2": 100, "y2": 280, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "u2": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 0, "y1": 710, "x2": 100, "y2": 810, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "y": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 550, "rot": 0}
+        },
+        "tags": []
+      }
+    }
+  }
+}
+end

@@ -1,0 +1,53 @@
+"""
+Vector periodic clock: plants a common `dt` periodic clock on `n` nodes.
+
+Vector analogue of `DiscreteComponents.PeriodicClock`, templated like
+`MatrixGain` (structural channel count, array port via comprehension). Each
+channel carries an independent `PeriodicClock(dt)`; because all channels share
+the same period, they unify to a single clock partition wherever they are
+gathered downstream (e.g. all `n` outputs connected to the input vector of one
+clocked block such as `DiscreteStateSpace`, whose shared block clock ties the
+channels together).
+
+A single fanned clock cannot be used: connecting one `PeriodicClock.y` to `n`
+boundary ports would merge all `n` ports into one connection set, which then
+merges every channel at the point of use (the illegal "two inner output
+connectors in the same set" case). Independent per-channel clocks keep the
+`n` connection sets separate; the block clock at the point of use performs the
+unification.
+
+Connectors:
+- `y :: RealInput[n]` — clock-carrying ports (mirrors `PeriodicClock.y`, which is
+  itself a `RealInput`: connect a clocked node here to force it onto the clock).
+
+Parameters:
+- `n`  — number of channels.
+- `dt` — clock period (same units as `time`).
+"""
+component VectorClock
+  "Number of channels."
+  structural parameter n::Integer = 1
+  "Clock period."
+  structural parameter dt::Real
+  "Clock-carrying ports (one per channel)."
+  y = [RealInput() for i in 1:n] {^y}
+  "Per-channel periodic clocks, all at the same period `dt`."
+  c = [DiscreteComponents.PeriodicClock(dt = dt) for i in 1:n]
+relations
+  for i in 1:n
+    connect(c[i].y, y[i])
+  end
+metadata {
+  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/vector_clock.svg"}},
+  "_links": {
+    "y": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 0, "y1": 450, "x2": 100, "y2": 550, "rot": 0}
+        },
+        "tags": []
+      }
+    }
+  }
+}
+end

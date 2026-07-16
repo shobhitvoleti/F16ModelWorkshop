@@ -45,6 +45,7 @@ This connector represents an electrical pin with voltage and current as the pote
   )
   return System(Equation[], t, __vars, __params; name, metadata = __metadata)
 end
+
 @doc Markdown.doc"""
 This connector represents a thermal port with temperature and heat flow as the potential and flow variables, respectively.
 """
@@ -64,6 +65,7 @@ This connector represents a thermal port with temperature and heat flow as the p
   )
   return System(Equation[], t, __vars, __params; name, metadata = __metadata)
 end
+
 @doc Markdown.doc"""
 This connector represents a mechanical flange with position and force as the potential and flow variables, respectively.
 """
@@ -83,6 +85,7 @@ This connector represents a mechanical flange with position and force as the pot
   )
   return System(Equation[], t, __vars, __params; name, metadata = __metadata)
 end
+
 @doc Markdown.doc"""
 This connector represents a rotational spline with angle and torque as the potential and flow variables, respectively.
 """
@@ -102,6 +105,7 @@ This connector represents a rotational spline with angle and torque as the poten
   )
   return System(Equation[], t, __vars, __params; name, metadata = __metadata)
 end
+
 @doc Markdown.doc"""
 Coordinate system (2-dim.) fixed to the component with one cut-force and cut-torque.
 All variables are resolved in the planar world frame.
@@ -126,6 +130,7 @@ All variables are resolved in the planar world frame.
   )
   return System(Equation[], t, __vars, __params; name, metadata = __metadata)
 end
+
 @doc Markdown.doc"""
 Frame3D is the fundamental 3D connector used for 6DOF motion. Most components have one or several `Frame`
 connectors that can be connected together
@@ -153,6 +158,7 @@ connectors that can be connected together
   )
   return System(Equation[], t, __vars, __params; name, metadata = __metadata)
 end
+
 @doc Markdown.doc"""
 While it conveys no value, because every connector must
 have a clock associated with it, instantiation of this
@@ -174,6 +180,7 @@ component.
   )
   return System(Equation[], t, __vars, __params; name, metadata = __metadata)
 end
+
 @doc Markdown.doc"""
 While it conveys no value, because every connector must
 have a clock associated with it, instantiation of this
@@ -195,6 +202,7 @@ component.
   )
   return System(Equation[], t, __vars, __params; name, metadata = __metadata)
 end
+
 
 include("F16PlantIO_definition.jl")
 include("F16PlantModel_definition.jl")

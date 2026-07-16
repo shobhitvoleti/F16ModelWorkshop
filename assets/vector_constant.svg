@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000">
+  <defs>
+    <linearGradient id="body" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#F1F5F9"/>
+      <stop offset="100%" stop-color="#E2E8F0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Body -->
+  <rect x="150" y="150" width="700" height="700" rx="40" fill="url(#body)" stroke="#334155" stroke-width="6"/>
+
+  <!-- Output stub (right) -->
+  <line x1="850" y1="500" x2="900" y2="500" stroke="#334155" stroke-width="4"/>
+
+  <!-- Axes -->
+  <line x1="215" y1="700" x2="745" y2="700" stroke="#CBD5E1" stroke-width="4"/>
+  <line x1="230" y1="720" x2="230" y2="300" stroke="#CBD5E1" stroke-width="4"/>
+
+  <!-- Constant level line -->
+  <line x1="230" y1="420" x2="745" y2="420" stroke="#334155" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- Level reference drop -->
+  <line x1="230" y1="420" x2="230" y2="700" stroke="#64748B" stroke-width="3" stroke-dasharray="12 12"/>
+
+  <!-- Output stream: single slow marker along the constant level -->
+  <circle r="13" fill="#334155">
+    <animateMotion dur="4s" repeatCount="indefinite" path="M 230 420 L 745 420"/>
+    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="4s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Output port (vector) -->
+  <circle cx="900" cy="500" r="18" fill="#334155"/>
+  <circle cx="900" cy="500" r="10" fill="#FFFFFF"/>
+  <circle cx="900" cy="500" r="6"  fill="#334155"/>
+
+  <!-- Labels -->
+  <text x="490" y="250" font-family="monospace" font-size="90" font-weight="bold" fill="#334155" text-anchor="middle" dominant-baseline="middle">k</text>
+  <text x="835" y="470" font-family="monospace" font-size="44" fill="#64748B" text-anchor="end">y</text>
+  <text x="500" y="820" font-family="sans-serif" font-weight="bold" font-size="50" fill="#334155" text-anchor="middle" opacity="0.5">CONST</text>
+</svg>

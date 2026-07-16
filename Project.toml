@@ -1,7 +1,9 @@
 name = "F16ModelWorkshop"
 uuid = "583a9d02-f083-4e13-8666-022e634a307d"
 version = "0.1.0"
-authors = [" <>"]
+authors = [
+  " <>"
+]
 
 [deps]
 BlockComponents = "1ef5d832-be8e-447f-9f2c-8b5d17d15fd3"
@@ -33,14 +35,21 @@ TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 ThermalComponents = "084a29d9-4f48-4925-95b4-b7d4c79725f4"
 TranslationalComponents = "42acc370-819b-4877-bdd6-eb3294461f5d"
 
-[sources]
-DiscreteComponents = {rev = "main", url = "https://github.com/JuliaComputing/DiscreteComponents.git"}
-MultibodyComponents = {rev = "main", url = "https://github.com/JuliaComputing/MultibodyComponents.jl.git"}
-SynchToolkit = {rev = "main", url = "https://github.com/JuliaComputing/SynchToolkit.jl.git"}
+[sources.DiscreteComponents]
+rev = "main"
+url = "https://github.com/JuliaComputing/DiscreteComponents.git"
+
+[sources.MultibodyComponents]
+rev = "581ec74a96589ad07e97e6f3b27c9de66b3bc137"
+url = "https://github.com/JuliaComputing/MultibodyComponents.jl.git"
+
+[sources.SynchToolkit]
+rev = "43143832f46974cac1b62c793c2fc421beac3fe2"
+url = "https://github.com/JuliaComputing/SynchToolkit.jl.git"
 
 [compat]
-BlockComponents = "=4.0.9"
-DiscreteComponents = "0.1.0"
+BlockComponents = "=4.2.0"
+DiscreteComponents = "0.2.0"
 DyadData = "2.0.1"
 ElectricalComponents = "=2.2.1"
 FileIO = "1.19.0"
@@ -48,7 +57,7 @@ GLMakie = "0.13.8"
 GeometryBasics = "0.5.10"
 Markdown = "1"
 MeshIO = "0.5.3"
-MultibodyComponents = "0.1"
+MultibodyComponents = "0.2"
 NonlinearSolve = "4.12.0"
 Plots = "1.41.4"
 Revise = "3.13.2"
@@ -59,7 +68,7 @@ ThermalComponents = "=2.0.5"
 TranslationalComponents = "=2.4.2"
 
 [dyad]
-kernel = "3.1.1"
+kernel = "3.2.1"
 
 [extras]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
@@ -68,4 +77,9 @@ Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["CSV", "DataFrames", "Plots", "Test"]
+test = [
+  "CSV",
+  "DataFrames",
+  "Plots",
+  "Test"
+]

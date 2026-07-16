@@ -7,3 +7,4 @@
 /agent_resources/
 /animations/
 /.migration-backups/
+.DS_Store

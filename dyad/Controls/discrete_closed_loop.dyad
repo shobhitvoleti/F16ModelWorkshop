@@ -1,0 +1,137 @@
+"""
+Discrete-time (sampled-data) F16 closed loop.
+
+Sampled version of `ClosedLoopModel`: the continuous LQG controller is replaced
+by the clocked `DiscreteStateSpace`, fed the ZOH-discretized matrices
+(`DiscreteControllerA/B/C/D` from `F16DiscreteLQGControllerAnalysis`, Ts=ControllerTs).
+Trim is folded into the controller output operating point (`y0 = trim_vals`), so
+`controller.y` is the absolute control command — no external feedforward.
+
+Signal flow (all vector ports):
+  ref - measurement --> err (12 ch)
+  err --> sample (100 Hz) --> controller       continuous -> clocked (12 ch)
+  controller --> zoh --> f16plant.u_in         clocked -> continuous (5 ch)
+
+The 100 Hz clock is planted on `controller.u` and propagated to the samplers and
+holds by clock inference.
+
+Scenario: 10 deg initial pitch perturbation about trim.
+"""
+component F16DiscreteClosedLoop
+  "Vector-I/O F16 plant; 10 deg initial pitch perturbation about trim."
+  f16plant = F16ModelWorkshop.Plant.F16PlantModel(alt_init = 3000, theta_init = 0.17453292519943295) {^f16plant}
+  "Discrete (ZOH) LQG controller as a clocked state-space block; trim folded into the output operating point y0."
+  controller = DiscreteComponents.DiscreteStateSpace(nx = 12, nu = 12, ny = 5, A = DiscreteControllerA, B = DiscreteControllerB, C = DiscreteControllerC, D = DiscreteControllerD, y0 = trim_vals) {^controller}
+  "Controller sample clock (100 Hz), vector: one clock per controller input."
+  clk = F16ModelWorkshop.VectorBlocks.VectorClock(n = 12, dt = ControllerTs) {^clk}
+  "Reference set-points for the 12 measured states (vector source)."
+  ref = F16ModelWorkshop.VectorBlocks.VectorConstant(n = 12, k = ref_vals) {^ref}
+  "Tracking error block: error = ref - measurement (12 ch)."
+  err = F16ModelWorkshop.VectorBlocks.VectorAdd(n = 12, k1 = 1, k2 = -1) {^err}
+  "Vector sampler bridging continuous error -> clocked controller input (12 ch)."
+  sample = F16ModelWorkshop.VectorBlocks.MultiSampler(n = 12) {^sample}
+  "Vector zero-order hold bridging clocked controller output -> continuous control (5 ch)."
+  zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(n = 5) {^zoh}
+  "Reference set-points for the 12 states [npos, epos, alt, phi, theta, psi, vt, alpha, beta, P, Q, R], from the trim TOML."
+  structural parameter ref_vals::Real[12] = [F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.npos_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.epos_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.alt_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.phi_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.theta_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.psi_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.vt_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.alpha_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.beta_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.P_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.Q_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.R_init")]
+  "Trim control [T(N), el(deg), ail(deg), rud(deg), lef(deg)], from the trim TOML; used as controller output operating point."
+  structural parameter trim_vals::Real[5] = [F16ModelWorkshop.load_trim("trim/trim_point.toml", "T_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "el_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "ail_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "rud_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "lef_cmd.k")]
+relations
+  connect(ref.y, err.u1) {^id8}
+  connect(f16plant.y_out, err.u2) {^id9}
+  connect(err.y, sample.u) {^id10}
+  connect(sample.y, controller.u) {^id11}
+  connect(controller.y, zoh.u) {^id12}
+  connect(zoh.y, f16plant.u_in) {^id13}
+  connect(clk.y, controller.u) {^id14}
+metadata {
+  "_links": {
+    "f16plant": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 280, "y1": 146, "x2": 380, "y2": 246, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "controller": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 360, "y1": 370, "x2": 260, "y2": 470, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "clk": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 510, "y1": 500, "x2": 610, "y2": 600, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "ref": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 390, "y1": 70, "x2": 490, "y2": 170, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "err": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 520, "y1": 120, "x2": 620, "y2": 220, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "sample": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 610, "y1": 370, "x2": 510, "y2": 470, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "zoh": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 210, "y1": 370, "x2": 110, "y2": 470, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "id8": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 510, "y": 120}, {"x": 510, "y": 143}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id9": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id10": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 630, "y": 170}, {"x": 630, "y": 420}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    },
+    "id11": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id12": {"Dyad": {"renderStyle": "standard", "edges": [{"S": 1, "E": 2, "M": []}]}},
+    "id13": {
+      "Dyad": {"edges": [{"S": 1, "M": [{"x": 80, "y": 420}, {"x": 80, "y": 196}], "E": 2}]}
+    },
+    "id14": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 390, "y": 550}, {"x": 390, "y": 420}], "E": 2}],
+        "renderStyle": "standard"
+      }
+    }
+  }
+}
+end
+
+analysis Scenario1DiscreteClosedLoop
+  extends TransientAnalysis(stop = 10.0)
+  model = F16DiscreteClosedLoop()
+relations
+end

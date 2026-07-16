@@ -4,12 +4,25 @@ using ModelingToolkit, OrdinaryDiffEqDefault, NonlinearSolve
 import Symbolics: unwrap
 export unwrap
 export ControllerA, ControllerB, ControllerC, ControllerD
+export DiscreteControllerA, DiscreteControllerB, DiscreteControllerC, DiscreteControllerD
+export ControllerTs
 
 include("output.jl")
+
+# Defined BEFORE the generated code so Dyad components can reference the discrete
+# controller matrices (DiscreteControllerA/B/C/D, ControllerTs) in parameter
+# defaults.  Depends on ControllerA-D from output.jl.
+include("discrete_controller.jl")
 
 # Defined BEFORE the generated code so Dyad components can call load_trim in
 # parameter defaults (see dyad/Trimming/f16_trimmed_plant_linked.dyad).
 include("trim_io.jl")
+
+# Stevens & Lewis F-16 aerodynamic tables and reference buildup (Step 0 data
+# package). Defined BEFORE the generated code so Dyad components can reference
+# the tables and interpolation functions.
+include("f16_aero_data.jl")
+include("f16_aero.jl")
 
 include("../generated/module.jl")
 
