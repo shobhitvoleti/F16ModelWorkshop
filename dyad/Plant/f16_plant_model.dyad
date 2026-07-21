@@ -5,8 +5,8 @@ component F16PlantModel
   "State outputs: [npos, epos, alt, phi, theta, psi, vt, alpha, beta, P, Q, R]"
   y_out = [RealOutput() for i in 1:12] {^y_out}
   # ---- 12 state variables ----
-  variable npos::Real
-  variable epos::Real
+  variable npos::Real = initial npos_init
+  variable epos::Real = initial epos_init
   variable alt::Real
   variable phi::Real
   variable theta::Real
@@ -116,8 +116,6 @@ component F16PlantModel
   variable denom::Real
 relations
   # ---- Initial conditions ----
-  initial npos = npos_init
-  initial epos = epos_init
   initial alt = alt_init
   initial phi = phi_init
   initial theta = theta_init

@@ -340,9 +340,11 @@ F16 plant model with RealInput/RealOutput connectors for control system design
 
   ### Variables (assignments)
   __ovr_npos = pop!(__overrides, "npos", nothing); isnothing(__ovr_npos) || push!(__eqs, npos ~ __ovr_npos)
-  __ovr_npos__initial = pop!(__overrides, "npos__initial", nothing); isnothing(__ovr_npos__initial) || (__initial_conditions[npos] = __ovr_npos__initial)
+  __ovr_npos__initial = pop!(__overrides, "npos__initial", nothing); __ic_npos = @something(__ovr_npos__initial, npos_init)
+  ismissing(__ic_npos) || (__initial_conditions[npos] = __ic_npos)
   __ovr_epos = pop!(__overrides, "epos", nothing); isnothing(__ovr_epos) || push!(__eqs, epos ~ __ovr_epos)
-  __ovr_epos__initial = pop!(__overrides, "epos__initial", nothing); isnothing(__ovr_epos__initial) || (__initial_conditions[epos] = __ovr_epos__initial)
+  __ovr_epos__initial = pop!(__overrides, "epos__initial", nothing); __ic_epos = @something(__ovr_epos__initial, epos_init)
+  ismissing(__ic_epos) || (__initial_conditions[epos] = __ic_epos)
   __ovr_alt = pop!(__overrides, "alt", nothing); isnothing(__ovr_alt) || push!(__eqs, alt ~ __ovr_alt)
   __ovr_alt__initial = pop!(__overrides, "alt__initial", nothing); isnothing(__ovr_alt__initial) || (__initial_conditions[alt] = __ovr_alt__initial)
   __ovr_phi = pop!(__overrides, "phi", nothing); isnothing(__ovr_phi) || push!(__eqs, phi ~ __ovr_phi)
@@ -455,8 +457,6 @@ F16 plant model with RealInput/RealOutput connectors for control system design
   ### Guesses
 
   ### Initialization Equations
-  push!(__initialization_eqs, npos ~ npos_init)
-  push!(__initialization_eqs, epos ~ epos_init)
   push!(__initialization_eqs, alt ~ alt_init)
   push!(__initialization_eqs, phi ~ phi_init)
   push!(__initialization_eqs, theta ~ theta_init)
