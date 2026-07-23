@@ -7,4 +7,8 @@
 /agent_resources/
 /animations/
 /.migration-backups/
+/.dev/
+/.claude/
+/trim/tutorial_trim_point.toml
+/trim/tutorial_linear_model.toml
 .DS_Store

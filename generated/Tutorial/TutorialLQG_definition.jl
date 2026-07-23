@@ -8,17 +8,17 @@ using DyadInterface
 using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel
 using ModelingToolkit: SymbolicT, toggle_namespacing
 using DyadControlSystems: AbstractLQGAnalysisSpec, LQGAnalysisSpec
-@kwdef mutable struct F16LQGControllerAnalysisVectorMuxedSpec <: AbstractLQGAnalysisSpec
-  name::Symbol = :F16LQGControllerAnalysisVectorMuxed
+@kwdef mutable struct TutorialLQGSpec <: AbstractLQGAnalysisSpec
+  name::Symbol = :TutorialLQG
   var"measurement"::Array{String, 1} = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"]
   var"controlled_output"::Array{String, 1} = ["yn", "ye", "yalt", "ypitch", "yvt", "yalpha", "ybeta", "yQ"]
-  var"control_input"::Array{String, 1} = ["uT", "uEl", "uAil", "uRud", "uLef"]
+  var"control_input"::Array{String, 1} = ["uT", "uEl", "uAil", "uRud"]
   var"disturbance_inputs"::Array{String, 1} = []
   var"loop_openings"::Array{String, 1} = []
   var"t"::Float64 = 0.0
   var"q1_diag"::Array{Float64, 1} = [0.1, 0.1, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0]
-  var"q2_diag"::Array{Float64, 1} = [0.1, 0.1, 0.1, 0.1, 0.1]
-  var"r1_diag"::Array{Float64, 1} = [0.01, 0.01, 0.01, 0.01, 0.01]
+  var"q2_diag"::Array{Float64, 1} = [0.1, 0.1, 0.1, 0.1]
+  var"r1_diag"::Array{Float64, 1} = [0.01, 0.01, 0.01, 0.01]
   var"r2_diag"::Array{Float64, 1} = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
   var"qQ"::Float64 = 0.0
   var"qR"::Float64 = 0.0
@@ -30,22 +30,24 @@ using DyadControlSystems: AbstractLQGAnalysisSpec, LQGAnalysisSpec
   var"wu"::Float64 = -1
   var"num_frequencies"::Int = 3000
   var"duration"::Float64 = -1.0
-  # Mux/demux variant of ClosedLoopModel.
+  # Tutorial 3 — Continuous LQG control.
   # 
-  # Same controller, reference, error, trim and control blocks as ClosedLoopModel,
-  # but the scalar F16PlantIO is replaced with the vector-I/O F16PlantModel and the
-  # plant-boundary wiring is routed through a Mux5 (5 control outputs -> u_in[1:5])
-  # and a two-stage demux (Demux4x3 splits y_out[1:12] into four [3] arrays, then
-  # four Demux3 split those into 12 scalar measurements). The 17 analysis points are
-  # kept SCALAR and relocated onto the mux-input / demux-output edges:
-  #   control_X.y --[uX AP]--> mux.uX           (mux.y -> f16plant.u_in, pass-through)
-  #   demux_*.yK  --[yK AP]--> errorN.u2        (f16plant.y_out -> demux -> demux_*, pass-through)
-  # Since the mux/demux blocks are pure algebraic pass-throughs, the linearized plant
-  # the LQG analysis sees is unchanged. Tests whether mux/demux breaks AP name resolution.
-  var"model"::Union{Nothing, System} = F16ModelWorkshop.Controls.ClosedLoopVectorMuxedModel(; name=:ClosedLoopVectorMuxedModel)
+  # Design model built with vector connectors: the F16 plant (vector I/O) closed with
+  # an LQG regulator, trim folded in as a control offset. Analysis points must be
+  # SCALAR (LQGAnalysis counts each AP name as one channel, not a vector's N), so the
+  # vector signals are tapped through a demux/mux pair exactly at the 17 analysis
+  # points, and stay vector everywhere else — a clean bus instead of per-channel
+  # spaghetti:
+  #   measurements: plant.y_out -> Demux4x3 -> 4x Demux3 -[yn..yR]-> 4x Mux3 -> Mux4x3 -> err
+  #   controls:     controller  -> Demux5 -> (+trim) -[uT,uEl,uAil,uRud]-> Mux5 -> plant.u_in
+  #   (LEF is unmodeled in the plant aero, so it is not a design control; it stays at trim.)
+  # 
+  # `TutorialLQG` linearizes the plant between these points and synthesizes the LQG
+  # gains; `TutorialLinearize` (02) linearizes the same instrumented model.
+  var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.LQGDemo(; name=:LQGDemo)
 end
 
-function DyadInterface.run_analysis(spec::F16LQGControllerAnalysisVectorMuxedSpec)
+function DyadInterface.run_analysis(spec::TutorialLQGSpec)
   overrides = Dict{SymbolicT, SymbolicT}()
   no_namespace_model = toggle_namespacing(spec.model, false)
   
@@ -55,5 +57,5 @@ function DyadInterface.run_analysis(spec::F16LQGControllerAnalysisVectorMuxedSpe
   run_analysis(base_spec)
 end
 
-F16LQGControllerAnalysisVectorMuxed(;kwargs...) = run_analysis(F16LQGControllerAnalysisVectorMuxedSpec(;kwargs...))
-export F16LQGControllerAnalysisVectorMuxed, F16LQGControllerAnalysisVectorMuxedSpec
+TutorialLQG(;kwargs...) = run_analysis(TutorialLQGSpec(;kwargs...))
+export TutorialLQG, TutorialLQGSpec

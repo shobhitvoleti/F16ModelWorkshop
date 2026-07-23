@@ -18,9 +18,13 @@ include("discrete_controller.jl")
 # parameter defaults (see dyad/Trimming/f16_trimmed_plant_linked.dyad).
 include("trim_io.jl")
 
+# Custom analysis specs (extendable from Dyad via `partial analysis`) must be
+# defined BEFORE the generated code that references them.
+include("tutorial_export_analyses.jl")
+
 include("../generated/module.jl")
 
-# Defined AFTER the generated code: references the generated Trimming.F16Trim model.
+# Defined AFTER the generated code: references the generated Tutorial.TrimDemo model.
 include("trim_plant_analysis.jl")
 
 end

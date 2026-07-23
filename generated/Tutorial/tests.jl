@@ -10,13 +10,13 @@ using OrdinaryDiffEqDefault
 using RuntimeGeneratedFunctions
 RuntimeGeneratedFunctions.init(@__MODULE__)
 
-if isfile(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Trimming", "tests.jl"))
-  include(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Trimming", "tests.jl"))
+if isfile(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Tutorial", "tests.jl"))
+  include(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Tutorial", "tests.jl"))
 end
 
 
-@testset "`F16ModelWorkshop.Trimming`" begin
-include("F16OpenLoopTrim_test.jl")
-include("F16TrimmedPlantLinked_test.jl")
-include("F16VizTrim_test.jl")
+@testset "`F16ModelWorkshop.Tutorial`" begin
+include("DiscreteClosedLoopDemo_test.jl")
+include("LQGDemo_test.jl")
+include("TrimDemo_test.jl")
 end

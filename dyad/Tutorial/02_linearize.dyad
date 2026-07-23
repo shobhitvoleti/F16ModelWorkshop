@@ -1,0 +1,28 @@
+"""
+Tutorial 2 — Linearization.
+
+Linearizes the open-loop F16 plant about the trim operating point, from the 5
+control inputs (uT, uEl, uAil, uRud) to the 12 measured outputs (yn..yR). It reuses the
+instrumented design model `LQGDemo` (defined in 03_lqg_continuous.dyad) and opens
+the feedback loop at the measurement outputs, so the plant keeps its trim command
+inputs while the controller feedback is severed — the result is the bare plant P,
+not the closed loop. Analysis-point names are scalar, one per channel (see the
+note in 03).
+
+Output: poles, zeros, and Bode/step responses of the linearized plant.
+`TutorialLinearizeExport` does the same linearization and additionally writes the
+state-space (A/B/C/D) to `trim/tutorial_linear_model.toml`; it extends the custom
+`LinearizeExportAnalysis` (a Dyad analysis whose Julia `run_analysis` writes the
+file — see dyad/Tutorial/export_analyses.dyad and src/tutorial_export_analyses.jl).
+"""
+analysis TutorialLinearize
+  extends DyadControlSystems.LinearAnalysis(inputs = ["uT", "uEl", "uAil", "uRud"], outputs = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"], loop_openings = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"])
+  model = LQGDemo()
+relations
+end
+
+analysis TutorialLinearizeExport
+  extends LinearizeExportAnalysis(inputs = ["uT", "uEl", "uAil", "uRud"], outputs = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"], loop_openings = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"], export_path = "trim/tutorial_linear_model.toml")
+  model = LQGDemo()
+relations
+end

@@ -2,7 +2,7 @@ name = "F16ModelWorkshop"
 uuid = "583a9d02-f083-4e13-8666-022e634a307d"
 version = "0.1.0"
 authors = [
-  " <>"
+  "Rajeev Voleti <rajeev.voleti@juliahub.com>"
 ]
 
 [deps]

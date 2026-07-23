@@ -22,5 +22,6 @@ end
 include("Controls/tests.jl")
 include("Plant/tests.jl")
 include("Trimming/tests.jl")
+include("Tutorial/tests.jl")
 include("Utils/tests.jl")
 include("VectorBlocks/tests.jl")

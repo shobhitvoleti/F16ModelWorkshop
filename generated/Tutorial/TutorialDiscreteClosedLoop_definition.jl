@@ -8,11 +8,11 @@ using DyadInterface
 using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel
 using ModelingToolkit: SymbolicT, toggle_namespacing
 using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
-@kwdef mutable struct F16TrimAnalysisSpec <: AbstractTransientAnalysisSpec
-  name::Symbol = :F16TrimAnalysis
+@kwdef mutable struct TutorialDiscreteClosedLoopSpec <: AbstractTransientAnalysisSpec
+  name::Symbol = :TutorialDiscreteClosedLoop
   var"alg"::ODEAlg.Type = ODEAlg.Auto()
   var"start"::Float64 = 0
-  var"stop"::Float64 = 0.0
+  var"stop"::Float64 = 10.0
   var"abstol"::Float64 = 0.000001
   var"reltol"::Float64 = 0.000001
   var"saveat"::Float64 = 0
@@ -24,11 +24,27 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
   var"respecialize"::Bool = false
   var"verbose"::DEVerbosity.Type = DEVerbosity.Standard()
   var"log_file"::String = ""
-  # Trim via missing-Constant + zero-duration TransientAnalysis
-  var"model"::Union{Nothing, System} = F16ModelWorkshop.Trimming.F16Trim(; name=:F16Trim)
+  # Tutorial 4 — Discrete (sampled-data) closed-loop LQG.
+  # 
+  # Sampled version of `ClosedLoopModel`: the continuous LQG controller is replaced
+  # by the clocked `DiscreteStateSpace`, fed the ZOH-discretized matrices
+  # (`DiscreteControllerA/B/C/D` from `F16DiscreteLQGControllerAnalysis`, Ts=ControllerTs).
+  # Trim is folded into the controller output operating point (`y0 = trim_vals`), so
+  # `controller.y` is the absolute control command — no external feedforward.
+  # 
+  # Signal flow (all vector ports):
+  #   ref - measurement --> err (12 ch)
+  #   err --> sample (100 Hz) --> controller       continuous -> clocked (12 ch)
+  #   controller --> zoh --> f16plant.u_in         clocked -> continuous (5 ch)
+  # 
+  # The 100 Hz clock is planted on `controller.u` and propagated to the samplers and
+  # holds by clock inference.
+  # 
+  # Scenario: 10 deg initial pitch perturbation about trim.
+  var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.DiscreteClosedLoopDemo(; name=:DiscreteClosedLoopDemo)
 end
 
-function DyadInterface.run_analysis(spec::F16TrimAnalysisSpec)
+function DyadInterface.run_analysis(spec::TutorialDiscreteClosedLoopSpec)
   overrides = Dict{SymbolicT, SymbolicT}()
   no_namespace_model = toggle_namespacing(spec.model, false)
   
@@ -38,5 +54,5 @@ function DyadInterface.run_analysis(spec::F16TrimAnalysisSpec)
   run_analysis(base_spec)
 end
 
-F16TrimAnalysis(;kwargs...) = run_analysis(F16TrimAnalysisSpec(;kwargs...))
-export F16TrimAnalysis, F16TrimAnalysisSpec
+TutorialDiscreteClosedLoop(;kwargs...) = run_analysis(TutorialDiscreteClosedLoopSpec(;kwargs...))
+export TutorialDiscreteClosedLoop, TutorialDiscreteClosedLoopSpec

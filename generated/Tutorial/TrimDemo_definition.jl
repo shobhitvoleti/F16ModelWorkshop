@@ -7,16 +7,35 @@
 import Moshi as __Ext__Moshi
 
 @doc Markdown.doc"""
-   F16Trim(; name)
+   TrimDemo(; name)
 
-Trim via missing-Constant + zero-duration TransientAnalysis
+Tutorial 1 — Trimming.
+
+Trim = the steady flight condition: control inputs and states that hold every
+motion derivative at zero. We find it by declaring the unknowns `missing` and
+letting the initialization solver satisfy the equilibrium constraints.
+
+  - Unknowns: thrust `T_cmd.k`, elevator `el_cmd.k`, and the plant's `alpha`/
+    `theta` initial conditions (all `missing`).
+  - Constraints: `initial der(...) = 0` on the states that must be steady.
+  - `guess`es seed Newton; they do not bias the converged trim.
+
+Run `TutorialTrim` (a zero-duration TransientAnalysis) to solve the operating
+point. `TutorialTrimExport` does the same solve and additionally writes the
+operating point to `trim/tutorial_trim_point.toml`; it extends the custom
+`TrimExportAnalysis` (a Dyad analysis whose Julia `run_analysis` writes the file
+— see dyad/Tutorial/export_analyses.dyad and src/tutorial_export_analyses.jl).
+Steps 03/04 load the committed `trim/trim_point.toml` at build time; this tutorial
+export is a standalone demonstration and leaves that file untouched.
+
+Signal flow: Constants -> Mux5 -> F16PlantModel
 """
-@component function F16Trim(; name = nothing, kwargs...)
+@component function TrimDemo(; name = nothing, kwargs...)
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
   
-    @named model = F16Trim()
+    @named model = TrimDemo()
   """))
 
   __overrides = __build_overrides(kwargs)
@@ -85,8 +104,6 @@ Trim via missing-Constant + zero-duration TransientAnalysis
   __guesses[el_cmd.k] = (2.0)
   __guesses[f16plant.alpha_init] = (-0.02)
   __guesses[f16plant.theta_init] = (-0.02)
-  __guesses[f16plant.x_lon] = ([-0.02, 0.0004, 0.046, 0.0])
-  __guesses[f16plant.Udot] = (0.0)
 
   ### Initialization Equations
   push!(__initialization_eqs, ModelingToolkit.D_nounits(f16plant.vt) ~ 0.0)
@@ -108,4 +125,4 @@ Trim via missing-Constant + zero-duration TransientAnalysis
   # Return completely constructed System
   return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
-export F16Trim
+export TrimDemo

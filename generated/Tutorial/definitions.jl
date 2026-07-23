@@ -12,8 +12,8 @@ using OrdinaryDiffEqDefault
 using RuntimeGeneratedFunctions
 RuntimeGeneratedFunctions.init(@__MODULE__)
 
-if isfile(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Utils", "definitions.jl"))
-  include(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Utils", "definitions.jl"))
+if isfile(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Tutorial", "definitions.jl"))
+  include(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Tutorial", "definitions.jl"))
 end
 
 import BlockComponents
@@ -204,12 +204,12 @@ component.
 end
 
 
-include("Demux12_definition.jl")
-include("Demux3_definition.jl")
-include("Demux4x3_definition.jl")
-include("Demux5_definition.jl")
-include("Mux12_definition.jl")
-include("Mux3_definition.jl")
-include("Mux4x3_definition.jl")
-include("Mux5_definition.jl")
-include("SignalPoseSource_definition.jl")
+include("DiscreteClosedLoopDemo_definition.jl")
+include("LQGDemo_definition.jl")
+include("TrimDemo_definition.jl")
+include("TutorialDiscreteClosedLoop_definition.jl")
+include("TutorialLQG_definition.jl")
+include("TutorialLinearizeExport_definition.jl")
+include("TutorialLinearize_definition.jl")
+include("TutorialTrimExport_definition.jl")
+include("TutorialTrim_definition.jl")

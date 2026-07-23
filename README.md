@@ -1,42 +1,66 @@
 # F16ModelWorkshop
-  
-## Getting Started
-  
-This library was created with the Dyad Studio VS Code extension.  Your Dyad
-models should be placed in the `dyad` directory and the files should be
-given the `.dyad` extension.  Several such files have already been placed
-in there to get you started.  The Dyad compiler will compile the Dyad models
-into Julia code and place it in the `generated` folder.  Do not edit the
-files in that directory or remove/rename that directory.
 
-A complete tutorial on using Dyad Studio can be found [here](#).  But you
-can run the provided example models by doing the following:
+Workshop teaching material for modeling and control design in
+[Dyad](https://juliahub.com/products/dyad): a 6-DOF F16 aircraft plant, trimming,
+linearization, and LQG control — continuous and discrete (sampled-data).
 
-1. Run `Julia: Start REPL` from the command palette.
+## Repository layout
 
-2. Type `]`.  This will take you to the package manager prompt.
+Dyad sources live in `dyad/`; the compiler regenerates `generated/` from them
+(never edit `generated/` by hand — run `dyad compile .`).
 
-3. At the `pkg>` prompt, type `instantiate` (this downloads all the Julia libraries
-   you will need, and the very first time you do it it might take a while).
+| Module | Contents |
+|---|---|
+| `dyad/Plant/` | F16 6-DOF plant: `F16PlantModel` (vector I/O) and `F16PlantIO` (scalar I/O) |
+| `dyad/Trimming/` | Trim models and the trimmed-plant scenario |
+| `dyad/Controls/` | LQG controller design (`lqg_design.dyad`), demo loops, and 3-D visualizers |
+| `dyad/VectorBlocks/` | Vector-connector building blocks (constant, add, sampler, ZOH, clock) |
+| `dyad/Utils/` | Mux/demux and the signal→pose bridge for visualization |
+| `dyad/Tutorial/` | **Start here** — a guided four-step walkthrough (below) |
 
-4. From the same `pkg>` prompt, type `test`.  This runs the model test harnesses to
-   make sure the models are working as expected.  It may take some time, but you
-   should eventually see the test summary reporting that the tests passed.
+## Tutorial walkthrough
 
-5. Use the `Backspace`/`Delete` key to return to the normal Julia REPL, it should
-   look like this: `julia>`.
+The `Tutorial` module is a self-contained tour from a raw plant to a working
+sampled-data controller:
 
-6. Type `using F16ModelWorkshop`.  This will load your model library.
+1. **`01_trim.dyad` — `TutorialTrim` / `TutorialTrimExport`.** Find the steady
+   flight condition by declaring the unknown controls/states `missing` and solving
+   the equilibrium constraints. `TutorialTrimExport` (extends the custom
+   `TrimExportAnalysis`) does the same solve and writes the operating point to
+   `trim/tutorial_trim_point.toml`.
+2. **`02_linearize.dyad` — `TutorialLinearize` / `TutorialLinearizeExport`.**
+   Linearize the trimmed plant to the state-space model that control design is
+   built on. `TutorialLinearizeExport` (extends the custom `LinearizeExportAnalysis`)
+   also writes the A/B/C/D to `trim/tutorial_linear_model.toml`.
+3. **`03_lqg_continuous.dyad` — `TutorialLQG`.** Design a continuous LQG
+   regulator and simulate the closed-loop response to a pitch perturbation.
+4. **`04_lqg_discrete.dyad` — `TutorialDiscreteClosedLoop`.** The same loop as a
+   100 Hz sampled-data system, wired entirely with vector connectors: sampler →
+   discrete state-space controller → zero-order hold.
 
-7. Type `Scenario1OpenLoop()` to run the open-loop response of the F16 plant to a 10°
-   pitch perturbation.  The first time you run it, this might take a few seconds, but
-   each successive time you run it, it should be very fast.
+## Running the models
 
-8. To see simulation results type `using Plots` (and answer `y` if asked if you want
-   to add it as a dependency).
+1. Instantiate the environment (first run downloads dependencies):
+   ```
+   julia --project=. -e 'using Pkg; Pkg.instantiate()'
+   ```
+2. Run the test harness to confirm the models build:
+   ```
+   julia --project=. -e 'using Pkg; Pkg.test()'
+   ```
+3. Run an analysis and plot it. Analyses live in their module's namespace, so
+   bring the submodule into scope (or fully-qualify, e.g.
+   `F16ModelWorkshop.Controls.Scenario1OpenLoop()`):
+   ```julia
+   using F16ModelWorkshop, F16ModelWorkshop.Tutorial, Plots
+   plot(TutorialDiscreteClosedLoop())                     # sampled-data pitch recovery
+   TutorialLQG()                                          # synthesize the continuous LQG controller
+   plot(F16ModelWorkshop.Controls.Scenario1OpenLoop())   # open-loop 10° pitch perturbation
+   ```
 
-9. To plot results of the simulation, simply type `plot(Scenario1OpenLoop())`.
+## Trim workflow
 
-10. You can plot variations on that simulation using keyword arguments.  For example,
-    try `plot(Scenario1OpenLoop(stop=50))`.  Run `plot(Scenario1ClosedLoop())` to see
-    the LQG-stabilized response to the same perturbation.
+`F16ModelWorkshop.TrimPlantAnalysis()` solves the trim and writes
+`trim/trim_point.toml`. Components load their operating point from that file at
+build time via `load_trim`, so re-running the trim and recompiling refreshes the
+whole workshop to the new condition automatically.

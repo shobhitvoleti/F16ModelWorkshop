@@ -2,7 +2,7 @@
 # TrimPlantAnalysis — a custom Dyad/DyadInterface analysis that trims the F16
 # plant and exports the operating point as a native Dyad **parameter set** TOML.
 #
-# It reuses the existing trim model (`Trimming.F16Trim`), which solves for the
+# It reuses the tutorial trim model (`Tutorial.TrimDemo`), which solves for the
 # unknown control inputs and angles via a zero-duration TransientAnalysis, then
 # reads the full trimmed operating point (5 control inputs + 12 plant states)
 # out of the solution and writes it to `spec.export_path`.
@@ -32,7 +32,7 @@
 # load_trim at build time.
 #
 # This file is included AFTER the generated code because it references the
-# generated `Trimming.F16Trim` component.
+# generated `Tutorial.TrimDemo` component.
 # ---------------------------------------------------------------------------
 
 import DyadInterface
@@ -63,7 +63,7 @@ Specification for [`TrimPlantAnalysis`](@ref). Wraps a zero-duration transient
 as a Dyad parameter-set TOML.
 
 # Keyword arguments
-  - `model`: the trim component to solve. Defaults to `Trimming.F16Trim()`,
+  - `model`: the trim component to solve. Defaults to `Tutorial.TrimDemo()`,
     whose missing control inputs / angles become the trim unknowns.
   - `export_path`: where the parameter-set TOML is written. Defaults to
     [`default_trim_path`](@ref) (`<project>/trim/trim_point.toml`).
@@ -71,7 +71,7 @@ as a Dyad parameter-set TOML.
 """
 Base.@kwdef mutable struct TrimPlantAnalysisSpec <: DyadInterface.AbstractAnalysisSpec
     name::Symbol = :TrimPlantAnalysis
-    model::Union{Nothing, System} = Trimming.F16Trim(; name = :F16Trim)
+    model::Union{Nothing, System} = Tutorial.TrimDemo(; name = :TrimDemo)
     export_path::String = default_trim_path()
     abstol::Float64 = 1e-6
     reltol::Float64 = 1e-6

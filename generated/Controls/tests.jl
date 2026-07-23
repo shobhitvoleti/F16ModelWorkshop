@@ -17,7 +17,6 @@ end
 
 @testset "`F16ModelWorkshop.Controls`" begin
 include("ClosedLoopModel_test.jl")
-include("ClosedLoopVectorMuxedModel_test.jl")
 include("F16ClosedLoopPerturbed_test.jl")
 include("F16ClosedLoopViz_test.jl")
 include("F16DiscreteClosedLoopViz_test.jl")

@@ -7,16 +7,23 @@
 import Moshi as __Ext__Moshi
 
 @doc Markdown.doc"""
-   TestDiscreteStateSpace(; name)
+   Mux3(; name)
 
-Minimal validation: 1-state discrete integrator (A=1, B=0.1, C=1) at dt=0.1 s; output ramps 0.1 per tick (x[k]=x[k-1]+0.1).
+Mux3: combine 3 scalar inputs into a 3-vector output
+
+## Connectors
+
+ * `u1` - This connector represents a real signal as an input to a component ([`RealInput`](@ref))
+ * `u2` - This connector represents a real signal as an input to a component ([`RealInput`](@ref))
+ * `u3` - This connector represents a real signal as an input to a component ([`RealInput`](@ref))
+ * `y` - This connector represents a real signal as an output from a component ([`RealOutput`](@ref))
 """
-@component function TestDiscreteStateSpace(; name = nothing, kwargs...)
+@component function Mux3(; name = nothing, kwargs...)
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
   
-    @named model = TestDiscreteStateSpace()
+    @named model = Mux3()
   """))
 
   __overrides = __build_overrides(kwargs)
@@ -46,6 +53,10 @@ Minimal validation: 1-state discrete integrator (A=1, B=0.1, C=1) at dt=0.1 s; o
   ### Final Parameters (assignments)
 
   ### Final Path Parameters
+  append!(__vars, @variables (u1(t)::Real), [input = true])
+  append!(__vars, @variables (u2(t)::Real), [input = true])
+  append!(__vars, @variables (u3(t)::Real), [input = true])
+  append!(__vars, @variables (y(t)[1:3]::Real), [output = true])
 
   ### Variables (declarations)
 
@@ -55,24 +66,6 @@ Minimal validation: 1-state discrete integrator (A=1, B=0.1, C=1) at dt=0.1 s; o
   __constants = Any[]
 
   ### Components
-  # Subcomponent src of type BlockComponents.Sources.Constant
-  src_overrides = __pop_subcomponent_overrides!(__overrides, "src")
-  push!(__systems, @named src = BlockComponents.Sources.Constant(; k=Float64(1.0), src_overrides...))
-  # Subcomponent samp of type DiscreteComponents.Sampler
-  samp_overrides = __pop_subcomponent_overrides!(__overrides, "samp")
-  push!(__systems, @named samp = DiscreteComponents.Sampler(; samp_overrides...))
-  # Subcomponent clk of type DiscreteComponents.PeriodicClock
-  clk_overrides = __pop_subcomponent_overrides!(__overrides, "clk")
-  push!(__systems, @named clk = DiscreteComponents.PeriodicClock(; dt=0.1, clk_overrides...))
-  # Subcomponent sys of type DiscreteComponents.DiscreteStateSpace
-  sys_overrides = __pop_subcomponent_overrides!(__overrides, "sys")
-  push!(__systems, @named sys = DiscreteComponents.DiscreteStateSpace(; nx=1, nu=1, ny=1, A=fill(1.0, 1, 1), B=fill(0.1, 1, 1), C=fill(1.0, 1, 1), sys_overrides...))
-  # Subcomponent zoh of type DiscreteComponents.ZeroOrderHold
-  zoh_overrides = __pop_subcomponent_overrides!(__overrides, "zoh")
-  push!(__systems, @named zoh = DiscreteComponents.ZeroOrderHold(; zoh_overrides...))
-  # Subcomponent intg of type BlockComponents.Continuous.Integrator
-  intg_overrides = __pop_subcomponent_overrides!(__overrides, "intg")
-  push!(__systems, @named intg = BlockComponents.Continuous.Integrator(; intg_overrides...))
 
   ### Check there are no unmatched overrides
   isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
@@ -85,12 +78,9 @@ Minimal validation: 1-state discrete integrator (A=1, B=0.1, C=1) at dt=0.1 s; o
   __assertions = []
 
   ### Equations
-  push!(__eqs, connect(src.y, samp.u))
-  push!(__eqs, connect(samp.y, sys.u[1], clk.y))
-  push!(__eqs, connect(sys.y[1], zoh.u))
-  push!(__eqs, connect(zoh.y, intg.u))
+  push!(__eqs, y ~ [u1, u2, u3])
 
   # Return completely constructed System
   return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
-export TestDiscreteStateSpace
+export Mux3

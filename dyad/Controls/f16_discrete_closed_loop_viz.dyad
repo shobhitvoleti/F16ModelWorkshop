@@ -24,6 +24,7 @@ relations
   connect(pose.frame_a, viz.frame_a) {^id12}
   connect(demux.u, f16plant.y_out) {^id13}
   connect(demux.y1, pose.pos) {^id14}
+  connect(demux.y2, pose.ang) {^id15}
 metadata {
   "_links": {
     "demux": {
@@ -70,6 +71,11 @@ metadata {
     "id14": {
       "Dyad": {
         "edges": [{"S": 1, "M": [{"x": 710, "y": 462.5}, {"x": 710, "y": 145}], "E": 2}]
+      }
+    },
+    "id15": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 730, "y": 487.5}, {"x": 730, "y": 198}], "E": 2}]
       }
     }
   }
