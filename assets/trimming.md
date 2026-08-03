@@ -15,7 +15,7 @@ For straight-and-level symmetric flight, four equilibrium conditions determine f
 
 ## Approach: `missing` Parameters + `stop = 0.0`
 
-The trim component `F16Trim` (in `dyad/Trimming/f16_trim.dyad`) reuses the simulation plant `F16PlantModel` (vector I/O), with the five scalar control commands routed through a `Mux5` into the plant's `u_in[1:5]`. The key idea:
+The trim component `TrimDemo` (in `dyad/Tutorial/01_trim.dyad`) reuses the simulation plant `F16PlantModel` (vector I/O), with the five scalar control commands routed through a `Mux5` into the plant's `u_in[1:5]`. The key idea:
 
 1. **`Constant(k = missing)`** on the thrust and elevator commands — `missing` drops the default value, promoting `k` to an unknown in the initialization system.
 2. **`alpha_init = missing, theta_init = missing`** on `F16PlantModel` — the `initial alpha = alpha_init` / `initial theta = theta_init` equations remain, but the parameters are now free.
@@ -23,7 +23,7 @@ The trim component `F16Trim` (in `dyad/Trimming/f16_trim.dyad`) reuses the simul
 4. **4 equilibrium constraints** as `initial der(...)` equations provide the equations that pin down the 4 unknowns.
 
 ```dyad
-test component F16Trim
+test component TrimDemo
   # alpha_init and theta_init are missing — they become decision variables
   f16plant = F16ModelWorkshop.Plant.F16PlantModel(
     alt_init = 3000.0, vt_init = 152.4,
@@ -54,15 +54,11 @@ relations
   guess el_cmd.k = 2.0
   guess f16plant.alpha_init = -0.02
   guess f16plant.theta_init = -0.02
-  # Anchors for the algebraic intermediates that depend on the missing inputs
-  # through the array connector u_in (el_rad via x_lon[3], thrust via Udot):
-  guess f16plant.x_lon = [-0.02, 0.0004, 0.046, 0.0]
-  guess f16plant.Udot = 0.0
 end
 
-analysis F16TrimAnalysis
+analysis TutorialTrim
   extends TransientAnalysis(stop = 0.0)
-  model = F16Trim()
+  model = TrimDemo()
 end
 ```
 
@@ -91,7 +87,7 @@ The elevator comes out in **degrees** directly, matching the units expected by `
 using F16ModelWorkshop
 
 # Dyad-native trim (zero-duration transient = initialization solve)
-result = F16TrimAnalysis()
+result = F16ModelWorkshop.Tutorial.TutorialTrim()
 
 # Extract values
 using DyadInterface: symbolic_container
@@ -104,7 +100,7 @@ T  = sol(0.0, idxs = model.f16plant.T)
 
 ## Exporting and Reusing the Trim Point
 
-`TrimPlantAnalysis` (defined in `src/trim_plant_analysis.jl`) is a custom analysis that solves `F16Trim` and writes the operating point to `trim/trim_point.toml`, keyed by the instance paths of `F16TrimmedPlantLinked` (`T_cmd.k`, …, `plant.alpha_init`):
+`TrimPlantAnalysis` (defined in `src/trim_plant_analysis.jl`) is a custom analysis that solves `TrimDemo` and writes the operating point to `trim/trim_point.toml`, keyed by the instance paths of `F16TrimmedPlantLinked` (`T_cmd.k`, …, `plant.alpha_init`):
 
 ```julia
 using F16ModelWorkshop
@@ -126,17 +122,17 @@ Examples of non-physical solutions the solver can find:
 
 Both satisfy the equilibrium equations exactly. The solver has no notion of physical plausibility.
 
-**Mitigation:** provide guess values near the expected physical solution. `F16Trim` seeds the four decision variables (`T_cmd.k`, `el_cmd.k`, `alpha_init`, `theta_init`) plus the algebraic intermediates that depend on the missing inputs through the `u_in` array connector (`x_lon`, `Udot`). MTK resolves the remaining intermediate algebraic variables (trig functions, aero coefficients, etc.) by substitution from the pinned states and these guesses.
+**Mitigation:** provide guess values near the expected physical solution. `TrimDemo` seeds the four decision variables (`T_cmd.k`, `el_cmd.k`, `alpha_init`, `theta_init`). MTK resolves the remaining intermediate algebraic variables (trig functions, aero coefficients, etc.) by substitution from the pinned states and these guesses.
 
 ## Components
 
 | Component | File | Role |
 |-----------|------|------|
-| `F16Trim` | `dyad/Trimming/f16_trim.dyad` | Trim component (missing-Constant approach) |
-| `F16TrimAnalysis` | `dyad/Trimming/f16_trim.dyad` | Zero-duration analysis for trim |
+| `TrimDemo` | `dyad/Tutorial/01_trim.dyad` | Trim component (missing-Constant approach) |
+| `TutorialTrim` | `dyad/Tutorial/01_trim.dyad` | Zero-duration analysis for trim |
 | `TrimPlantAnalysis` | `src/trim_plant_analysis.jl` | Solves the trim and exports `trim/trim_point.toml` |
 | `F16TrimmedPlantLinked` | `dyad/Trimming/f16_trimmed_plant_linked.dyad` | Plant scenario that loads the exported trim point |
 | `F16PlantModel` | `dyad/Plant/f16_plant_model.dyad` | Simulation plant with vector I/O |
-| `ClosedLoopModel` | `dyad/Controls/closed_loop.dyad` | LQG closed-loop (uses trim values) |
+| `ClosedLoopModel` | `dyad/Controls/lqg_design.dyad` | LQG closed-loop (uses trim values) |
 | `F16OpenLoop` | `dyad/Controls/scenario1_open_loop.dyad` | Open-loop with trim inputs |
 | `F16ClosedLoopPerturbed` | `dyad/Controls/scenario1_closed_loop.dyad` | Perturbed closed-loop |

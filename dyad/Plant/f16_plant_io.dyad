@@ -34,8 +34,8 @@ component F16PlantIO
   Q_out = RealOutput() {^Q_out}
   "Yaw rate output [rad/s]"
   R_out = RealOutput() {^R_out}
-  variable npos::Real
-  variable epos::Real
+  variable npos::Real = initial npos_init
+  variable epos::Real = initial epos_init
   variable alt::Real
   variable phi::Real
   variable theta::Real
@@ -144,8 +144,6 @@ component F16PlantIO
   variable rud_rad::Real
   variable lef_rad::Real
 relations
-  initial npos = npos_init
-  initial epos = epos_init
   initial alt = alt_init
   initial phi = phi_init
   initial theta = theta_init

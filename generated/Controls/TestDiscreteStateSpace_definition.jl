@@ -70,6 +70,9 @@ Minimal validation: 1-state discrete integrator (A=1, B=0.1, C=1) at dt=0.1 s; o
   # Subcomponent zoh of type DiscreteComponents.ZeroOrderHold
   zoh_overrides = __pop_subcomponent_overrides!(__overrides, "zoh")
   push!(__systems, @named zoh = DiscreteComponents.ZeroOrderHold(; zoh_overrides...))
+  # Subcomponent intg of type BlockComponents.Continuous.Integrator
+  intg_overrides = __pop_subcomponent_overrides!(__overrides, "intg")
+  push!(__systems, @named intg = BlockComponents.Continuous.Integrator(; intg_overrides...))
 
   ### Check there are no unmatched overrides
   isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
@@ -85,6 +88,7 @@ Minimal validation: 1-state discrete integrator (A=1, B=0.1, C=1) at dt=0.1 s; o
   push!(__eqs, connect(src.y, samp.u))
   push!(__eqs, connect(samp.y, sys.u[1], clk.y))
   push!(__eqs, connect(sys.y[1], zoh.u))
+  push!(__eqs, connect(zoh.y, intg.u))
 
   # Return completely constructed System
   return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)

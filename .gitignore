@@ -7,4 +7,10 @@
 /agent_resources/
 /animations/
 /.migration-backups/
+/.dev/
+/.claude/
+/trim/tutorial_trim_point.toml
+/trim/tutorial_linear_model.toml
+/assets/f16_continuous_closed_loop.mp4
+/assets/f16_discrete_closed_loop.mp4
 .DS_Store

@@ -1,0 +1,16 @@
+# Shared transient analysis for models containing a clocked
+# `DiscreteComponents.DiscreteStateSpace`. Backed by a Julia spec + run_analysis in
+# src/discrete_closed_loop_analysis.jl (AbstractDiscreteClosedLoopAnalysisSpec).
+#
+# Lives at the library root rather than in a subfolder because both Controls and
+# Tutorial analyses extend it, and generated submodules are included in alphabetical
+# order — a subfolder definition is not yet defined when an earlier subfolder loads.
+
+partial analysis DiscreteClosedLoopAnalysis
+  extends Analysis
+  model::Dyad.EmptyComponent = Dyad.EmptyComponent()
+  # Final simulation time.
+  parameter stop::Real = 10.0
+  # Instance name of the clocked DiscreteStateSpace whose state needs seeding.
+  parameter controller_name::String = "controller"
+end

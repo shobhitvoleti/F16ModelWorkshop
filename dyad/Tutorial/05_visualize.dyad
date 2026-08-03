@@ -1,0 +1,223 @@
+"""
+Tutorial 5 — 3-D visualization.
+
+Takes the finished closed loop and renders it as an animation of the airframe. The
+loop itself is untouched: each viz model `extends` its closed loop and adds only a
+measurement tap, a pose bridge and a visualizer, so what you watch is the same
+simulation the earlier steps produce.
+
+Two loops are rendered so continuous and sampled-data control can be compared on
+the identical 10 deg pitch perturbation:
+  `ContinuousClosedLoopVizDemo`  the LQG regulator of step 3, running continuously
+  `DiscreteClosedLoopVizDemo`    the 100 Hz sampled-data loop of step 4
+
+Both render over the 10 s window step 4 simulates. The LQG design regulates the
+perturbation over that horizon but does not hold trim indefinitely: with `npos`/`epos`
+carrying cost against a fixed zero reference, the position error grows with distance
+flown and the loop departs at roughly 19 s. Extending `stop` past that renders the
+departure, not the recovery.
+
+Measurement tap (both models), reusing the plant's own vector output:
+  f16plant.y_out -> Demux4x3 -> y1 [npos,epos,alt] -> Demux3 -> Mux3 -> pose.pos
+                             -> y2 [phi,theta,psi] --------------------> pose.ang
+
+`SignalPoseSource` expects a Y-up world frame while the plant reports NED, hence the
+Demux3/Mux3 pair: it reorders the position triple to npos->x, alt->y, epos->z. The
+Euler triple needs no reordering — [phi, theta, psi] is already [roll, pitch, yaw].
+"""
+component ContinuousClosedLoopDemo
+  "Vector-I/O F16 plant; 10 deg initial pitch perturbation about trim."
+  # Trim operating point, then a 10 deg pitch perturbation: modifications resolve
+  # left-to-right, so the named theta_init after the clause overrides the file value.
+  f16plant = F16ModelWorkshop.Plant.F16PlantModel(apply "dyad://F16ModelWorkshop/trim_point.toml", theta_init = 0.17453292519943295) {^f16plant}
+  "Continuous LQG controller as a state-space block."
+  controller = BlockComponents.Continuous.StateSpace(nx = 12, nu = 12, ny = 5, apply "dyad://F16ModelWorkshop/controller.toml") {^controller}
+  "Reference set-points for the 12 measured states (vector source)."
+  ref = F16ModelWorkshop.VectorBlocks.VectorConstant(n = 12, apply "dyad://F16ModelWorkshop/trim_reference.toml") {^ref}
+  "Tracking error block: error = ref - measurement (12 ch)."
+  err = F16ModelWorkshop.VectorBlocks.VectorAdd(n = 12, k1 = 1, k2 = -1) {^err}
+  "Trim control offset [T, el, ail, rud, lef] (vector source)."
+  trim = F16ModelWorkshop.VectorBlocks.VectorConstant(n = 5, apply "dyad://F16ModelWorkshop/trim_controls.toml") {^trim}
+  # The continuous controller asset carries no output operating point, so trim is
+  # added here; the discrete asset folds the same offset into its own y0 instead.
+  "Absolute control command = controller output + trim (5 ch)."
+  ctrl = F16ModelWorkshop.VectorBlocks.VectorAdd(n = 5, k1 = 1, k2 = 1) {^ctrl}
+relations
+  connect(ref.y, err.u1) {^id1}
+  connect(f16plant.y_out, err.u2) {^id2}
+  connect(err.y, controller.u) {^id3}
+  connect(controller.y, ctrl.u1) {^id4}
+  connect(trim.y, ctrl.u2) {^id5}
+  connect(ctrl.y, f16plant.u_in) {^id6}
+metadata {
+  "_links": {
+    "f16plant": {
+      "Dyad": {"placement": {"diagram": {"x1": 280, "y1": 146, "x2": 380, "y2": 246}}}
+    },
+    "controller": {
+      "Dyad": {"placement": {"diagram": {"x1": 360, "y1": 370, "x2": 260, "y2": 470}}}
+    },
+    "ref": {
+      "Dyad": {"placement": {"diagram": {"x1": 390, "y1": 70, "x2": 490, "y2": 170}}}
+    },
+    "err": {
+      "Dyad": {"placement": {"diagram": {"x1": 520, "y1": 120, "x2": 620, "y2": 220}}}
+    },
+    "trim": {
+      "Dyad": {"placement": {"diagram": {"x1": 210, "y1": 530, "x2": 110, "y2": 630}}}
+    },
+    "ctrl": {
+      "Dyad": {"placement": {"diagram": {"x1": 210, "y1": 370, "x2": 110, "y2": 470}}}
+    },
+    "id1": {
+      "Dyad": {"edges": [{"S": 1, "M": [{"x": 510, "y": 120}, {"x": 510, "y": 143}], "E": 2}]}
+    },
+    "id2": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
+    "id3": {
+      "Dyad": {"edges": [{"S": 1, "M": [{"x": 630, "y": 170}, {"x": 630, "y": 420}], "E": 2}]}
+    },
+    "id4": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
+    "id5": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
+    "id6": {
+      "Dyad": {"edges": [{"S": 1, "M": [{"x": 80, "y": 420}, {"x": 80, "y": 196}], "E": 2}]}
+    }
+  }
+}
+end
+
+"Continuous closed loop (03's regulator) with the airframe rendered from its pose."
+component ContinuousClosedLoopVizDemo
+  extends ContinuousClosedLoopDemo
+  "Stage 1: split the 12-state plant output into four 3-vectors [pos, att, air, rates]."
+  demux = F16ModelWorkshop.Utils.Demux4x3() {^demux}
+  "Stage 2: split the position group into scalars so they can be reordered NED -> Y-up."
+  demux_pos = F16ModelWorkshop.Utils.Demux3() {^demux_pos}
+  "Regather the position scalars in the pose source's Y-up order [npos, alt, epos]."
+  pose_mux = F16ModelWorkshop.Utils.Mux3() {^pose_mux}
+  "Bridges the plant's position and attitude signals onto a Frame3D pose."
+  pose = F16ModelWorkshop.Utils.SignalPoseSource() {^pose}
+  "F-16 airframe mesh driven by the pose."
+  viz = MultibodyComponents.ShapefileVisualizer(shapefile = F16ModelWorkshop.asset_path("object", "F-16.obj"), shape_scale = 1.4, shape_transform = MultibodyComponents.Rp2T(MultibodyComponents.RotXYZ(0, 0, 0), [-32.9, 2.5, 0.1])) {^viz}
+relations
+  connect(f16plant.y_out, demux.u) {^id7}
+  connect(demux.y1, demux_pos.u) {^id8} # [npos, epos, alt]
+  connect(demux_pos.y1, pose_mux.u1) {^id9} # npos -> x
+  connect(demux_pos.y3, pose_mux.u2) {^id10} # alt  -> y
+  connect(demux_pos.y2, pose_mux.u3) {^id11} # epos -> z
+  connect(pose_mux.y, pose.pos) {^id12}
+  connect(demux.y2, pose.ang) {^id13} # [phi, theta, psi]
+  connect(pose.frame_a, viz.frame_a) {^id14}
+metadata {
+  "_links": {
+    "demux": {
+      "Dyad": {"placement": {"diagram": {"x1": 600, "y1": 450, "x2": 700, "y2": 550}}}
+    },
+    "demux_pos": {
+      "Dyad": {"placement": {"diagram": {"x1": 600, "y1": 10, "x2": 700, "y2": 110}}}
+    },
+    "pose_mux": {
+      "Dyad": {"placement": {"diagram": {"x1": 670, "y1": 120, "x2": 770, "y2": 220}}}
+    },
+    "pose": {
+      "Dyad": {"placement": {"diagram": {"x1": 740, "y1": 120, "x2": 840, "y2": 220}}}
+    },
+    "viz": {
+      "Dyad": {"placement": {"diagram": {"x1": 890, "y1": 120, "x2": 990, "y2": 220}}}
+    },
+    "id7": {
+      "Dyad": {"edges": [{"S": 1, "M": [{"x": 460, "y": 500}, {"x": 460, "y": 196}], "E": 2}]}
+    },
+    "id8": {
+      "Dyad": {"edges": [{"S": 1, "M": [{"x": 710, "y": 462.5}, {"x": 710, "y": 60}], "E": 2}]}
+    },
+    "id9": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
+    "id10": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
+    "id11": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
+    "id12": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
+    "id13": {
+      "Dyad": {"edges": [{"S": 1, "M": [{"x": 730, "y": 487.5}, {"x": 730, "y": 198}], "E": 2}]}
+    },
+    "id14": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}}
+  }
+}
+end
+
+"Sampled-data closed loop (04's 100 Hz controller) with the airframe rendered from its pose."
+component DiscreteClosedLoopVizDemo
+  extends DiscreteClosedLoopDemo
+  "Stage 1: split the 12-state plant output into four 3-vectors [pos, att, air, rates]."
+  demux = F16ModelWorkshop.Utils.Demux4x3() {^demux}
+  "Stage 2: split the position group into scalars so they can be reordered NED -> Y-up."
+  demux_pos = F16ModelWorkshop.Utils.Demux3() {^demux_pos}
+  "Regather the position scalars in the pose source's Y-up order [npos, alt, epos]."
+  pose_mux = F16ModelWorkshop.Utils.Mux3() {^pose_mux}
+  "Bridges the plant's position and attitude signals onto a Frame3D pose."
+  pose = F16ModelWorkshop.Utils.SignalPoseSource() {^pose}
+  "F-16 airframe mesh driven by the pose."
+  viz = MultibodyComponents.ShapefileVisualizer(shapefile = F16ModelWorkshop.asset_path("object", "F-16.obj"), shape_scale = 1.4, shape_transform = MultibodyComponents.Rp2T(MultibodyComponents.RotXYZ(0, 0, 0), [-32.9, 2.5, 0.1])) {^viz}
+relations
+  connect(f16plant.y_out, demux.u) {^id15}
+  connect(demux.y1, demux_pos.u) {^id16} # [npos, epos, alt]
+  connect(demux_pos.y1, pose_mux.u1) {^id17} # npos -> x
+  connect(demux_pos.y3, pose_mux.u2) {^id18} # alt  -> y
+  connect(demux_pos.y2, pose_mux.u3) {^id19} # epos -> z
+  connect(pose_mux.y, pose.pos) {^id20}
+  connect(demux.y2, pose.ang) {^id21} # [phi, theta, psi]
+  connect(pose.frame_a, viz.frame_a) {^id22}
+metadata {
+  "_links": {
+    "demux": {
+      "Dyad": {"placement": {"diagram": {"x1": 600, "y1": 450, "x2": 700, "y2": 550}}}
+    },
+    "demux_pos": {
+      "Dyad": {"placement": {"diagram": {"x1": 600, "y1": 10, "x2": 700, "y2": 110}}}
+    },
+    "pose_mux": {
+      "Dyad": {"placement": {"diagram": {"x1": 670, "y1": 120, "x2": 770, "y2": 220}}}
+    },
+    "pose": {
+      "Dyad": {"placement": {"diagram": {"x1": 740, "y1": 120, "x2": 840, "y2": 220}}}
+    },
+    "viz": {
+      "Dyad": {"placement": {"diagram": {"x1": 890, "y1": 120, "x2": 990, "y2": 220}}}
+    },
+    "id15": {
+      "Dyad": {"edges": [{"S": 1, "M": [{"x": 460, "y": 500}, {"x": 460, "y": 196}], "E": 2}]}
+    },
+    "id16": {
+      "Dyad": {"edges": [{"S": 1, "M": [{"x": 710, "y": 462.5}, {"x": 710, "y": 60}], "E": 2}]}
+    },
+    "id17": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
+    "id18": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
+    "id19": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
+    "id20": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
+    "id21": {
+      "Dyad": {"edges": [{"S": 1, "M": [{"x": 730, "y": 487.5}, {"x": 730, "y": 198}], "E": 2}]}
+    },
+    "id22": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}}
+  }
+}
+end
+
+"""
+Renders the continuously-controlled pitch recovery to `assets/f16_continuous_closed_loop.mp4`.
+
+Needs a Makie backend in the session (`using GLMakie`).
+"""
+analysis TutorialVisualizeContinuous
+  extends F16ModelWorkshop.VisualizeAnalysis(stop = 10.0, filename = "assets/f16_continuous_closed_loop.mp4")
+  model = ContinuousClosedLoopVizDemo()
+relations
+end
+
+"""
+Renders the 100 Hz sampled-data pitch recovery to `assets/f16_discrete_closed_loop.mp4`.
+
+`controller_name` seeds the clocked controller's state, as `TutorialDiscreteClosedLoop`
+does. Needs a Makie backend in the session (`using GLMakie`).
+"""
+analysis TutorialVisualizeDiscrete
+  extends F16ModelWorkshop.VisualizeAnalysis(stop = 10.0, controller_name = "controller", filename = "assets/f16_discrete_closed_loop.mp4")
+  model = DiscreteClosedLoopVizDemo()
+relations
+end

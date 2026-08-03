@@ -1,3 +1,131 @@
+"Mux12: combine 12 scalar inputs into a vector output"
+component Mux12
+  u1 = RealInput() {^u1}
+  u2 = RealInput() {^u2}
+  u3 = RealInput() {^u3}
+  u4 = RealInput() {^u4}
+  u5 = RealInput() {^u5}
+  u6 = RealInput() {^u6}
+  u7 = RealInput() {^u7}
+  u8 = RealInput() {^u8}
+  u9 = RealInput() {^u9}
+  u10 = RealInput() {^u10}
+  u11 = RealInput() {^u11}
+  u12 = RealInput() {^u12}
+  y = [RealOutput() for i in 1:12] {^y}
+relations
+  y = [u1, u2, u3, u4, u5, u6, u7, u8, u9, u10, u11, u12]
+metadata {
+  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/mux12.svg"}},
+  "_links": {
+    "u1": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 0, "x2": 100, "y2": 80, "rot": 0}}, "tags": []}},
+    "u2": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 90, "x2": 100, "y2": 170, "rot": 0}}, "tags": []}},
+    "u3": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 180, "x2": 100, "y2": 260, "rot": 0}}, "tags": []}},
+    "u4": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 270, "x2": 100, "y2": 350, "rot": 0}}, "tags": []}},
+    "u5": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 360, "x2": 100, "y2": 440, "rot": 0}}, "tags": []}},
+    "u6": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 450, "x2": 100, "y2": 530, "rot": 0}}, "tags": []}},
+    "u7": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 540, "x2": 100, "y2": 620, "rot": 0}}, "tags": []}},
+    "u8": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 630, "x2": 100, "y2": 710, "rot": 0}}, "tags": []}},
+    "u9": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 720, "x2": 100, "y2": 800, "rot": 0}}, "tags": []}},
+    "u10": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 810, "x2": 100, "y2": 890, "rot": 0}}, "tags": []}},
+    "u11": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 900, "x2": 100, "y2": 980, "rot": 0}}, "tags": []}},
+    "u12": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 990, "x2": 100, "y2": 1070, "rot": 0}}, "tags": []}},
+    "y": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 495, "x2": 1000, "y2": 595, "rot": 0}}, "tags": []}}
+  }
+}
+end
+
+"Mux3: combine 3 scalar inputs into a 3-vector output"
+component Mux3
+  u1 = RealInput() {^u1}
+  u2 = RealInput() {^u2}
+  u3 = RealInput() {^u3}
+  y = [RealOutput() for i in 1:3] {^y}
+  """
+  Operating-point seed for the inputs. When this mux sits on the broken-loop side of an
+  analysis point, linearization leaves its inputs with no source, so the initializer
+  needs a starting value for each; seeding them here keeps the 3 guesses out of every
+  model that instruments a loop.
+  """
+  parameter u_guess::Real[3] = zeros(3)
+relations
+  y = [u1, u2, u3]
+  guess u1 = u_guess[1]
+  guess u2 = u_guess[2]
+  guess u3 = u_guess[3]
+metadata {
+  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/mux3.svg"}},
+  "_links": {
+    "u1": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 150, "x2": 100, "y2": 250, "rot": 0}}, "tags": []}},
+    "u2": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 450, "x2": 100, "y2": 550, "rot": 0}}, "tags": []}},
+    "u3": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 750, "x2": 100, "y2": 850, "rot": 0}}, "tags": []}},
+    "y": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 550, "rot": 0}}, "tags": []}}
+  }
+}
+end
+
+"Mux4x3: combine four 3-vectors into a 12-element vector output (mirror of Demux4x3)"
+component Mux4x3
+  u1 = [RealInput() for i in 1:3] {^u1}
+  u2 = [RealInput() for i in 1:3] {^u2}
+  u3 = [RealInput() for i in 1:3] {^u3}
+  u4 = [RealInput() for i in 1:3] {^u4}
+  y = [RealOutput() for i in 1:12] {^y}
+  """
+  Operating-point seed for the inputs.
+
+  A mux gathering the far side of an analysis point has no source once linearization
+  opens the loop, so the initializer cannot solve for these and needs a starting value.
+  The matching demuxes need no such seed: their inputs stay driven by the plant through
+  connect equations. Seeding here keeps the guesses out of every model that instruments
+  a loop.
+  """
+  parameter u_guess::Real[12] = zeros(12)
+relations
+  y = [u1[1], u1[2], u1[3], u2[1], u2[2], u2[3], u3[1], u3[2], u3[3], u4[1], u4[2], u4[3]]
+  guess u1 = [u_guess[1], u_guess[2], u_guess[3]]
+  guess u2 = [u_guess[4], u_guess[5], u_guess[6]]
+  guess u3 = [u_guess[7], u_guess[8], u_guess[9]]
+  guess u4 = [u_guess[10], u_guess[11], u_guess[12]]
+metadata {
+  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/mux4x3.svg"}},
+  "_links": {
+    "u1": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 75, "x2": 100, "y2": 175, "rot": 0}}, "tags": []}},
+    "u2": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 325, "x2": 100, "y2": 425, "rot": 0}}, "tags": []}},
+    "u3": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 575, "x2": 100, "y2": 675, "rot": 0}}, "tags": []}},
+    "u4": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 825, "x2": 100, "y2": 925, "rot": 0}}, "tags": []}},
+    "y": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 550, "rot": 0}}, "tags": []}}
+  }
+}
+end
+
+"Demux5: split a 5-element vector input into five scalar outputs"
+component Demux5
+  u = [RealInput() for i in 1:5] {^u}
+  y1 = RealOutput() {^y1}
+  y2 = RealOutput() {^y2}
+  y3 = RealOutput() {^y3}
+  y4 = RealOutput() {^y4}
+  y5 = RealOutput() {^y5}
+relations
+  y1 = u[1]
+  y2 = u[2]
+  y3 = u[3]
+  y4 = u[4]
+  y5 = u[5]
+metadata {
+  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/demux5.svg"}},
+  "_links": {
+    "u": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 450, "x2": 100, "y2": 550, "rot": 0}}, "tags": []}},
+    "y1": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 50, "x2": 1000, "y2": 150, "rot": 0}}, "tags": []}},
+    "y2": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 250, "x2": 1000, "y2": 350, "rot": 0}}, "tags": []}},
+    "y3": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 550, "rot": 0}}, "tags": []}},
+    "y4": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 650, "x2": 1000, "y2": 750, "rot": 0}}, "tags": []}},
+    "y5": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 850, "x2": 1000, "y2": 950, "rot": 0}}, "tags": []}}
+  }
+}
+end
+
 "Mux5: combine 5 scalar inputs into a vector output"
 component Mux5
   u1 = RealInput() {^u1}
@@ -6,8 +134,23 @@ component Mux5
   u4 = RealInput() {^u4}
   u5 = RealInput() {^u5}
   y = [RealOutput() for i in 1:5] {^y}
+  """
+  Operating-point seed for the inputs.
+
+  A mux gathering the far side of an analysis point has no source once linearization
+  opens the loop, so the initializer cannot solve for these and needs a starting value.
+  The matching demuxes need no such seed: their inputs stay driven by the plant through
+  connect equations. Seeding here keeps the guesses out of every model that instruments
+  a loop.
+  """
+  parameter u_guess::Real[5] = zeros(5)
 relations
   y = [u1, u2, u3, u4, u5]
+  guess u1 = u_guess[1]
+  guess u2 = u_guess[2]
+  guess u3 = u_guess[3]
+  guess u4 = u_guess[4]
+  guess u5 = u_guess[5]
 metadata {
   "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/mux5.svg"}},
   "_links": {
@@ -93,110 +236,19 @@ relations
   y12 = u[12]
 metadata {
   "_links": {
-    "u": {
-      "Dyad": {
-        "placement": {
-          "diagram": {"iconName": "default", "x1": 20, "y1": 20, "x2": 120, "y2": 120, "rot": 0}
-        },
-        "tags": []
-      }
-    },
-    "y1": {
-      "Dyad": {
-        "placement": {
-          "diagram": {"iconName": "default", "x1": 140, "y1": 20, "x2": 240, "y2": 120, "rot": 0}
-        },
-        "tags": []
-      }
-    },
-    "y2": {
-      "Dyad": {
-        "placement": {
-          "diagram": {"iconName": "default", "x1": 260, "y1": 20, "x2": 360, "y2": 120, "rot": 0}
-        },
-        "tags": []
-      }
-    },
-    "y3": {
-      "Dyad": {
-        "placement": {
-          "diagram": {"iconName": "default", "x1": 380, "y1": 20, "x2": 480, "y2": 120, "rot": 0}
-        },
-        "tags": []
-      }
-    },
-    "y4": {
-      "Dyad": {
-        "placement": {
-          "diagram": {"iconName": "default", "x1": 20, "y1": 140, "x2": 120, "y2": 240, "rot": 0}
-        },
-        "tags": []
-      }
-    },
-    "y5": {
-      "Dyad": {
-        "placement": {
-          "diagram": {"iconName": "default", "x1": 140, "y1": 140, "x2": 240, "y2": 240, "rot": 0}
-        },
-        "tags": []
-      }
-    },
-    "y6": {
-      "Dyad": {
-        "placement": {
-          "diagram": {"iconName": "default", "x1": 260, "y1": 140, "x2": 360, "y2": 240, "rot": 0}
-        },
-        "tags": []
-      }
-    },
-    "y7": {
-      "Dyad": {
-        "placement": {
-          "diagram": {"iconName": "default", "x1": 380, "y1": 140, "x2": 480, "y2": 240, "rot": 0}
-        },
-        "tags": []
-      }
-    },
-    "y8": {
-      "Dyad": {
-        "placement": {
-          "diagram": {"iconName": "default", "x1": 20, "y1": 260, "x2": 120, "y2": 360, "rot": 0}
-        },
-        "tags": []
-      }
-    },
-    "y9": {
-      "Dyad": {
-        "placement": {
-          "diagram": {"iconName": "default", "x1": 140, "y1": 260, "x2": 240, "y2": 360, "rot": 0}
-        },
-        "tags": []
-      }
-    },
-    "y10": {
-      "Dyad": {
-        "placement": {
-          "diagram": {"iconName": "default", "x1": 260, "y1": 260, "x2": 360, "y2": 360, "rot": 0}
-        },
-        "tags": []
-      }
-    },
-    "y11": {
-      "Dyad": {
-        "placement": {
-          "diagram": {"iconName": "default", "x1": 380, "y1": 260, "x2": 480, "y2": 360, "rot": 0}
-        },
-        "tags": []
-      }
-    },
-    "y12": {
-      "Dyad": {
-        "placement": {
-          "diagram": {"iconName": "default", "x1": 20, "y1": 380, "x2": 120, "y2": 480, "rot": 0}
-        },
-        "tags": []
-      }
-    }
+    "u": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 495, "x2": 100, "y2": 575, "rot": 0}}, "tags": []}},
+    "y1": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 0, "x2": 1000, "y2": 80, "rot": 0}}, "tags": []}},
+    "y2": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 90, "x2": 1000, "y2": 170, "rot": 0}}, "tags": []}},
+    "y3": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 180, "x2": 1000, "y2": 260, "rot": 0}}, "tags": []}},
+    "y4": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 270, "x2": 1000, "y2": 350, "rot": 0}}, "tags": []}},
+    "y5": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 360, "x2": 1000, "y2": 440, "rot": 0}}, "tags": []}},
+    "y6": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 530, "rot": 0}}, "tags": []}},
+    "y7": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 540, "x2": 1000, "y2": 620, "rot": 0}}, "tags": []}},
+    "y8": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 630, "x2": 1000, "y2": 710, "rot": 0}}, "tags": []}},
+    "y9": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 720, "x2": 1000, "y2": 800, "rot": 0}}, "tags": []}},
+    "y10": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 810, "x2": 1000, "y2": 890, "rot": 0}}, "tags": []}},
+    "y11": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 900, "x2": 1000, "y2": 980, "rot": 0}}, "tags": []}},
+    "y12": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 990, "x2": 1000, "y2": 1070, "rot": 0}}, "tags": []}}
   }
 }
 end

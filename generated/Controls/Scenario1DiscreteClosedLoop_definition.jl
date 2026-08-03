@@ -7,29 +7,17 @@
 using DyadInterface
 using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel
 using ModelingToolkit: SymbolicT, toggle_namespacing
-using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
-@kwdef mutable struct Scenario1DiscreteClosedLoopSpec <: AbstractTransientAnalysisSpec
+using F16ModelWorkshop: AbstractDiscreteClosedLoopAnalysisSpec, DiscreteClosedLoopAnalysisSpec
+@kwdef mutable struct Scenario1DiscreteClosedLoopSpec <: AbstractDiscreteClosedLoopAnalysisSpec
   name::Symbol = :Scenario1DiscreteClosedLoop
-  var"alg"::ODEAlg.Type = ODEAlg.Auto()
-  var"start"::Float64 = 0
   var"stop"::Float64 = 10.0
-  var"abstol"::Float64 = 0.000001
-  var"reltol"::Float64 = 0.000001
-  var"saveat"::Float64 = 0
-  var"dtmax"::Float64 = 0
-  var"tstops"::Array{Float64, 1} = []
-  var"automatic_discontinuity_detection"::Bool = false
-  var"optimize"::OptimizationLevel.Type = OptimizationLevel.Aggressive()
-  var"progress"::Bool = true
-  var"respecialize"::Bool = false
-  var"verbose"::DEVerbosity.Type = DEVerbosity.Standard()
-  var"log_file"::String = ""
+  var"controller_name"::String = "controller"
   # Discrete-time (sampled-data) F16 closed loop.
   # 
-  # Sampled version of `ClosedLoopModel`: the continuous LQG controller is replaced
-  # by the clocked `DiscreteStateSpace`, fed the ZOH-discretized matrices
-  # (`DiscreteControllerA/B/C/D` from `F16DiscreteLQGControllerAnalysis`, Ts=ControllerTs).
-  # Trim is folded into the controller output operating point (`y0 = trim_vals`), so
+  # Sampled version of `ClosedLoopModel`: the continuous LQG controller is replaced by
+  # the clocked `DiscreteStateSpace`, fed the ZOH-discretized matrices from the applied
+  # `discrete_controller.toml` asset (designed at Ts = ControllerTs). Trim is folded into
+  # the controller output operating point `y0`, also carried by that asset, so
   # `controller.y` is the absolute control command — no external feedforward.
   # 
   # Signal flow (all vector ports):
@@ -48,8 +36,8 @@ function DyadInterface.run_analysis(spec::Scenario1DiscreteClosedLoopSpec)
   overrides = Dict{SymbolicT, SymbolicT}()
   no_namespace_model = toggle_namespacing(spec.model, false)
   
-  base_spec = TransientAnalysisSpec(;
-    name=:TransientAnalysis, overrides, alg=spec.alg, start=spec.start, stop=spec.stop, abstol=spec.abstol, reltol=spec.reltol, saveat=spec.saveat, dtmax=spec.dtmax, tstops=spec.tstops, automatic_discontinuity_detection=spec.automatic_discontinuity_detection, optimize=spec.optimize, progress=spec.progress, respecialize=spec.respecialize, verbose=spec.verbose, log_file=spec.log_file, model=spec.model
+  base_spec = DiscreteClosedLoopAnalysisSpec(;
+    name=:DiscreteClosedLoopAnalysis, overrides, stop=spec.stop, controller_name=spec.controller_name, model=spec.model
   )
   run_analysis(base_spec)
 end

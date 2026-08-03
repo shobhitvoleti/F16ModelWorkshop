@@ -78,16 +78,22 @@ connectors that can be connected together ([`Frame3D`](@ref))
   ### Variables (assignments)
   __ovr_sp = pop!(__overrides, "sp", nothing); isnothing(__ovr_sp) || push!(__eqs, sp ~ __ovr_sp)
   __ovr_sp__initial = pop!(__overrides, "sp__initial", nothing); isnothing(__ovr_sp__initial) || (__initial_conditions[sp] = __ovr_sp__initial)
+  __ovr_sp__guess = pop!(__overrides, "sp__guess", nothing)
   __ovr_cp = pop!(__overrides, "cp", nothing); isnothing(__ovr_cp) || push!(__eqs, cp ~ __ovr_cp)
   __ovr_cp__initial = pop!(__overrides, "cp__initial", nothing); isnothing(__ovr_cp__initial) || (__initial_conditions[cp] = __ovr_cp__initial)
+  __ovr_cp__guess = pop!(__overrides, "cp__guess", nothing)
   __ovr_st = pop!(__overrides, "st", nothing); isnothing(__ovr_st) || push!(__eqs, st ~ __ovr_st)
   __ovr_st__initial = pop!(__overrides, "st__initial", nothing); isnothing(__ovr_st__initial) || (__initial_conditions[st] = __ovr_st__initial)
+  __ovr_st__guess = pop!(__overrides, "st__guess", nothing)
   __ovr_ct = pop!(__overrides, "ct", nothing); isnothing(__ovr_ct) || push!(__eqs, ct ~ __ovr_ct)
   __ovr_ct__initial = pop!(__overrides, "ct__initial", nothing); isnothing(__ovr_ct__initial) || (__initial_conditions[ct] = __ovr_ct__initial)
+  __ovr_ct__guess = pop!(__overrides, "ct__guess", nothing)
   __ovr_sy = pop!(__overrides, "sy", nothing); isnothing(__ovr_sy) || push!(__eqs, sy ~ __ovr_sy)
   __ovr_sy__initial = pop!(__overrides, "sy__initial", nothing); isnothing(__ovr_sy__initial) || (__initial_conditions[sy] = __ovr_sy__initial)
+  __ovr_sy__guess = pop!(__overrides, "sy__guess", nothing)
   __ovr_cy = pop!(__overrides, "cy", nothing); isnothing(__ovr_cy) || push!(__eqs, cy ~ __ovr_cy)
   __ovr_cy__initial = pop!(__overrides, "cy__initial", nothing); isnothing(__ovr_cy__initial) || (__initial_conditions[cy] = __ovr_cy__initial)
+  __ovr_cy__guess = pop!(__overrides, "cy__guess", nothing)
 
   ### Constants
   __constants = Any[]
@@ -99,6 +105,12 @@ connectors that can be connected together ([`Frame3D`](@ref))
   isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
 
   ### Guesses
+  isnothing(__ovr_sp__guess) || (__guesses[sp] = __ovr_sp__guess)
+  isnothing(__ovr_cp__guess) || (__guesses[cp] = __ovr_cp__guess)
+  isnothing(__ovr_st__guess) || (__guesses[st] = __ovr_st__guess)
+  isnothing(__ovr_ct__guess) || (__guesses[ct] = __ovr_ct__guess)
+  isnothing(__ovr_sy__guess) || (__guesses[sy] = __ovr_sy__guess)
+  isnothing(__ovr_cy__guess) || (__guesses[cy] = __ovr_cy__guess)
 
   ### Initialization Equations
 

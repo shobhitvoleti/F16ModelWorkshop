@@ -3,27 +3,28 @@ test component F16DiscreteClosedLoopViz
   extends F16DiscreteClosedLoop
   # ---- Stage-1 demux: 12-state plant output -> four 3-vector groups ----
   demux = F16ModelWorkshop.Utils.Demux4x3() {^demux}
-  # ---- Stage-2 demux: split the groups needed for the pose into scalars ----
+  # ---- Stage-2 demux: split the position group into scalars ----
   demux_pos = F16ModelWorkshop.Utils.Demux3() {^demux_pos} # [npos, epos, alt]
+  # ---- Regather the position scalars in the pose source's Y-up order ----
+  pose_mux = F16ModelWorkshop.Utils.Mux3() {^pose_mux} # [npos, alt, epos]
   # ---- Pose source (converts plant signals -> Frame3D) ----
   pose = F16ModelWorkshop.Utils.SignalPoseSource() {^pose}
   # ---- 3-D visualization ----
-  viz = MultibodyComponents.ShapefileVisualizer(shapefile = joinpath("assets", "object", "F-16.obj"), shape_scale = 1.4, shape_transform = MultibodyComponents.Rp2T(MultibodyComponents.RotXYZ(0, 0, 0), [-32.9, 2.5, 0.1])) {^viz}
+  viz = MultibodyComponents.ShapefileVisualizer(shapefile = F16ModelWorkshop.asset_path("object", "F-16.obj"), shape_scale = 1.4, shape_transform = MultibodyComponents.Rp2T(MultibodyComponents.RotXYZ(0, 0, 0), [-32.9, 2.5, 0.1])) {^viz}
 relations
   # ===== Plant vector output -> stage-1 demux (y_out = [npos,epos,alt,phi,theta,psi,vt,alpha,beta,P,Q,R]) =====
-  connect(ref.y, err.u1) {^id5}
-  # ===== Stage-1 groups needed for the pose -> stage-2 demuxers =====
-  connect(f16plant.y_out, err.u2) {^id6} # [npos, epos, alt]
-  connect(err.y, sample.u) {^id7} # [phi, theta, psi]
-  # ===== Stage-2 scalars -> pose source (NED -> Y-up) =====
-  connect(sample.y, controller.u) {^id8} # npos -> x
-  connect(controller.y, zoh.u) {^id9} # alt  -> y
-  connect(zoh.y, f16plant.u_in) {^id10} # epos -> z
-  connect(clk.y, controller.u) {^id11} # roll  (phi)
+  connect(f16plant.y_out, demux.u) {^id5}
+  # ===== Stage-1 position group -> stage-2 demux =====
+  connect(demux.y1, demux_pos.u) {^id6} # [npos, epos, alt]
+  # ===== Stage-2 scalars regathered NED -> Y-up =====
+  connect(demux_pos.y1, pose_mux.u1) {^id7} # npos -> x
+  connect(demux_pos.y3, pose_mux.u2) {^id8} # alt  -> y
+  connect(demux_pos.y2, pose_mux.u3) {^id9} # epos -> z
+  connect(pose_mux.y, pose.pos) {^id10}
+  # ===== Attitude group -> pose source ([phi, theta, psi] matches [roll, pitch, yaw]) =====
+  connect(demux.y2, pose.ang) {^id11}
   # ===== Pose -> visualizer =====
   connect(pose.frame_a, viz.frame_a) {^id12}
-  connect(demux.u, f16plant.y_out) {^id13}
-  connect(demux.y1, pose.pos) {^id14}
 metadata {
   "_links": {
     "demux": {
@@ -31,6 +32,9 @@ metadata {
     },
     "demux_pos": {
       "Dyad": {"placement": {"diagram": {"x1": 600, "y1": 10, "x2": 700, "y2": 110}}}
+    },
+    "pose_mux": {
+      "Dyad": {"placement": {"diagram": {"x1": 740, "y1": 10, "x2": 840, "y2": 110}}}
     },
     "pose": {
       "Dyad": {
@@ -49,35 +53,25 @@ metadata {
       }
     },
     "id5": {
-      "Dyad": {"edges": [{"S": 1, "M": [{"x": 510, "y": 120}, {"x": 510, "y": 143}], "E": 2}]}
-    },
-    "id6": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
-    "id7": {
-      "Dyad": {"edges": [{"S": 1, "M": [{"x": 630, "y": 170}, {"x": 630, "y": 420}], "E": 2}]}
-    },
-    "id8": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
-    "id9": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
-    "id10": {
-      "Dyad": {"edges": [{"S": 1, "M": [{"x": 80, "y": 420}, {"x": 80, "y": 196}], "E": 2}]}
-    },
-    "id11": {
-      "Dyad": {"edges": [{"S": 1, "M": [{"x": 390, "y": 550}, {"x": 390, "y": 420}], "E": 2}]}
-    },
-    "id12": {},
-    "id13": {
       "Dyad": {"edges": [{"S": 1, "M": [{"x": 460, "y": 500}, {"x": 460, "y": 196}], "E": 2}]}
     },
-    "id14": {
-      "Dyad": {
-        "edges": [{"S": 1, "M": [{"x": 710, "y": 462.5}, {"x": 710, "y": 145}], "E": 2}]
-      }
-    }
+    "id6": {
+      "Dyad": {"edges": [{"S": 1, "M": [{"x": 710, "y": 462.5}, {"x": 710, "y": 60}], "E": 2}]}
+    },
+    "id7": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
+    "id8": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
+    "id9": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
+    "id10": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
+    "id11": {
+      "Dyad": {"edges": [{"S": 1, "M": [{"x": 730, "y": 487.5}, {"x": 730, "y": 198}], "E": 2}]}
+    },
+    "id12": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}}
   }
 }
 end
 
 analysis F16DiscreteClosedLoopVizAnalysis
-  extends TransientAnalysis(stop = 30.0)
+  extends F16ModelWorkshop.DiscreteClosedLoopAnalysis(stop = 30.0)
   model = F16DiscreteClosedLoopViz()
 relations
 end

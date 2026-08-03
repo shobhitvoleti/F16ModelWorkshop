@@ -10,6 +10,5 @@ end
 
 
 include("F16OpenLoopTrim_experiment.jl")
-include("F16Trim_experiment.jl")
 include("F16TrimmedPlantLinked_experiment.jl")
 include("F16VizTrim_experiment.jl")

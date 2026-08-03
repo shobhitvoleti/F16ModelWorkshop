@@ -205,15 +205,11 @@ end
 
 
 include("ClosedLoopModel_definition.jl")
-include("ClosedLoopVectorMuxedModel_definition.jl")
 include("F16ClosedLoopPerturbed_definition.jl")
-include("F16ClosedLoopVizAnalysis_definition.jl")
-include("F16ClosedLoopViz_definition.jl")
 include("F16DiscreteClosedLoopVizAnalysis_definition.jl")
 include("F16DiscreteClosedLoopViz_definition.jl")
 include("F16DiscreteClosedLoop_definition.jl")
 include("F16DiscreteLQGControllerAnalysis_definition.jl")
-include("F16LQGControllerAnalysisVectorMuxed_definition.jl")
 include("F16LQGControllerAnalysis_definition.jl")
 include("F16OpenLoopVizAnalysis_definition.jl")
 include("F16OpenLoopViz_definition.jl")

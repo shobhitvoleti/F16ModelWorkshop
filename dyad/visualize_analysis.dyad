@@ -1,0 +1,25 @@
+# Transient analysis that renders its solution to a video file, paired with the
+# Julia spec + run_analysis in src/visualize_analysis.jl. The model must carry a
+# MultibodyComponents visualizer driven by a Frame3D pose; the run simulates it and
+# writes the animation, the same "analysis writes a file" pattern as
+# TrimExportAnalysis / LinearizeExportAnalysis.
+#
+# Rendering needs a Makie backend in the session (`using GLMakie`).
+
+partial analysis VisualizeAnalysis
+  extends Analysis
+  model::Dyad.EmptyComponent = Dyad.EmptyComponent()
+  parameter stop::Real = 30.0
+  # Instance name of a clocked DiscreteStateSpace whose state needs seeding;
+  # empty for models with no clocked controller.
+  parameter controller_name::String = ""
+  # Destination of the rendered animation (relative to the project root).
+  parameter filename::String = "assets/closed_loop.mp4"
+  # Characteristic scene size; sets the renderer's default scaling.
+  parameter nominal_length::Real = 500.0
+  # Camera position [x, y, z] in the visualizer's Y-up world frame.
+  parameter camera::Real[3] = [-500.0, 3200.0, 200.0]
+  # Point the camera is aimed at [x, y, z].
+  parameter lookat::Real[3] = [2000.0, 3000.0, 0.0]
+  parameter show_axis::Boolean = false
+end

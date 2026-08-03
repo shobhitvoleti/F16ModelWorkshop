@@ -7,23 +7,11 @@
 using DyadInterface
 using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel
 using ModelingToolkit: SymbolicT, toggle_namespacing
-using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
-@kwdef mutable struct TestDiscreteStateSpaceTransientSpec <: AbstractTransientAnalysisSpec
+using F16ModelWorkshop: AbstractDiscreteClosedLoopAnalysisSpec, DiscreteClosedLoopAnalysisSpec
+@kwdef mutable struct TestDiscreteStateSpaceTransientSpec <: AbstractDiscreteClosedLoopAnalysisSpec
   name::Symbol = :TestDiscreteStateSpaceTransient
-  var"alg"::ODEAlg.Type = ODEAlg.Auto()
-  var"start"::Float64 = 0
   var"stop"::Float64 = 1.0
-  var"abstol"::Float64 = 0.000001
-  var"reltol"::Float64 = 0.000001
-  var"saveat"::Float64 = 0
-  var"dtmax"::Float64 = 0
-  var"tstops"::Array{Float64, 1} = []
-  var"automatic_discontinuity_detection"::Bool = false
-  var"optimize"::OptimizationLevel.Type = OptimizationLevel.Aggressive()
-  var"progress"::Bool = true
-  var"respecialize"::Bool = false
-  var"verbose"::DEVerbosity.Type = DEVerbosity.Standard()
-  var"log_file"::String = ""
+  var"controller_name"::String = "sys"
   # Minimal validation: 1-state discrete integrator (A=1, B=0.1, C=1) at dt=0.1 s; output ramps 0.1 per tick (x[k]=x[k-1]+0.1).
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Controls.TestDiscreteStateSpace(; name=:TestDiscreteStateSpace)
 end
@@ -32,8 +20,8 @@ function DyadInterface.run_analysis(spec::TestDiscreteStateSpaceTransientSpec)
   overrides = Dict{SymbolicT, SymbolicT}()
   no_namespace_model = toggle_namespacing(spec.model, false)
   
-  base_spec = TransientAnalysisSpec(;
-    name=:TransientAnalysis, overrides, alg=spec.alg, start=spec.start, stop=spec.stop, abstol=spec.abstol, reltol=spec.reltol, saveat=spec.saveat, dtmax=spec.dtmax, tstops=spec.tstops, automatic_discontinuity_detection=spec.automatic_discontinuity_detection, optimize=spec.optimize, progress=spec.progress, respecialize=spec.respecialize, verbose=spec.verbose, log_file=spec.log_file, model=spec.model
+  base_spec = DiscreteClosedLoopAnalysisSpec(;
+    name=:DiscreteClosedLoopAnalysis, overrides, stop=spec.stop, controller_name=spec.controller_name, model=spec.model
   )
   run_analysis(base_spec)
 end

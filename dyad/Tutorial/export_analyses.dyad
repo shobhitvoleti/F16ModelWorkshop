@@ -1,0 +1,24 @@
+# Custom export analyses for the tutorial. Each `partial analysis` is backed by a
+# Julia spec + run_analysis in src/tutorial_export_analyses.jl (AbstractTrimExportAnalysisSpec
+# / AbstractLinearizeExportAnalysisSpec), so tutorial steps can `extends` them and
+# the run writes a file — the same pattern as DyadControlSystems' analyses.
+
+partial analysis TrimExportAnalysis
+  extends Analysis
+  model::Dyad.EmptyComponent = Dyad.EmptyComponent()
+  # Destination of the exported trim parameter-set TOML (relative to the project root).
+  parameter export_path::String = "trim/tutorial_trim_point.toml"
+end
+
+partial analysis LinearizeExportAnalysis
+  extends Analysis
+  model::Dyad.EmptyComponent = Dyad.EmptyComponent()
+  # Control-input analysis-point names to linearize from.
+  parameter inputs::String[:]
+  # Measured-output analysis-point names to linearize to.
+  parameter outputs::String[:]
+  # Analysis points to open (break feedback) during linearization.
+  parameter loop_openings::String[:] = []
+  # Destination of the exported state-space TOML (relative to the project root).
+  parameter export_path::String = "trim/tutorial_linear_model.toml"
+end

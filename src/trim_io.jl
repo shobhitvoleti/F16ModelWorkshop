@@ -33,6 +33,18 @@ Shared by `TrimPlantAnalysis` (export) and [`load_trim`](@ref) (build-time impor
 default_trim_path() = joinpath(_project_root(), "trim", "trim_point.toml")
 
 """
+    asset_path(parts...) -> String
+
+Absolute path to a file under the package's `assets/` directory.
+
+Component parameters that name an asset (mesh files, for one) must not be relative:
+they are read when the model is simulated, which may be from any working directory.
+"""
+asset_path(parts::AbstractString...) = joinpath(_project_root(), "assets", parts...)
+
+export asset_path
+
+"""
     load_trim(path, key) -> Float64
     load_trim(key)       -> Float64
 

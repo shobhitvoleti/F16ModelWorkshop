@@ -206,8 +206,6 @@ end
 
 include("F16OpenLoopTrimAnalysis_definition.jl")
 include("F16OpenLoopTrim_definition.jl")
-include("F16TrimAnalysis_definition.jl")
-include("F16Trim_definition.jl")
 include("F16TrimmedPlantLinkedAnalysis_definition.jl")
 include("F16TrimmedPlantLinked_definition.jl")
 include("F16VizTrimAnalysis_definition.jl")
