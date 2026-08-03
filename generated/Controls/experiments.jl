@@ -11,8 +11,6 @@ end
 
 include("ClosedLoopModel_experiment.jl")
 include("F16ClosedLoopPerturbed_experiment.jl")
-include("F16DiscreteClosedLoopViz_experiment.jl")
-include("F16DiscreteClosedLoop_experiment.jl")
 include("F16OpenLoopViz_experiment.jl")
 include("F16OpenLoop_experiment.jl")
 include("TestClosedLoopModel_experiment.jl")

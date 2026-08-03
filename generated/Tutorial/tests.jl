@@ -16,10 +16,6 @@ end
 
 
 @testset "`F16ModelWorkshop.Tutorial`" begin
-include("ContinuousClosedLoopDemo_test.jl")
-include("ContinuousClosedLoopVizDemo_test.jl")
-include("DiscreteClosedLoopDemo_test.jl")
-include("DiscreteClosedLoopVizDemo_test.jl")
 include("LQGDemo_test.jl")
 include("TrimDemo_test.jl")
 end
