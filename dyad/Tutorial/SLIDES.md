@@ -10,14 +10,14 @@ description: From a 6-DOF plant to a sampled-data LQG controller
 Slide fodder for HTML generation (Marp/reveal.js).
 Slides are separated by `---`. Speaker prose lives in HTML comments.
 Diagram placeholders (`![](img/...)`) expect screenshots exported from Dyad Studio
-of the four Tutorial models — capture them at your preferred zoom before rendering.
+of the five Tutorial models — capture them at your preferred zoom before rendering.
 -->
 
 # F16 Control Design in Dyad
 
 ### From a 6-DOF plant to a sampled-data LQG controller
 
-A four-step workshop: **trim → linearize → design → implement**
+A five-step workshop: **trim → linearize → design → implement → visualize**
 
 `dyad/Tutorial/` · run every step in Dyad Studio or the REPL
 
@@ -29,6 +29,7 @@ A four-step workshop: **trim → linearize → design → implement**
 2. **Linearize** — get the state-space model design is built on
 3. **LQG (continuous)** — synthesize a stabilizing regulator
 4. **Discrete closed loop** — run it as a 100 Hz sampled-data controller
+5. **Visualize** — fly the result as a 3-D animation
 
 <!-- One model per step; each is one .dyad file with one runnable analysis. -->
 
@@ -127,7 +128,7 @@ Regulator: `u = -L·x̂`, estimator from a Kalman filter — synthesized from co
 The design model `LQGDemo`:
 
 - plant + embedded controller + `ref − measurement` error
-- **design analysis points**: 4 controls (`uT, uEl, uAil, uRud`) + 12 measurements (`yn..yR`); LEF is unmodeled in the plant, so `uLef` is excluded
+- **design analysis points**: 5 controls (`uT, uEl, uAil, uRud, uLef`) + 12 measurements (`yn..yR`); LEF has no aero effect, so synthesis returns a zero gain row for it
 - weights capture intent (below)
 
 ```
@@ -153,19 +154,41 @@ controls:      controller  → Demux5   ─(+trim)──── [uT..uLef] ──
 
 ---
 
-## Step 3 — LQG weights (intent as numbers)
+## Step 3 — LQG weights (Bryson's rule)
 
-| output | weight | why |
-|---|---|---|
-| `alt`, `theta`, `Q` | high | hold altitude & pitch |
-| `alpha`, `beta` | very high | safety: AoA & sideslip |
-| `npos`, `epos` | low | position drift is OK |
+Don't hand-pick magnitudes. State a **largest acceptable deviation** per channel and
+let the weight be `1 / deviation²`:
 
-| control | penalty | why |
-|---|---|---|
-| thrust | very low | cheap to move |
-| elevator | moderate | primary pitch |
-| aileron / rudder | low | lateral control |
+| output | tolerance | weight | control | tolerance | weight |
+|---|---|---|---|---|---|
+| `alt` | 0.5 m | 4.0 | thrust | 20 000 N | 2.5e-9 |
+| `theta` | 5° | 131 | elevator | 10° | 0.01 |
+| `vt` | 1 m/s | 1.0 | aileron | 10° | 0.01 |
+| `alpha`,`beta` | 2° | 821 | rudder | 10° | 0.01 |
+| `Q` | 10°/s | 32.8 | | | |
+
+**Why it matters here:** thrust is in *newtons*, the surfaces in *degrees*. A uniform
+penalty makes thrust ~10⁶× too expensive and the synthesis returns a controller with
+**no usable throttle** — nothing holds airspeed.
+
+---
+
+## Step 3 — What you cannot regulate
+
+`npos` and `epos` carry only a placeholder weight (the solver rejects zero).
+
+> Steady level flight is an equilibrium for `alt, theta, vt, alpha, beta, P, Q, R` —
+> each has a value you can hold. It is **not** one for position: the aircraft must
+> keep flying forward.
+
+Penalize position against a fixed reference and the error grows with distance flown
+until it dominates the cost — the regulator tries to fly *back*, and departs.
+
+**Position belongs to an outer guidance loop, not the inner regulator.**
+
+<!-- Measured: with position weighted at 0.1 the loop departs at ~19 s, commanding
+     2814 deg of elevator. With Bryson weights and position released, roll stays
+     under 0.007 rad and every surface sits far inside its travel limit. -->
 
 ---
 
@@ -199,6 +222,44 @@ Vector `VectorConstant`, `VectorAdd`, `MultiSampler`, `MultiZeroOrderHold`, `Vec
 
 ---
 
+## Step 5 — Visualize
+
+Watch the recovery instead of reading it off a plot.
+
+Each viz model **`extends` its closed loop** and adds three blocks — nothing in the
+control path changes:
+
+```
+f16plant.y_out → Demux4x3 → Demux3 → Mux3 → SignalPoseSource → ShapefileVisualizer
+```
+
+- The `Demux3`/`Mux3` pair reorders NED → Y-up: `npos→x, alt→y, epos→z`
+- `SignalPoseSource` turns those signals into a `Frame3D` pose
+- Same 10° perturbation on both loops, so continuous vs sampled is a fair race
+
+```
+TutorialVisualizeContinuous()   # → assets/f16_continuous_closed_loop.mp4
+TutorialVisualizeDiscrete()     # → assets/f16_discrete_closed_loop.mp4
+```
+
+---
+
+## Step 5 — The analysis writes the video
+
+`VisualizeAnalysis` is a **custom analysis**, like the trim/linearize exporters:
+it simulates the model, then renders the solution to a file.
+
+- Camera, `stop`, and output path are **analysis parameters**, not script arguments
+- `controller_name` seeds the clocked controller, so the sampled loop renders too
+- Rendering needs a Makie backend — `using GLMakie` — and says so if it's missing
+
+<!-- The visualizer is a model component; the renderer is an analysis. That split is
+     why the same loop can be simulated headless or filmed without editing it. -->
+
+The visualizer lives in the **model**; the renderer lives in the **analysis**.
+
+---
+
 ## The through-line
 
 **Vector connectors** for wiring and simulation — clean, one wire per bus.
@@ -219,8 +280,9 @@ Trim & linearization export their results as **first-class Dyad analyses**
 (`partial analysis` + a Julia `run_analysis`), the same pattern as `LQGAnalysis`:
 
 ```
-TutorialTrimExport()        → trim/tutorial_trim_point.toml
-TutorialLinearizeExport()   → trim/tutorial_linear_model.toml
+TutorialTrimExport()          → trim/tutorial_trim_point.toml
+TutorialLinearizeExport()     → trim/tutorial_linear_model.toml
+TutorialVisualizeDiscrete()   → assets/f16_discrete_closed_loop.mp4
 ```
 
 A custom analysis's `run_analysis` can do anything Julia can — including write a file.
@@ -237,9 +299,12 @@ plot(TutorialDiscreteClosedLoop())   # sampled-data pitch recovery
 TutorialLQG()                        # synthesize the controller
 TutorialTrimExport()                 # → trim/tutorial_trim_point.toml
 TutorialLinearizeExport()            # → trim/tutorial_linear_model.toml
+
+using GLMakie                        # rendering needs a Makie backend
+TutorialVisualizeDiscrete()          # → assets/f16_discrete_closed_loop.mp4
 ```
 
-Open `dyad/Tutorial/01…04` in **Dyad Studio** to see each model and run its analysis.
+Open `dyad/Tutorial/01…05` in **Dyad Studio** to see each model and run its analysis.
 
 ---
 
@@ -249,5 +314,6 @@ Open `dyad/Tutorial/01…04` in **Dyad Studio** to see each model and run its an
 2. **Linearize** — open-loop plant about trim
 3. **LQG** — scalar APs, vector wiring, weights = intent
 4. **Discrete** — ZOH controller, sampled-data, clock inference
+5. **Visualize** — `extends` the loop, renders from an analysis
 
 **One idea to keep:** wire with vectors, design at scalar analysis points.

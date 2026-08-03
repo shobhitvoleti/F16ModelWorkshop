@@ -61,7 +61,26 @@ Demonstrates controller stabilization from 10° pitch perturbation.
   push!(__systems, @named f16plant = F16ModelWorkshop.Plant.F16PlantIO(; alt_init=Float64(3000), theta_init=10 * pi / 180, f16plant_overrides...))
   # Subcomponent controller of type BlockComponents.Continuous.StateSpace
   controller_overrides = __pop_subcomponent_overrides!(__overrides, "controller")
-  push!(__systems, @named controller = BlockComponents.Continuous.StateSpace(; nx=12, nu=12, ny=5, A=ControllerA, B=ControllerB, C=ControllerC, D=ControllerD, x0=fill(0.0, 12), u0=fill(0.0, 12), y0=fill(0.0, 5), controller_overrides...))
+  __controller_apply_exclude = Set{String}(["nx", "nu", "ny"])
+  __controller_apply_schema = Dict{String,NamedTuple}(
+    "nx" => (base="Integer", dims=Int[], min=nothing, max=nothing, structural=true, final=false, initial=false, guess=false),
+    "nu" => (base="Integer", dims=Int[], min=nothing, max=nothing, structural=true, final=false, initial=false, guess=false),
+    "ny" => (base="Integer", dims=Int[], min=nothing, max=nothing, structural=true, final=false, initial=false, guess=false),
+    "A" => (base="Real", dims=Union{Int,Nothing}[nothing, nothing], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+    "B" => (base="Real", dims=Union{Int,Nothing}[nothing, nothing], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+    "C" => (base="Real", dims=Union{Int,Nothing}[nothing, nothing], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+    "D" => (base="Real", dims=Union{Int,Nothing}[nothing, nothing], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+    "x0" => (base="Real", dims=Union{Int,Nothing}[nothing], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+    "u0" => (base="Real", dims=Union{Int,Nothing}[nothing], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+    "y0" => (base="Real", dims=Union{Int,Nothing}[nothing], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+    "x" => (base="Real", dims=Union{Int,Nothing}[nothing], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "Δu" => (base="Real", dims=Union{Int,Nothing}[nothing], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "Δy" => (base="Real", dims=Union{Int,Nothing}[nothing], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+  )
+  __controller_apply_1 = __dyad_load_parameters(pkgdir(@__MODULE__), String(nameof(Base.moduleroot(@__MODULE__))), "dyad://F16ModelWorkshop/controller.toml")
+  __controller_apply_1_flat = __dyad_flatten(__controller_apply_1)
+  __dyad_check_apply(__controller_apply_1_flat, __controller_apply_schema, "dyad://F16ModelWorkshop/controller.toml")
+  push!(__systems, @named controller = BlockComponents.Continuous.StateSpace(; nx=12, nu=12, ny=5, __dyad_apply_overrides(__controller_apply_1, __controller_apply_1_flat, __controller_apply_exclude, __controller_apply_schema)..., controller_overrides...))
   # Subcomponent ref_npos of type BlockComponents.Sources.Constant
   ref_npos_overrides = __pop_subcomponent_overrides!(__overrides, "ref_npos")
   push!(__systems, @named ref_npos = BlockComponents.Sources.Constant(; k=Float64(0), ref_npos_overrides...))

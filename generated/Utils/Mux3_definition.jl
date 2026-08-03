@@ -7,9 +7,15 @@
 import Moshi as __Ext__Moshi
 
 @doc Markdown.doc"""
-   Mux3(; name)
+   Mux3(; name, u_guess)
 
 Mux3: combine 3 scalar inputs into a 3-vector output
+
+## Parameters:
+
+| Name         | Description                         | Units  |   Default value |
+| ------------ | ----------------------------------- | ------ | --------------- |
+| `u_guess`         | Operating-point seed for the inputs. When this mux sits on the broken-loop side of an analysis point, linearization leaves its inputs with no source, so the initializer needs a starting value for each; seeding them here keeps the 3 guesses out of every model that instruments a loop.                         | --  |   zeros(3) |
 
 ## Connectors
 
@@ -18,7 +24,7 @@ Mux3: combine 3 scalar inputs into a 3-vector output
  * `u3` - This connector represents a real signal as an input to a component ([`RealInput`](@ref))
  * `y` - This connector represents a real signal as an output from a component ([`RealOutput`](@ref))
 """
-@component function Mux3(; name = nothing, kwargs...)
+@component function Mux3(; name = nothing, u_guess=zeros(3), kwargs...)
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -49,6 +55,12 @@ Mux3: combine 3 scalar inputs into a 3-vector output
   ### Deferred assignment (default values that depend on final parameters)
 
   ### Symbolic Parameters
+  __local__u_guess = u_guess
+  append!(__params, @parameters (u_guess[1:3]::Real), [description = "Operating-point seed for the inputs. When this mux sits on the broken-loop side of an
+  append!(__params, @parameters (u_guess[1:3]::Real), [description = analysis point, linearization leaves its inputs with no source, so the initializer
+  append!(__params, @parameters (u_guess[1:3]::Real), [description = needs a starting value for each; seeding them here keeps the 3 guesses out of every
+  append!(__params, @parameters (u_guess[1:3]::Real), [description = model that instruments a loop."])
+  __initial_conditions[u_guess] = __local__u_guess
 
   ### Final Parameters (assignments)
 
@@ -71,6 +83,9 @@ Mux3: combine 3 scalar inputs into a 3-vector output
   isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
 
   ### Guesses
+  __guesses[u1] = (u_guess[1])
+  __guesses[u2] = (u_guess[2])
+  __guesses[u3] = (u_guess[3])
 
   ### Initialization Equations
 

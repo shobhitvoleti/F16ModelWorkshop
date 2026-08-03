@@ -204,12 +204,18 @@ component.
 end
 
 
+include("ContinuousClosedLoopDemo_definition.jl")
+include("ContinuousClosedLoopVizDemo_definition.jl")
 include("DiscreteClosedLoopDemo_definition.jl")
+include("DiscreteClosedLoopVizDemo_definition.jl")
 include("LQGDemo_definition.jl")
 include("TrimDemo_definition.jl")
 include("TutorialDiscreteClosedLoop_definition.jl")
+include("TutorialDiscreteLQG_definition.jl")
 include("TutorialLQG_definition.jl")
 include("TutorialLinearizeExport_definition.jl")
 include("TutorialLinearize_definition.jl")
 include("TutorialTrimExport_definition.jl")
 include("TutorialTrim_definition.jl")
+include("TutorialVisualizeContinuous_definition.jl")
+include("TutorialVisualizeDiscrete_definition.jl")

@@ -41,8 +41,18 @@ component Mux3
   u2 = RealInput() {^u2}
   u3 = RealInput() {^u3}
   y = [RealOutput() for i in 1:3] {^y}
+  """
+  Operating-point seed for the inputs. When this mux sits on the broken-loop side of an
+  analysis point, linearization leaves its inputs with no source, so the initializer
+  needs a starting value for each; seeding them here keeps the 3 guesses out of every
+  model that instruments a loop.
+  """
+  parameter u_guess::Real[3] = zeros(3)
 relations
   y = [u1, u2, u3]
+  guess u1 = u_guess[1]
+  guess u2 = u_guess[2]
+  guess u3 = u_guess[3]
 metadata {
   "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/mux3.svg"}},
   "_links": {
@@ -61,8 +71,22 @@ component Mux4x3
   u3 = [RealInput() for i in 1:3] {^u3}
   u4 = [RealInput() for i in 1:3] {^u4}
   y = [RealOutput() for i in 1:12] {^y}
+  """
+  Operating-point seed for the inputs.
+
+  A mux gathering the far side of an analysis point has no source once linearization
+  opens the loop, so the initializer cannot solve for these and needs a starting value.
+  The matching demuxes need no such seed: their inputs stay driven by the plant through
+  connect equations. Seeding here keeps the guesses out of every model that instruments
+  a loop.
+  """
+  parameter u_guess::Real[12] = zeros(12)
 relations
   y = [u1[1], u1[2], u1[3], u2[1], u2[2], u2[3], u3[1], u3[2], u3[3], u4[1], u4[2], u4[3]]
+  guess u1 = [u_guess[1], u_guess[2], u_guess[3]]
+  guess u2 = [u_guess[4], u_guess[5], u_guess[6]]
+  guess u3 = [u_guess[7], u_guess[8], u_guess[9]]
+  guess u4 = [u_guess[10], u_guess[11], u_guess[12]]
 metadata {
   "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/mux4x3.svg"}},
   "_links": {
@@ -110,8 +134,23 @@ component Mux5
   u4 = RealInput() {^u4}
   u5 = RealInput() {^u5}
   y = [RealOutput() for i in 1:5] {^y}
+  """
+  Operating-point seed for the inputs.
+
+  A mux gathering the far side of an analysis point has no source once linearization
+  opens the loop, so the initializer cannot solve for these and needs a starting value.
+  The matching demuxes need no such seed: their inputs stay driven by the plant through
+  connect equations. Seeding here keeps the guesses out of every model that instruments
+  a loop.
+  """
+  parameter u_guess::Real[5] = zeros(5)
 relations
   y = [u1, u2, u3, u4, u5]
+  guess u1 = u_guess[1]
+  guess u2 = u_guess[2]
+  guess u3 = u_guess[3]
+  guess u4 = u_guess[4]
+  guess u5 = u_guess[5]
 metadata {
   "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/mux5.svg"}},
   "_links": {

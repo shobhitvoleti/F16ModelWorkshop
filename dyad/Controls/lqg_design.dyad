@@ -1,6 +1,6 @@
 component ClosedLoopModel
   f16plant = F16ModelWorkshop.Plant.F16PlantIO(alt_init = 3000, alpha_init = -0.01695) {^f16plant}
-  controller = BlockComponents.Continuous.StateSpace(nx = 12, nu = 12, ny = 5, A = ControllerA, B = ControllerB, C = ControllerC, D = ControllerD, x0 = fill(0.0, 12), u0 = fill(0.0, 12), y0 = fill(0.0, 5)) {^controller}
+  controller = BlockComponents.Continuous.StateSpace(nx = 12, nu = 12, ny = 5, apply "dyad://F16ModelWorkshop/controller.toml") {^controller}
   ref_npos = BlockComponents.Sources.Constant(k = 0) {^ref_npos}
   ref_epos = BlockComponents.Sources.Constant(k = 0) {^ref_epos}
   ref_alt = BlockComponents.Sources.Constant(k = 3000) {^ref_alt}

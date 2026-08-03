@@ -17,7 +17,7 @@ relations
 end
 
 analysis TestDiscreteStateSpaceTransient
-  extends TransientAnalysis(stop = 1.0)
+  extends F16ModelWorkshop.DiscreteClosedLoopAnalysis(stop = 1.0, controller_name = "sys")
   model = TestDiscreteStateSpace()
 relations
 end

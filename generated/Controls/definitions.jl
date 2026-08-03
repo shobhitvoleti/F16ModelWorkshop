@@ -206,8 +206,6 @@ end
 
 include("ClosedLoopModel_definition.jl")
 include("F16ClosedLoopPerturbed_definition.jl")
-include("F16ClosedLoopVizAnalysis_definition.jl")
-include("F16ClosedLoopViz_definition.jl")
 include("F16DiscreteClosedLoopVizAnalysis_definition.jl")
 include("F16DiscreteClosedLoopViz_definition.jl")
 include("F16DiscreteClosedLoop_definition.jl")

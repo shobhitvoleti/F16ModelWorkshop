@@ -7,9 +7,15 @@
 import Moshi as __Ext__Moshi
 
 @doc Markdown.doc"""
-   Mux4x3(; name)
+   Mux4x3(; name, u_guess)
 
 Mux4x3: combine four 3-vectors into a 12-element vector output (mirror of Demux4x3)
+
+## Parameters:
+
+| Name         | Description                         | Units  |   Default value |
+| ------------ | ----------------------------------- | ------ | --------------- |
+| `u_guess`         | Operating-point seed for the inputs. […]                         | --  |   zeros(12) |
 
 ## Connectors
 
@@ -19,7 +25,7 @@ Mux4x3: combine four 3-vectors into a 12-element vector output (mirror of Demux4
  * `u4` - This connector represents a real signal as an input to a component ([`RealInput`](@ref))
  * `y` - This connector represents a real signal as an output from a component ([`RealOutput`](@ref))
 """
-@component function Mux4x3(; name = nothing, kwargs...)
+@component function Mux4x3(; name = nothing, u_guess=zeros(12), kwargs...)
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -50,6 +56,15 @@ Mux4x3: combine four 3-vectors into a 12-element vector output (mirror of Demux4
   ### Deferred assignment (default values that depend on final parameters)
 
   ### Symbolic Parameters
+  __local__u_guess = u_guess
+  append!(__params, @parameters (u_guess[1:12]::Real), [description = "Operating-point seed for the inputs.
+  append!(__params, @parameters (u_guess[1:12]::Real), [description = 
+  append!(__params, @parameters (u_guess[1:12]::Real), [description = A mux gathering the far side of an analysis point has no source once linearization
+  append!(__params, @parameters (u_guess[1:12]::Real), [description = opens the loop, so the initializer cannot solve for these and needs a starting value.
+  append!(__params, @parameters (u_guess[1:12]::Real), [description = The matching demuxes need no such seed: their inputs stay driven by the plant through
+  append!(__params, @parameters (u_guess[1:12]::Real), [description = connect equations. Seeding here keeps the guesses out of every model that instruments
+  append!(__params, @parameters (u_guess[1:12]::Real), [description = a loop."])
+  __initial_conditions[u_guess] = __local__u_guess
 
   ### Final Parameters (assignments)
 
@@ -73,6 +88,10 @@ Mux4x3: combine four 3-vectors into a 12-element vector output (mirror of Demux4
   isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
 
   ### Guesses
+  __guesses[u1] = ([u_guess[1], u_guess[2], u_guess[3]])
+  __guesses[u2] = ([u_guess[4], u_guess[5], u_guess[6]])
+  __guesses[u3] = ([u_guess[7], u_guess[8], u_guess[9]])
+  __guesses[u4] = ([u_guess[10], u_guess[11], u_guess[12]])
 
   ### Initialization Equations
 

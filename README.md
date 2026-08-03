@@ -16,7 +16,7 @@ Dyad sources live in `dyad/`; the compiler regenerates `generated/` from them
 | `dyad/Controls/` | LQG controller design (`lqg_design.dyad`), demo loops, and 3-D visualizers |
 | `dyad/VectorBlocks/` | Vector-connector building blocks (constant, add, sampler, ZOH, clock) |
 | `dyad/Utils/` | Mux/demux and the signal→pose bridge for visualization |
-| `dyad/Tutorial/` | **Start here** — a guided four-step walkthrough (below) |
+| `dyad/Tutorial/` | **Start here** — a guided five-step walkthrough (below) |
 
 ## Tutorial walkthrough
 
@@ -37,6 +37,11 @@ sampled-data controller:
 4. **`04_lqg_discrete.dyad` — `TutorialDiscreteClosedLoop`.** The same loop as a
    100 Hz sampled-data system, wired entirely with vector connectors: sampler →
    discrete state-space controller → zero-order hold.
+5. **`05_visualize.dyad` — `TutorialVisualizeContinuous` /
+   `TutorialVisualizeDiscrete`.** Render either closed loop as a 3-D animation.
+   Each viz model `extends` its loop and adds only a measurement tap, a
+   `SignalPoseSource` and a `ShapefileVisualizer`; the analysis simulates the model
+   and writes the video to `assets/`. Requires a Makie backend (`using GLMakie`).
 
 ## Running the models
 

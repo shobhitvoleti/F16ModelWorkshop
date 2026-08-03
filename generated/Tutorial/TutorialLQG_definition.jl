@@ -12,13 +12,13 @@ using DyadControlSystems: AbstractLQGAnalysisSpec, LQGAnalysisSpec
   name::Symbol = :TutorialLQG
   var"measurement"::Array{String, 1} = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"]
   var"controlled_output"::Array{String, 1} = ["yn", "ye", "yalt", "ypitch", "yvt", "yalpha", "ybeta", "yQ"]
-  var"control_input"::Array{String, 1} = ["uT", "uEl", "uAil", "uRud"]
+  var"control_input"::Array{String, 1} = ["uT", "uEl", "uAil", "uRud", "uLef"]
   var"disturbance_inputs"::Array{String, 1} = []
   var"loop_openings"::Array{String, 1} = []
   var"t"::Float64 = 0.0
-  var"q1_diag"::Array{Float64, 1} = [0.1, 0.1, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0]
-  var"q2_diag"::Array{Float64, 1} = [0.1, 0.1, 0.1, 0.1]
-  var"r1_diag"::Array{Float64, 1} = [0.01, 0.01, 0.01, 0.01]
+  var"q1_diag"::Array{Float64, 1} = [0.000001, 0.000001, 4.0, 131.312, 1.0, 820.702, 820.702, 32.8281]
+  var"q2_diag"::Array{Float64, 1} = [2.5e-9, 0.01, 0.01, 0.01, 0.01]
+  var"r1_diag"::Array{Float64, 1} = [0.01, 0.01, 0.01, 0.01, 0.01]
   var"r2_diag"::Array{Float64, 1} = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
   var"qQ"::Float64 = 0.0
   var"qR"::Float64 = 0.0
@@ -39,8 +39,9 @@ using DyadControlSystems: AbstractLQGAnalysisSpec, LQGAnalysisSpec
   # points, and stay vector everywhere else — a clean bus instead of per-channel
   # spaghetti:
   #   measurements: plant.y_out -> Demux4x3 -> 4x Demux3 -[yn..yR]-> 4x Mux3 -> Mux4x3 -> err
-  #   controls:     controller  -> Demux5 -> (+trim) -[uT,uEl,uAil,uRud]-> Mux5 -> plant.u_in
-  #   (LEF is unmodeled in the plant aero, so it is not a design control; it stays at trim.)
+  #   controls:     controller  -> Demux5 -> (+trim) -[uT,uEl,uAil,uRud,uLef]-> Mux5 -> plant.u_in
+  #   (LEF carries no aero effect in the plant, so the synthesis returns a zero gain row for
+  #   it; it is kept as a design control so the controller has the plant's full 5 channels.)
   # 
   # `TutorialLQG` linearizes the plant between these points and synthesizes the LQG
   # gains; `TutorialLinearize` (02) linearizes the same instrumented model.

@@ -18,8 +18,9 @@ vector signals are tapped through a demux/mux pair exactly at the 17 analysis
 points, and stay vector everywhere else — a clean bus instead of per-channel
 spaghetti:
   measurements: plant.y_out -> Demux4x3 -> 4x Demux3 -[yn..yR]-> 4x Mux3 -> Mux4x3 -> err
-  controls:     controller  -> Demux5 -> (+trim) -[uT,uEl,uAil,uRud]-> Mux5 -> plant.u_in
-  (LEF is unmodeled in the plant aero, so it is not a design control; it stays at trim.)
+  controls:     controller  -> Demux5 -> (+trim) -[uT,uEl,uAil,uRud,uLef]-> Mux5 -> plant.u_in
+  (LEF carries no aero effect in the plant, so the synthesis returns a zero gain row for
+  it; it is kept as a design control so the controller has the plant's full 5 channels.)
 
 `TutorialLQG` linearizes the plant between these points and synthesizes the LQG
 gains; `TutorialLinearize` (02) linearizes the same instrumented model.
@@ -77,10 +78,101 @@ gains; `TutorialLinearize` (02) linearizes the same instrumented model.
   ### Components
   # Subcomponent f16plant of type F16ModelWorkshop.Plant.F16PlantModel
   f16plant_overrides = __pop_subcomponent_overrides!(__overrides, "f16plant")
-  push!(__systems, @named f16plant = F16ModelWorkshop.Plant.F16PlantModel(; alt_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.alt_init"), alpha_init=F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.alpha_init"), f16plant_overrides...))
+  __f16plant_apply_exclude = Set{String}()
+  __f16plant_apply_schema = Dict{String,NamedTuple}(
+    "npos_init" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+    "epos_init" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+    "alt_init" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+    "phi_init" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+    "theta_init" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+    "psi_init" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+    "vt_init" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+    "alpha_init" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+    "beta_init" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+    "P_init" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+    "Q_init" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+    "R_init" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+    "g" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
+    "m" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
+    "B" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
+    "S" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
+    "cbar" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
+    "xcgr" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
+    "xcg" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
+    "Heng" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
+    "Jx" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
+    "Jy" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
+    "Jz" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
+    "Jxz" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
+    "deg2rad" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
+    "C0_lon" => (base="Real", dims=Int[3], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
+    "Cmat_lon" => (base="Real", dims=Int[3, 4], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
+    "C0_lat" => (base="Real", dims=Int[3], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
+    "Cmat_lat" => (base="Real", dims=Int[3, 5], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
+    "npos" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "epos" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "alt" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "phi" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "theta" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "psi" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "vt" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "alpha" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "beta" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "P" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "Q" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "R" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "T" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "el" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "ail" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "rud" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "lef" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "el_rad" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "ail_rad" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "rud_rad" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "lef_rad" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "sa" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "ca" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "sb" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "cb" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "st" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "ct" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "tt" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "sphi" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "cphi" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "spsi" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "cpsi" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "U" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "V_body" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "W" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "rho" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "qbar" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "x_lon" => (base="Real", dims=Int[4], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "x_lat" => (base="Real", dims=Int[5], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "C_lon" => (base="Real", dims=Int[3], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "C_lat" => (base="Real", dims=Int[3], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "Udot" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "Vdot" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "Wdot" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "L_tot" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "M_tot" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "N_tot" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "denom" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+  )
+  __f16plant_apply_1 = __dyad_load_parameters(pkgdir(@__MODULE__), String(nameof(Base.moduleroot(@__MODULE__))), "dyad://F16ModelWorkshop/trim_point.toml")
+  __f16plant_apply_1_flat = __dyad_flatten(__f16plant_apply_1)
+  __dyad_check_apply(__f16plant_apply_1_flat, __f16plant_apply_schema, "dyad://F16ModelWorkshop/trim_point.toml")
+  push!(__systems, @named f16plant = F16ModelWorkshop.Plant.F16PlantModel(; __dyad_apply_overrides(__f16plant_apply_1, __f16plant_apply_1_flat, __f16plant_apply_exclude, __f16plant_apply_schema)..., f16plant_overrides...))
   # Subcomponent ref of type F16ModelWorkshop.VectorBlocks.VectorConstant
   ref_overrides = __pop_subcomponent_overrides!(__overrides, "ref")
-  push!(__systems, @named ref = F16ModelWorkshop.VectorBlocks.VectorConstant(; n=12, k=ref_vals, ref_overrides...))
+  __ref_apply_exclude = Set{String}(["n"])
+  __ref_apply_schema = Dict{String,NamedTuple}(
+    "n" => (base="Integer", dims=Int[], min=nothing, max=nothing, structural=true, final=false, initial=false, guess=false),
+    "k" => (base="Real", dims=Union{Int,Nothing}[nothing], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+  )
+  __ref_apply_1 = __dyad_load_parameters(pkgdir(@__MODULE__), String(nameof(Base.moduleroot(@__MODULE__))), "dyad://F16ModelWorkshop/trim_reference.toml")
+  __ref_apply_1_flat = __dyad_flatten(__ref_apply_1)
+  __dyad_check_apply(__ref_apply_1_flat, __ref_apply_schema, "dyad://F16ModelWorkshop/trim_reference.toml")
+  push!(__systems, @named ref = F16ModelWorkshop.VectorBlocks.VectorConstant(; n=12, __dyad_apply_overrides(__ref_apply_1, __ref_apply_1_flat, __ref_apply_exclude, __ref_apply_schema)..., ref_overrides...))
   # Subcomponent meas_demux of type F16ModelWorkshop.Utils.Demux4x3
   meas_demux_overrides = __pop_subcomponent_overrides!(__overrides, "meas_demux")
   push!(__systems, @named meas_demux = F16ModelWorkshop.Utils.Demux4x3(; meas_demux_overrides...))
@@ -98,31 +190,58 @@ gains; `TutorialLinearize` (02) linearizes the same instrumented model.
   push!(__systems, @named demux_rate = F16ModelWorkshop.Utils.Demux3(; demux_rate_overrides...))
   # Subcomponent mux_pos of type F16ModelWorkshop.Utils.Mux3
   mux_pos_overrides = __pop_subcomponent_overrides!(__overrides, "mux_pos")
-  push!(__systems, @named mux_pos = F16ModelWorkshop.Utils.Mux3(; mux_pos_overrides...))
+  push!(__systems, @named mux_pos = F16ModelWorkshop.Utils.Mux3(; u_guess=[ref_vals[1], ref_vals[2], ref_vals[3]], mux_pos_overrides...))
   # Subcomponent mux_att of type F16ModelWorkshop.Utils.Mux3
   mux_att_overrides = __pop_subcomponent_overrides!(__overrides, "mux_att")
-  push!(__systems, @named mux_att = F16ModelWorkshop.Utils.Mux3(; mux_att_overrides...))
+  push!(__systems, @named mux_att = F16ModelWorkshop.Utils.Mux3(; u_guess=[ref_vals[4], ref_vals[5], ref_vals[6]], mux_att_overrides...))
   # Subcomponent mux_air of type F16ModelWorkshop.Utils.Mux3
   mux_air_overrides = __pop_subcomponent_overrides!(__overrides, "mux_air")
-  push!(__systems, @named mux_air = F16ModelWorkshop.Utils.Mux3(; mux_air_overrides...))
+  push!(__systems, @named mux_air = F16ModelWorkshop.Utils.Mux3(; u_guess=[ref_vals[7], ref_vals[8], ref_vals[9]], mux_air_overrides...))
   # Subcomponent mux_rate of type F16ModelWorkshop.Utils.Mux3
   mux_rate_overrides = __pop_subcomponent_overrides!(__overrides, "mux_rate")
-  push!(__systems, @named mux_rate = F16ModelWorkshop.Utils.Mux3(; mux_rate_overrides...))
+  push!(__systems, @named mux_rate = F16ModelWorkshop.Utils.Mux3(; u_guess=[ref_vals[10], ref_vals[11], ref_vals[12]], mux_rate_overrides...))
   # Subcomponent meas_mux of type F16ModelWorkshop.Utils.Mux4x3
   meas_mux_overrides = __pop_subcomponent_overrides!(__overrides, "meas_mux")
-  push!(__systems, @named meas_mux = F16ModelWorkshop.Utils.Mux4x3(; meas_mux_overrides...))
+  push!(__systems, @named meas_mux = F16ModelWorkshop.Utils.Mux4x3(; u_guess=ref_vals, meas_mux_overrides...))
   # Subcomponent err of type F16ModelWorkshop.VectorBlocks.VectorAdd
   err_overrides = __pop_subcomponent_overrides!(__overrides, "err")
   push!(__systems, @named err = F16ModelWorkshop.VectorBlocks.VectorAdd(; n=12, k1=Float64(1), k2=Float64(-1), err_overrides...))
   # Subcomponent controller of type BlockComponents.Continuous.StateSpace
   controller_overrides = __pop_subcomponent_overrides!(__overrides, "controller")
-  push!(__systems, @named controller = BlockComponents.Continuous.StateSpace(; nx=12, nu=12, ny=5, A=ControllerA, B=ControllerB, C=ControllerC, D=ControllerD, x0=fill(0.0, 12), u0=fill(0.0, 12), y0=fill(0.0, 5), controller_overrides...))
+  __controller_apply_exclude = Set{String}(["nx", "nu", "ny"])
+  __controller_apply_schema = Dict{String,NamedTuple}(
+    "nx" => (base="Integer", dims=Int[], min=nothing, max=nothing, structural=true, final=false, initial=false, guess=false),
+    "nu" => (base="Integer", dims=Int[], min=nothing, max=nothing, structural=true, final=false, initial=false, guess=false),
+    "ny" => (base="Integer", dims=Int[], min=nothing, max=nothing, structural=true, final=false, initial=false, guess=false),
+    "A" => (base="Real", dims=Union{Int,Nothing}[nothing, nothing], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+    "B" => (base="Real", dims=Union{Int,Nothing}[nothing, nothing], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+    "C" => (base="Real", dims=Union{Int,Nothing}[nothing, nothing], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+    "D" => (base="Real", dims=Union{Int,Nothing}[nothing, nothing], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+    "x0" => (base="Real", dims=Union{Int,Nothing}[nothing], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+    "u0" => (base="Real", dims=Union{Int,Nothing}[nothing], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+    "y0" => (base="Real", dims=Union{Int,Nothing}[nothing], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+    "x" => (base="Real", dims=Union{Int,Nothing}[nothing], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "Δu" => (base="Real", dims=Union{Int,Nothing}[nothing], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+    "Δy" => (base="Real", dims=Union{Int,Nothing}[nothing], min=nothing, max=nothing, structural=false, final=false, initial=true, guess=true),
+  )
+  __controller_apply_1 = __dyad_load_parameters(pkgdir(@__MODULE__), String(nameof(Base.moduleroot(@__MODULE__))), "dyad://F16ModelWorkshop/controller.toml")
+  __controller_apply_1_flat = __dyad_flatten(__controller_apply_1)
+  __dyad_check_apply(__controller_apply_1_flat, __controller_apply_schema, "dyad://F16ModelWorkshop/controller.toml")
+  push!(__systems, @named controller = BlockComponents.Continuous.StateSpace(; nx=12, nu=12, ny=5, __dyad_apply_overrides(__controller_apply_1, __controller_apply_1_flat, __controller_apply_exclude, __controller_apply_schema)..., controller_overrides...))
   # Subcomponent ctrl_demux of type F16ModelWorkshop.Utils.Demux5
   ctrl_demux_overrides = __pop_subcomponent_overrides!(__overrides, "ctrl_demux")
   push!(__systems, @named ctrl_demux = F16ModelWorkshop.Utils.Demux5(; ctrl_demux_overrides...))
   # Subcomponent trim of type F16ModelWorkshop.VectorBlocks.VectorConstant
   trim_overrides = __pop_subcomponent_overrides!(__overrides, "trim")
-  push!(__systems, @named trim = F16ModelWorkshop.VectorBlocks.VectorConstant(; n=5, k=trim_vals, trim_overrides...))
+  __trim_apply_exclude = Set{String}(["n"])
+  __trim_apply_schema = Dict{String,NamedTuple}(
+    "n" => (base="Integer", dims=Int[], min=nothing, max=nothing, structural=true, final=false, initial=false, guess=false),
+    "k" => (base="Real", dims=Union{Int,Nothing}[nothing], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
+  )
+  __trim_apply_1 = __dyad_load_parameters(pkgdir(@__MODULE__), String(nameof(Base.moduleroot(@__MODULE__))), "dyad://F16ModelWorkshop/trim_controls.toml")
+  __trim_apply_1_flat = __dyad_flatten(__trim_apply_1)
+  __dyad_check_apply(__trim_apply_1_flat, __trim_apply_schema, "dyad://F16ModelWorkshop/trim_controls.toml")
+  push!(__systems, @named trim = F16ModelWorkshop.VectorBlocks.VectorConstant(; n=5, __dyad_apply_overrides(__trim_apply_1, __trim_apply_1_flat, __trim_apply_exclude, __trim_apply_schema)..., trim_overrides...))
   # Subcomponent trim_demux of type F16ModelWorkshop.Utils.Demux5
   trim_demux_overrides = __pop_subcomponent_overrides!(__overrides, "trim_demux")
   push!(__systems, @named trim_demux = F16ModelWorkshop.Utils.Demux5(; trim_demux_overrides...))
@@ -143,22 +262,12 @@ gains; `TutorialLinearize` (02) linearizes the same instrumented model.
   push!(__systems, @named control_lef = BlockComponents.Math.Add(; k1=Float64(1), k2=Float64(1), control_lef_overrides...))
   # Subcomponent ctrl_mux of type F16ModelWorkshop.Utils.Mux5
   ctrl_mux_overrides = __pop_subcomponent_overrides!(__overrides, "ctrl_mux")
-  push!(__systems, @named ctrl_mux = F16ModelWorkshop.Utils.Mux5(; ctrl_mux_overrides...))
+  push!(__systems, @named ctrl_mux = F16ModelWorkshop.Utils.Mux5(; u_guess=trim_vals, ctrl_mux_overrides...))
 
   ### Check there are no unmatched overrides
   isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
 
   ### Guesses
-  __guesses[f16plant.vt] = (ref_vals[7])
-  __guesses[f16plant.alt] = (ref_vals[3])
-  __guesses[f16plant.theta] = (ref_vals[5])
-  __guesses[f16plant.phi] = (ref_vals[4])
-  __guesses[f16plant.psi] = (ref_vals[6])
-  __guesses[f16plant.alpha] = (ref_vals[8])
-  __guesses[f16plant.beta] = (ref_vals[9])
-  __guesses[f16plant.P] = (ref_vals[10])
-  __guesses[f16plant.Q] = (ref_vals[11])
-  __guesses[f16plant.R] = (ref_vals[12])
   __guesses[f16plant.T] = (trim_vals[1])
   __guesses[f16plant.rho] = (0.909)
   __guesses[f16plant.qbar] = (10557.0)
@@ -173,41 +282,10 @@ gains; `TutorialLinearize` (02) linearizes the same instrumented model.
   __guesses[f16plant.C_lat] = ([0.0, 0.0, 0.0])
   __guesses[f16plant.y_out] = (ref_vals)
   __guesses[f16plant.u_in] = (trim_vals)
-  __guesses[meas_demux.u] = (ref_vals)
-  __guesses[meas_demux.y1] = ([ref_vals[1], ref_vals[2], ref_vals[3]])
-  __guesses[meas_demux.y2] = ([ref_vals[4], ref_vals[5], ref_vals[6]])
-  __guesses[meas_demux.y3] = ([ref_vals[7], ref_vals[8], ref_vals[9]])
-  __guesses[meas_demux.y4] = ([ref_vals[10], ref_vals[11], ref_vals[12]])
-  __guesses[demux_pos.u] = ([ref_vals[1], ref_vals[2], ref_vals[3]])
-  __guesses[demux_att.u] = ([ref_vals[4], ref_vals[5], ref_vals[6]])
-  __guesses[demux_air.u] = ([ref_vals[7], ref_vals[8], ref_vals[9]])
-  __guesses[demux_rate.u] = ([ref_vals[10], ref_vals[11], ref_vals[12]])
-  __guesses[mux_pos.u1] = (ref_vals[1])
-  __guesses[mux_pos.u2] = (ref_vals[2])
-  __guesses[mux_pos.u3] = (ref_vals[3])
-  __guesses[mux_att.u1] = (ref_vals[4])
-  __guesses[mux_att.u2] = (ref_vals[5])
-  __guesses[mux_att.u3] = (ref_vals[6])
-  __guesses[mux_air.u1] = (ref_vals[7])
-  __guesses[mux_air.u2] = (ref_vals[8])
-  __guesses[mux_air.u3] = (ref_vals[9])
-  __guesses[mux_rate.u1] = (ref_vals[10])
-  __guesses[mux_rate.u2] = (ref_vals[11])
-  __guesses[mux_rate.u3] = (ref_vals[12])
-  __guesses[meas_mux.u1] = ([ref_vals[1], ref_vals[2], ref_vals[3]])
-  __guesses[meas_mux.u2] = ([ref_vals[4], ref_vals[5], ref_vals[6]])
-  __guesses[meas_mux.u3] = ([ref_vals[7], ref_vals[8], ref_vals[9]])
-  __guesses[meas_mux.u4] = ([ref_vals[10], ref_vals[11], ref_vals[12]])
   __guesses[err.u2] = (ref_vals)
   __guesses[controller.x] = (fill(0.0, 12))
   __guesses[controller.u] = (fill(0.0, 12))
   __guesses[controller.y] = (fill(0.0, 5))
-  __guesses[trim_demux.u] = (trim_vals)
-  __guesses[ctrl_mux.u1] = (trim_vals[1])
-  __guesses[ctrl_mux.u2] = (trim_vals[2])
-  __guesses[ctrl_mux.u3] = (trim_vals[3])
-  __guesses[ctrl_mux.u4] = (trim_vals[4])
-  __guesses[ctrl_mux.u5] = (trim_vals[5])
 
   ### Initialization Equations
 

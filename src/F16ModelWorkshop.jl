@@ -3,15 +3,11 @@ module F16ModelWorkshop
 using ModelingToolkit, OrdinaryDiffEqDefault, NonlinearSolve
 import Symbolics: unwrap
 export unwrap
-export ControllerA, ControllerB, ControllerC, ControllerD
-export DiscreteControllerA, DiscreteControllerB, DiscreteControllerC, DiscreteControllerD
 export ControllerTs
 
-include("output.jl")
-
-# Defined BEFORE the generated code so Dyad components can reference the discrete
-# controller matrices (DiscreteControllerA/B/C/D, ControllerTs) in parameter
-# defaults.  Depends on ControllerA-D from output.jl.
+# Defined BEFORE the generated code so Dyad components can reference ControllerTs
+# in parameter defaults. The controller matrices themselves now live in
+# assets/controller.toml and assets/discrete_controller.toml, applied at the block.
 include("discrete_controller.jl")
 
 # Defined BEFORE the generated code so Dyad components can call load_trim in
@@ -21,6 +17,8 @@ include("trim_io.jl")
 # Custom analysis specs (extendable from Dyad via `partial analysis`) must be
 # defined BEFORE the generated code that references them.
 include("tutorial_export_analyses.jl")
+include("discrete_closed_loop_analysis.jl")
+include("visualize_analysis.jl")
 
 include("../generated/module.jl")
 

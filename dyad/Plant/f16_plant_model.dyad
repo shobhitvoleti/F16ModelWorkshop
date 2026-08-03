@@ -5,18 +5,21 @@ component F16PlantModel
   "State outputs: [npos, epos, alt, phi, theta, psi, vt, alpha, beta, P, Q, R]"
   y_out = [RealOutput() for i in 1:12] {^y_out}
   # ---- 12 state variables ----
+  # Declared inline rather than as `initial x = x_init` relations: the relation form is
+  # dropped by algebraic_only linearization (LQGAnalysis / LinearAnalysis), which leaves
+  # the operating point unpinned and solved by least squares from `guess` values.
   variable npos::Real = initial npos_init
   variable epos::Real = initial epos_init
-  variable alt::Real
-  variable phi::Real
-  variable theta::Real
-  variable psi::Real
-  variable vt::Real
-  variable alpha::Real
-  variable beta::Real
-  variable P::Real
-  variable Q::Real
-  variable R::Real
+  variable alt::Real = initial alt_init
+  variable phi::Real = initial phi_init
+  variable theta::Real = initial theta_init
+  variable psi::Real = initial psi_init
+  variable vt::Real = initial vt_init
+  variable alpha::Real = initial alpha_init
+  variable beta::Real = initial beta_init
+  variable P::Real = initial P_init
+  variable Q::Real = initial Q_init
+  variable R::Real = initial R_init
   # ---- Initial condition parameters ----
   parameter npos_init::Real = 0.0
   parameter epos_init::Real = 0.0
@@ -115,17 +118,6 @@ component F16PlantModel
   # Inertia denominator
   variable denom::Real
 relations
-  # ---- Initial conditions ----
-  initial alt = alt_init
-  initial phi = phi_init
-  initial theta = theta_init
-  initial psi = psi_init
-  initial vt = vt_init
-  initial alpha = alpha_init
-  initial beta = beta_init
-  initial P = P_init
-  initial Q = Q_init
-  initial R = R_init
   # ---- Input mapping: u_in = [T, el, ail, rud, lef] ----
   T = u_in[1]
   el = u_in[2]

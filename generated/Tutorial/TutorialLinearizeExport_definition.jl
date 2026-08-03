@@ -23,8 +23,9 @@ using F16ModelWorkshop.Tutorial: AbstractLinearizeExportAnalysisSpec, LinearizeE
   # points, and stay vector everywhere else — a clean bus instead of per-channel
   # spaghetti:
   #   measurements: plant.y_out -> Demux4x3 -> 4x Demux3 -[yn..yR]-> 4x Mux3 -> Mux4x3 -> err
-  #   controls:     controller  -> Demux5 -> (+trim) -[uT,uEl,uAil,uRud]-> Mux5 -> plant.u_in
-  #   (LEF is unmodeled in the plant aero, so it is not a design control; it stays at trim.)
+  #   controls:     controller  -> Demux5 -> (+trim) -[uT,uEl,uAil,uRud,uLef]-> Mux5 -> plant.u_in
+  #   (LEF carries no aero effect in the plant, so the synthesis returns a zero gain row for
+  #   it; it is kept as a design control so the controller has the plant's full 5 channels.)
   # 
   # `TutorialLQG` linearizes the plant between these points and synthesizes the LQG
   # gains; `TutorialLinearize` (02) linearizes the same instrumented model.

@@ -9,6 +9,9 @@ if isfile(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Tutorial
 end
 
 
+include("ContinuousClosedLoopDemo_experiment.jl")
+include("ContinuousClosedLoopVizDemo_experiment.jl")
 include("DiscreteClosedLoopDemo_experiment.jl")
+include("DiscreteClosedLoopVizDemo_experiment.jl")
 include("LQGDemo_experiment.jl")
 include("TrimDemo_experiment.jl")

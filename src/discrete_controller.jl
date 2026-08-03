@@ -1,18 +1,8 @@
-# Discrete-time LQG controller.
+# Controller sample time, referenced by Dyad components as a parameter default
+# (the PeriodicClock period in the discrete closed loop, and the Ts of the discrete
+# LQG design). Included before the generated code.
 #
-# The discrete controller is produced by the disc="zoh" path of
-# DyadControlSystems.LQGAnalysis (Controls.F16DiscreteLQGControllerAnalysis), which
-# ZOH-discretizes the LQG design at the sample time ControllerTs.  Its A/B/C/D
-# matrices are captured as literals in discrete_output.jl so this remains the
-# single source of truth for the discrete controller — no post-hoc c2d() of the
-# continuous controller.
-#
-# Dyad components reference these symbols (DiscreteControllerA/B/C/D, ControllerTs)
-# as parameter defaults, so this file is included before the generated code.
-
-# Controller sample time [s] (100 Hz).  Used as the PeriodicClock period in the
-# discrete closed loop and as the Ts kwarg of the discrete LQGAnalysis.
+# The controller matrices are not here: they are package assets
+# (assets/discrete_controller.toml) applied directly to the DiscreteStateSpace block,
+# so the design round-trips through a file Dyad validates rather than Julia literals.
 const ControllerTs = 0.01
-
-# DiscreteControllerA/B/C/D literals (captured from the disc="zoh" LQGAnalysis).
-include("discrete_output.jl")

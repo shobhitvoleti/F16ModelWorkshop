@@ -8,17 +8,18 @@ vector signals are tapped through a demux/mux pair exactly at the 17 analysis
 points, and stay vector everywhere else — a clean bus instead of per-channel
 spaghetti:
   measurements: plant.y_out -> Demux4x3 -> 4x Demux3 -[yn..yR]-> 4x Mux3 -> Mux4x3 -> err
-  controls:     controller  -> Demux5 -> (+trim) -[uT,uEl,uAil,uRud]-> Mux5 -> plant.u_in
-  (LEF is unmodeled in the plant aero, so it is not a design control; it stays at trim.)
+  controls:     controller  -> Demux5 -> (+trim) -[uT,uEl,uAil,uRud,uLef]-> Mux5 -> plant.u_in
+  (LEF carries no aero effect in the plant, so the synthesis returns a zero gain row for
+  it; it is kept as a design control so the controller has the plant's full 5 channels.)
 
 `TutorialLQG` linearizes the plant between these points and synthesizes the LQG
 gains; `TutorialLinearize` (02) linearizes the same instrumented model.
 """
 component LQGDemo
   "Vector-I/O F16 plant, held at the 3000 m / 152.4 m/s trim."
-  f16plant = F16ModelWorkshop.Plant.F16PlantModel(alt_init = F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.alt_init"), alpha_init = F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.alpha_init")) {^f16plant}
+  f16plant = F16ModelWorkshop.Plant.F16PlantModel(apply "dyad://F16ModelWorkshop/trim_point.toml") {^f16plant}
   "Reference set-points for the 12 states [npos,epos,alt,phi,theta,psi,vt,alpha,beta,P,Q,R]."
-  ref = F16ModelWorkshop.VectorBlocks.VectorConstant(n = 12, k = ref_vals) {^ref}
+  ref = F16ModelWorkshop.VectorBlocks.VectorConstant(n = 12, apply "dyad://F16ModelWorkshop/trim_reference.toml") {^ref}
   "Stage 1: split the 12-state plant output into four 3-vectors [pos, att, air, rates]."
   meas_demux = F16ModelWorkshop.Utils.Demux4x3() {^meas_demux}
   "Stage 2: split each group into scalars so each measurement analysis point is scalar."
@@ -27,20 +28,20 @@ component LQGDemo
   demux_air = F16ModelWorkshop.Utils.Demux3() {^demux_air}
   demux_rate = F16ModelWorkshop.Utils.Demux3() {^demux_rate}
   "Stage 2 regather: combine each group's 3 measured scalars back into a 3-vector."
-  mux_pos = F16ModelWorkshop.Utils.Mux3() {^mux_pos}
-  mux_att = F16ModelWorkshop.Utils.Mux3() {^mux_att}
-  mux_air = F16ModelWorkshop.Utils.Mux3() {^mux_air}
-  mux_rate = F16ModelWorkshop.Utils.Mux3() {^mux_rate}
+  mux_pos = F16ModelWorkshop.Utils.Mux3(u_guess = [ref_vals[1], ref_vals[2], ref_vals[3]]) {^mux_pos}
+  mux_att = F16ModelWorkshop.Utils.Mux3(u_guess = [ref_vals[4], ref_vals[5], ref_vals[6]]) {^mux_att}
+  mux_air = F16ModelWorkshop.Utils.Mux3(u_guess = [ref_vals[7], ref_vals[8], ref_vals[9]]) {^mux_air}
+  mux_rate = F16ModelWorkshop.Utils.Mux3(u_guess = [ref_vals[10], ref_vals[11], ref_vals[12]]) {^mux_rate}
   "Stage 1 regather: combine the four groups into the 12-vector for the error block."
-  meas_mux = F16ModelWorkshop.Utils.Mux4x3() {^meas_mux}
+  meas_mux = F16ModelWorkshop.Utils.Mux4x3(u_guess = ref_vals) {^meas_mux}
   "Tracking error: ref - measurement (12 ch)."
   err = F16ModelWorkshop.VectorBlocks.VectorAdd(n = 12, k1 = 1, k2 = -1) {^err}
   "Embedded LQG controller (state space); the LQG analysis (re)designs these gains."
-  controller = BlockComponents.Continuous.StateSpace(nx = 12, nu = 12, ny = 5, A = ControllerA, B = ControllerB, C = ControllerC, D = ControllerD, x0 = fill(0.0, 12), u0 = fill(0.0, 12), y0 = fill(0.0, 5)) {^controller}
+  controller = BlockComponents.Continuous.StateSpace(nx = 12, nu = 12, ny = 5, apply "dyad://F16ModelWorkshop/controller.toml") {^controller}
   "Split the 5 controller outputs into scalars so each control analysis point is scalar."
   ctrl_demux = F16ModelWorkshop.Utils.Demux5() {^ctrl_demux}
   "Trim control offset [T,el,ail,rud,lef]."
-  trim = F16ModelWorkshop.VectorBlocks.VectorConstant(n = 5, k = trim_vals) {^trim}
+  trim = F16ModelWorkshop.VectorBlocks.VectorConstant(n = 5, apply "dyad://F16ModelWorkshop/trim_controls.toml") {^trim}
   "Split the trim vector into scalars, one per control-add block."
   trim_demux = F16ModelWorkshop.Utils.Demux5() {^trim_demux}
   "Per-channel control = controller output + trim."
@@ -50,23 +51,13 @@ component LQGDemo
   control_rud = BlockComponents.Math.Add(k1 = 1, k2 = 1) {^control_rud}
   control_lef = BlockComponents.Math.Add(k1 = 1, k2 = 1) {^control_lef}
   "Gather the 5 control scalars into the plant's vector input."
-  ctrl_mux = F16ModelWorkshop.Utils.Mux5() {^ctrl_mux}
+  ctrl_mux = F16ModelWorkshop.Utils.Mux5(u_guess = trim_vals) {^ctrl_mux}
   "State setpoints [npos,epos,alt,phi,theta,psi,vt,alpha,beta,P,Q,R], loaded from the trim point (single source of truth)."
   structural parameter ref_vals::Real[12] = [F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.npos_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.epos_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.alt_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.phi_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.theta_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.psi_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.vt_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.alpha_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.beta_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.P_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.Q_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.R_init")]
   "Trim control offsets [T,el,ail,rud,lef], loaded from the trim point."
   structural parameter trim_vals::Real[5] = [F16ModelWorkshop.load_trim("trim/trim_point.toml", "T_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "el_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "ail_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "rud_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "lef_cmd.k")]
 relations
   # ---- Operating point: every guess derived from the loaded trim (ref_vals / trim_vals) ----
-  guess f16plant.vt = ref_vals[7]
-  guess f16plant.alt = ref_vals[3]
-  guess f16plant.theta = ref_vals[5]
-  guess f16plant.phi = ref_vals[4]
-  guess f16plant.psi = ref_vals[6]
-  guess f16plant.alpha = ref_vals[8]
-  guess f16plant.beta = ref_vals[9]
-  guess f16plant.P = ref_vals[10]
-  guess f16plant.Q = ref_vals[11]
-  guess f16plant.R = ref_vals[12]
   guess f16plant.T = trim_vals[1]
   # Derived aero/atmosphere seeds (functions of the trim, refined by the solver).
   guess f16plant.rho = 0.909
@@ -83,43 +74,12 @@ relations
   guess f16plant.y_out = ref_vals
   guess f16plant.u_in = trim_vals
   # Demux stages (grouped state values).
-  guess meas_demux.u = ref_vals
-  guess meas_demux.y1 = [ref_vals[1], ref_vals[2], ref_vals[3]]
-  guess meas_demux.y2 = [ref_vals[4], ref_vals[5], ref_vals[6]]
-  guess meas_demux.y3 = [ref_vals[7], ref_vals[8], ref_vals[9]]
-  guess meas_demux.y4 = [ref_vals[10], ref_vals[11], ref_vals[12]]
-  guess demux_pos.u = [ref_vals[1], ref_vals[2], ref_vals[3]]
-  guess demux_att.u = [ref_vals[4], ref_vals[5], ref_vals[6]]
-  guess demux_air.u = [ref_vals[7], ref_vals[8], ref_vals[9]]
-  guess demux_rate.u = [ref_vals[10], ref_vals[11], ref_vals[12]]
   # Broken-loop side of the 12 measurement analysis points.
-  guess mux_pos.u1 = ref_vals[1]
-  guess mux_pos.u2 = ref_vals[2]
-  guess mux_pos.u3 = ref_vals[3]
-  guess mux_att.u1 = ref_vals[4]
-  guess mux_att.u2 = ref_vals[5]
-  guess mux_att.u3 = ref_vals[6]
-  guess mux_air.u1 = ref_vals[7]
-  guess mux_air.u2 = ref_vals[8]
-  guess mux_air.u3 = ref_vals[9]
-  guess mux_rate.u1 = ref_vals[10]
-  guess mux_rate.u2 = ref_vals[11]
-  guess mux_rate.u3 = ref_vals[12]
-  guess meas_mux.u1 = [ref_vals[1], ref_vals[2], ref_vals[3]]
-  guess meas_mux.u2 = [ref_vals[4], ref_vals[5], ref_vals[6]]
-  guess meas_mux.u3 = [ref_vals[7], ref_vals[8], ref_vals[9]]
-  guess meas_mux.u4 = [ref_vals[10], ref_vals[11], ref_vals[12]]
   guess err.u2 = ref_vals
   guess controller.x = fill(0.0, 12)
   guess controller.u = fill(0.0, 12)
   guess controller.y = fill(0.0, 5)
   # Broken-loop side of the 5 control analysis points.
-  guess trim_demux.u = trim_vals
-  guess ctrl_mux.u1 = trim_vals[1]
-  guess ctrl_mux.u2 = trim_vals[2]
-  guess ctrl_mux.u3 = trim_vals[3]
-  guess ctrl_mux.u4 = trim_vals[4]
-  guess ctrl_mux.u5 = trim_vals[5]
   # ---- Analysis points: SCALAR, at the demux/mux taps ----
   yn: analysis_point(demux_pos.y1, mux_pos.u1)
   ye: analysis_point(demux_pos.y2, mux_pos.u2)
@@ -150,7 +110,6 @@ relations
   connect(demux_air.y3, mux_air.u3) {^id33}
   connect(demux_rate.y1, mux_rate.u1) {^id34}
   connect(demux_rate.y2, mux_rate.u2) {^id35}
-  # ---- Control path: controller -> demux -> (+trim) -[APs]-> mux -> plant ----
   connect(demux_rate.y3, mux_rate.u3) {^id36}
   connect(err.y, controller.u) {^id37}
   connect(controller.y, ctrl_demux.u) {^id38}
@@ -426,8 +385,44 @@ metadata {
 }
 end
 
+"""
+Tutorial 3 — synthesize the continuous LQG regulator.
+
+Weights follow Bryson's rule: each diagonal entry is `1 / (largest acceptable
+deviation)^2`, in that channel's own units. The rule exists because the channels are
+not commensurable — thrust is newtons while the surfaces are degrees, so a uniform
+penalty makes thrust ~10^6 times more expensive than it should be and the synthesis
+returns a controller with no usable throttle.
+
+  q1  (controlled outputs)          q2  (control inputs)
+    yalt    0.5 m                     uT     20000 N
+    ypitch  5 deg                     uEl    10 deg
+    yvt     1 m/s                     uAil   10 deg
+    yalpha  2 deg                     uRud   10 deg
+    ybeta   2 deg                     uLef   10 deg
+    yQ      10 deg/s
+
+`yn`/`ye` carry only a placeholder 1e-6 (the solver rejects a zero entry): north and
+east position have no equilibrium in forward flight, so regulating them to a fixed
+reference asks for something the airframe cannot do — the error grows with distance
+flown until it dominates the cost and the loop departs. Position belongs to an outer
+guidance loop, not to this inner regulator.
+"""
 analysis TutorialLQG
-  extends DyadControlSystems.LQGAnalysis(measurement = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"], controlled_output = ["yn", "ye", "yalt", "ypitch", "yvt", "yalpha", "ybeta", "yQ"], control_input = ["uT", "uEl", "uAil", "uRud"], loop_openings = [], q1_diag = [0.1, 0.1, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0], q2_diag = [0.1, 0.1, 0.1, 0.1], r1_diag = [0.01, 0.01, 0.01, 0.01], r2_diag = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01], duration = -1.0)
+  extends DyadControlSystems.LQGAnalysis(measurement = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"], controlled_output = ["yn", "ye", "yalt", "ypitch", "yvt", "yalpha", "ybeta", "yQ"], control_input = ["uT", "uEl", "uAil", "uRud", "uLef"], loop_openings = [], q1_diag = [1e-6, 1e-6, 4.0, 131.312, 1.0, 820.702, 820.702, 32.8281], q2_diag = [2.5e-9, 0.01, 0.01, 0.01, 0.01], r1_diag = [0.01, 0.01, 0.01, 0.01, 0.01], r2_diag = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01], duration = -1.0)
+  model = LQGDemo()
+relations
+end
+
+"""
+Tutorial 3b — the same LQG design, ZOH-discretized at `ControllerTs` (100 Hz).
+
+Produces the sampled-data controller that tutorial 4 simulates. Discretizing here —
+rather than applying `c2d` to the continuous result afterwards — keeps one design as
+the single source of truth for both loops.
+"""
+analysis TutorialDiscreteLQG
+  extends DyadControlSystems.LQGAnalysis(measurement = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"], controlled_output = ["yn", "ye", "yalt", "ypitch", "yvt", "yalpha", "ybeta", "yQ"], control_input = ["uT", "uEl", "uAil", "uRud", "uLef"], loop_openings = [], q1_diag = [1e-6, 1e-6, 4.0, 131.312, 1.0, 820.702, 820.702, 32.8281], q2_diag = [2.5e-9, 0.01, 0.01, 0.01, 0.01], r1_diag = [0.01, 0.01, 0.01, 0.01, 0.01], r2_diag = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01], duration = -1.0, disc = "zoh", Ts = ControllerTs)
   model = LQGDemo()
 relations
 end
