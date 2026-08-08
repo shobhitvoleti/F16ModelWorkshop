@@ -1,6 +1,7 @@
 module F16ModelWorkshop
 
 using ModelingToolkit, OrdinaryDiffEqDefault, NonlinearSolve
+import SynchToolkit, SynchCompiler
 import Symbolics: unwrap
 export unwrap
 export ControllerTs

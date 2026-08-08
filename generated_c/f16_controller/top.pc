@@ -1,0 +1,7 @@
+prefix=${pcfiledir}
+
+Name: top
+Description: SynchCompiler-generated synchronous node
+Version: 0
+Cflags: -I${prefix}
+Libs: 

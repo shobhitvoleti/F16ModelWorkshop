@@ -1,0 +1,89 @@
+"""
+Tutorial 6 — isolate and generate C for the discrete LQG controller.
+
+The closed-loop model keeps vector signals around the clocked controller but exposes
+scalar analysis points through Demux12/Mux12 and Demux5/Mux5 pairs, matching the LQG
+design pattern. `ModelingToolkit.isolate_subsystem` uses the 12 `u*` and 5 `y*`
+analysis points to remove the surrounding source/sink blocks before
+`SynchToolkit.stkcompile`.
+"""
+component ClockedDiscreteController
+  u = [RealInput() for i in 1:12] {^u}
+  y = [RealOutput() for i in 1:5] {^y}
+  controller = DiscreteComponents.DiscreteStateSpace(nx = 12, nu = 12, ny = 5, apply "dyad://F16ModelWorkshop/discrete_controller.toml") {^controller}
+  clk = F16ModelWorkshop.VectorBlocks.VectorClock(n = 12, dt = ControllerTs) {^clk}
+relations
+  connect(u, controller.u)
+  connect(clk.y, controller.u)
+  connect(controller.y, y)
+end
+
+component DiscreteControllerCodegen
+  "External source side of the closed-loop controller input boundary."
+  input_source = F16ModelWorkshop.VectorBlocks.VectorConstant(n = 12, k = zeros(12)) {^input_source}
+  input_demux = F16ModelWorkshop.Utils.Demux12() {^input_demux}
+  input_mux = F16ModelWorkshop.Utils.Mux12() {^input_mux}
+  "Code-generation target retained between the analysis-point boundaries."
+  controller = ClockedDiscreteController() {^controller}
+  output_demux = F16ModelWorkshop.Utils.Demux5() {^output_demux}
+  output_mux = F16ModelWorkshop.Utils.Mux5() {^output_mux}
+  "External sink side of the closed-loop controller output boundary."
+  output_sink = [BlockComponents.Routing.Terminator() for i in 1:5] {^output_sink}
+relations
+  connect(input_source.y, input_demux.u)
+
+  u1: analysis_point(input_demux.y1, input_mux.u1)
+  u2: analysis_point(input_demux.y2, input_mux.u2)
+  u3: analysis_point(input_demux.y3, input_mux.u3)
+  u4: analysis_point(input_demux.y4, input_mux.u4)
+  u5: analysis_point(input_demux.y5, input_mux.u5)
+  u6: analysis_point(input_demux.y6, input_mux.u6)
+  u7: analysis_point(input_demux.y7, input_mux.u7)
+  u8: analysis_point(input_demux.y8, input_mux.u8)
+  u9: analysis_point(input_demux.y9, input_mux.u9)
+  u10: analysis_point(input_demux.y10, input_mux.u10)
+  u11: analysis_point(input_demux.y11, input_mux.u11)
+  u12: analysis_point(input_demux.y12, input_mux.u12)
+
+  connect(input_demux.y1, input_mux.u1)
+  connect(input_demux.y2, input_mux.u2)
+  connect(input_demux.y3, input_mux.u3)
+  connect(input_demux.y4, input_mux.u4)
+  connect(input_demux.y5, input_mux.u5)
+  connect(input_demux.y6, input_mux.u6)
+  connect(input_demux.y7, input_mux.u7)
+  connect(input_demux.y8, input_mux.u8)
+  connect(input_demux.y9, input_mux.u9)
+  connect(input_demux.y10, input_mux.u10)
+  connect(input_demux.y11, input_mux.u11)
+  connect(input_demux.y12, input_mux.u12)
+
+  connect(input_mux.y, controller.u)
+  connect(controller.y, output_demux.u)
+
+  y1: analysis_point(output_demux.y1, output_mux.u1)
+  y2: analysis_point(output_demux.y2, output_mux.u2)
+  y3: analysis_point(output_demux.y3, output_mux.u3)
+  y4: analysis_point(output_demux.y4, output_mux.u4)
+  y5: analysis_point(output_demux.y5, output_mux.u5)
+
+  connect(output_demux.y1, output_mux.u1)
+  connect(output_demux.y2, output_mux.u2)
+  connect(output_demux.y3, output_mux.u3)
+  connect(output_demux.y4, output_mux.u4)
+  connect(output_demux.y5, output_mux.u5)
+  connect(output_mux.y[1], output_sink[1].u)
+  connect(output_mux.y[2], output_sink[2].u)
+  connect(output_mux.y[3], output_sink[3].u)
+  connect(output_mux.y[4], output_sink[4].u)
+  connect(output_mux.y[5], output_sink[5].u)
+end
+
+analysis TutorialControllerCodegen
+  extends F16ModelWorkshop.ControllerCodegenAnalysis(
+    inputs = ["u1", "u2", "u3", "u4", "u5", "u6", "u7", "u8", "u9", "u10", "u11", "u12"],
+    outputs = ["y1", "y2", "y3", "y4", "y5"],
+    export_dir = "generated_c/f16_controller")
+  model = DiscreteControllerCodegen()
+end
+

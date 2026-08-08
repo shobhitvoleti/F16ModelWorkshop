@@ -1,0 +1,10 @@
+partial analysis ControllerCodegenAnalysis
+  extends Analysis
+  model::Dyad.EmptyComponent = Dyad.EmptyComponent()
+  "Input analysis points bounding the controller subsystem."
+  parameter inputs::String[:]
+  "Output analysis points bounding the controller subsystem."
+  parameter outputs::String[:]
+  "Directory for SynchCompiler C output."
+  parameter export_dir::String = "generated_c/f16_controller"
+end

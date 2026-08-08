@@ -204,12 +204,15 @@ component.
 end
 
 
+include("ClockedDiscreteController_definition.jl")
 include("ContinuousClosedLoopDemo_definition.jl")
 include("ContinuousClosedLoopVizDemo_definition.jl")
 include("DiscreteClosedLoopDemo_definition.jl")
 include("DiscreteClosedLoopVizDemo_definition.jl")
+include("DiscreteControllerCodegen_definition.jl")
 include("LQGDemo_definition.jl")
 include("TrimDemo_definition.jl")
+include("TutorialControllerCodegen_definition.jl")
 include("TutorialDiscreteClosedLoop_definition.jl")
 include("TutorialDiscreteLQG_definition.jl")
 include("TutorialLQG_definition.jl")
