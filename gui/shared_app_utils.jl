@@ -215,7 +215,6 @@ function create_plugin_visuals!(parent, row::Int, ::Type{GangOfFourPlugin}, stat
         ylabel = "Singular value",
         xscale = log10,
         yscale = log10,
-        tellheight = false,
     )
     state.st_ax = st_ax
 
@@ -226,7 +225,6 @@ function create_plugin_visuals!(parent, row::Int, ::Type{GangOfFourPlugin}, stat
         ylabel = "Singular value",
         xscale = log10,
         yscale = log10,
-        tellheight = false,
     )
     state.pscs_ax = pscs_ax
 
@@ -387,7 +385,6 @@ function create_plugin_visuals!(parent, row::Int, ::Type{ControllerBodePlugin}, 
         ylabel = "Singular value",
         xscale = log10,
         yscale = log10,
-        tellheight = false,
     )
     state.ax = ax
 
@@ -530,7 +527,6 @@ function create_plugin_visuals!(parent, row::Int, ::Type{NyquistPlugin}, state::
         xlabel = "Real",
         ylabel = "Imaginary",
         aspect = DataAspect(),
-        tellheight = false,
     )
     state.ax = ax
 
@@ -666,7 +662,6 @@ function create_plugin_visuals!(parent, row::Int, ::Type{LoopTransferPlugin},
         ylabel = "Singular value",
         xscale = log10,
         yscale = log10,
-        tellheight = false,
     )
     state.ax = ax
 
@@ -725,6 +720,7 @@ mutable struct StepResponsePluginState
     show_control::Bool                  # Whether to show control signal plot
     y_names::Vector{String}             # Output signal names
     u_names::Vector{String}             # Input signal names
+    legends::Vector{Any}                # Legend objects for explicit cleanup
 end
 
 supports_args(::Type{StepResponsePlugin}, args...; kwargs...) = true
@@ -766,7 +762,8 @@ function init_plugin_state(::Type{StepResponsePlugin}, ny::Int, nu::Int;
         nu,
         show_control,
         collect(String, y_names),
-        collect(String, u_names)
+        collect(String, u_names),
+        Any[]                       # legends
     )
 end
 
@@ -796,7 +793,6 @@ function create_plugin_visuals!(parent, row::Int, ::Type{StepResponsePlugin},
         title = "Step Response",
         xlabel = "Time (s)",
         ylabel = "Output",
-        tellheight = false,
     )
 
     # Plot lines for each output-input combination
@@ -811,9 +807,15 @@ function create_plugin_visuals!(parent, row::Int, ::Type{StepResponsePlugin},
         end
     end
 
+    # Delete old legends and clear the list
+    for l in state.legends
+        delete!(l)
+    end
+    empty!(state.legends)
+
     # Add legend if MIMO
     if ny > 1 || nu > 1
-        GLMakie.Makie.axislegend(state.output_ax, position=:rt)
+        push!(state.legends, GLMakie.Makie.axislegend(state.output_ax, position=:rt))
     end
     hlines!(state.output_ax, [1.0], color=:gray, linestyle=:dash, linewidth=0.5)
 
@@ -823,7 +825,6 @@ function create_plugin_visuals!(parent, row::Int, ::Type{StepResponsePlugin},
             title = "Control Signal",
             xlabel = "Time (s)",
             ylabel = "Control",
-            tellheight = false,
         )
         for j in 1:nu
             label = nu > 1 ? state.u_names[j] : ""
@@ -832,7 +833,7 @@ function create_plugin_visuals!(parent, row::Int, ::Type{StepResponsePlugin},
                    label=label)
         end
         if nu > 1
-            GLMakie.Makie.axislegend(state.control_ax, position=:rt)
+            push!(state.legends, GLMakie.Makie.axislegend(state.control_ax, position=:rt))
         end
         return (state.output_ax, state.control_ax)
     end
@@ -989,7 +990,6 @@ function create_plugin_visuals!(parent, row::Int, ::Type{PZMapPlugin},
         title = "Closed-Loop Poles and Zeros",
         xlabel = "Real",
         ylabel = "Imaginary",
-        tellheight = false,
     )
 
     # Poles as x markers (blue)

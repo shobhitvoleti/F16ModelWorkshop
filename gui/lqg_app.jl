@@ -186,7 +186,17 @@ function rebuild_plots!(state::LQGDesignerState)
     right_panel = state.right_panel
     isnothing(right_panel) && return
     
-    # Clear existing content
+    # Delete legends stored on plugin states before clearing axes
+    for (_, pstate) in state.plugin_states
+        if hasproperty(pstate, :legends)
+            for l in pstate.legends
+                delete!(l)
+            end
+            empty!(pstate.legends)
+        end
+    end
+
+    # Clear remaining layout content (axes, etc.)
     for c in copy(contents(right_panel))
         delete!(c)
     end
@@ -196,32 +206,66 @@ function rebuild_plots!(state::LQGDesignerState)
     nu = length(state.original_spec.control_input)
     all_plugins = available_plugins()
     
-    # Rebuild enabled plugins
+    # Rebuild enabled plugins, packing single-column plugins side-by-side
     row = 1
+    single_col_pending = false  # true when col=1 of current row has a single-col plugin
     for PluginType in all_plugins
         pname = plugin_name(PluginType)
-        
+
         if haskey(state.plugin_enabled, pname) && state.plugin_enabled[pname][]
             plugin_state = state.plugin_states[pname]
             grid_rows, grid_cols = grid_size(PluginType)
-            
-            # Create visuals with appropriate kwargs for each plugin type
+
             if pname == :GangOfFour
-                # GangOfFour spans 2 columns and supports show_constraints
+                # Full-width 2-column plugin
+                if single_col_pending
+                    row += 1
+                    single_col_pending = false
+                end
                 create_plugin_visuals!(right_panel, row, PluginType, plugin_state; show_constraints=true)
-            elseif pname == :Nyquist
-                # Nyquist supports show_constraints
-                create_plugin_visuals!(right_panel, row, PluginType, plugin_state; col=1, show_constraints=true)
-            elseif pname in [:ControllerBode, :LoopTransfer]
-                # Single column plugins, no show_constraints
+                row += grid_rows
+            elseif pname == :StepResponse
+                # Full-width 2-column plugin
+                if single_col_pending
+                    row += 1
+                    single_col_pending = false
+                end
                 create_plugin_visuals!(right_panel, row, PluginType, plugin_state; col=1)
+                row += grid_rows
+            elseif pname == :PZMap
+                # Full-width 2-column plugin
+                if single_col_pending
+                    row += 1
+                    single_col_pending = false
+                end
+                create_plugin_visuals!(right_panel, row, PluginType, plugin_state; col=1)
+                row += grid_rows
             else
-                # StepResponse, PZMap - use col but not show_constraints
-                create_plugin_visuals!(right_panel, row, PluginType, plugin_state; col=1)
+                # Single-column plugins: pack two per row
+                if single_col_pending
+                    # Place in col=2 of current row
+                    if pname == :Nyquist
+                        create_plugin_visuals!(right_panel, row, PluginType, plugin_state; col=2, show_constraints=true)
+                    else
+                        create_plugin_visuals!(right_panel, row, PluginType, plugin_state; col=2)
+                    end
+                    row += 1
+                    single_col_pending = false
+                else
+                    # Place in col=1 of new row
+                    if pname == :Nyquist
+                        create_plugin_visuals!(right_panel, row, PluginType, plugin_state; col=1, show_constraints=true)
+                    else
+                        create_plugin_visuals!(right_panel, row, PluginType, plugin_state; col=1)
+                    end
+                    single_col_pending = true
+                end
             end
-            
-            row += grid_rows
         end
+    end
+    # If an odd single-col plugin is left, advance the row
+    if single_col_pending
+        row += 1
     end
 end
 
@@ -257,9 +301,9 @@ spec = LQGAnalysisSpec(
 state = launch_lqg_designer(spec)
 ```
 """
-function DyadControlSystems.launch_lqg_designer(spec::LQGAnalysisSpec)
+function launch_lqg_designer(spec::LQGAnalysisSpec)
     
-    fig = Figure(size=(1920, 1080), pt_per_unit = 0.25)
+    fig = Figure(size=(1400, 850))
     
     # Shared robustness constraints
     Ms = Observable(1.5)
@@ -291,7 +335,7 @@ function DyadControlSystems.launch_lqg_designer(spec::LQGAnalysisSpec)
             plugin_enabled[pname] = Observable(true)
         else
             plugin_states[pname] = init_plugin_state(PluginType, ny, nu)
-            plugin_enabled[pname] = Observable(pname in [:ControllerBode, :LoopTransfer, :PZMap])  # Default enabled
+            plugin_enabled[pname] = Observable(false)  # Off by default, user toggles on
         end
     end
     
@@ -328,10 +372,11 @@ function DyadControlSystems.launch_lqg_designer(spec::LQGAnalysisSpec)
     
     # === LEFT PANEL: Controls ===
     left_panel = fig[1, 1] = GridLayout()
+    colsize!(fig.layout, 1, Fixed(280))
     left_row = 1
     
     # --- LQR WEIGHTS SECTION ---
-    Label(left_panel[left_row, 1:4], "LQR WEIGHTS", fontsize=16, font=:bold)
+    Label(left_panel[left_row, 1:4], "LQR WEIGHTS", fontsize=13, font=:bold)
     left_row += 1
     
     log_range = exp10.(LinRange(-6, 6, 100))
@@ -366,7 +411,7 @@ function DyadControlSystems.launch_lqg_designer(spec::LQGAnalysisSpec)
     end
     
     # --- KALMAN VARIANCE SECTION ---
-    Label(left_panel[left_row, 1:4], "KALMAN VARIANCE", fontsize=16, font=:bold)
+    Label(left_panel[left_row, 1:4], "KALMAN VARIANCE", fontsize=13, font=:bold)
     left_row += 1
     
     for (i, r1_val) in enumerate(spec.r1_diag)
@@ -400,7 +445,7 @@ function DyadControlSystems.launch_lqg_designer(spec::LQGAnalysisSpec)
     end
     
     # --- VISUALIZATIONS SECTION ---
-    Label(left_panel[left_row, 1:4], "VISUALIZATIONS", fontsize=16, font=:bold)
+    Label(left_panel[left_row, 1:4], "VISUALIZATIONS", fontsize=13, font=:bold)
     left_row += 1
     
     for PluginType in all_plugins
@@ -412,12 +457,13 @@ function DyadControlSystems.launch_lqg_designer(spec::LQGAnalysisSpec)
         on(toggle.active) do v
             state.plugin_enabled[pname][] = v
             rebuild_plots!(state)
+            update_all_plots!(state)
         end
         left_row += 1
     end
     
     # --- RESULTS SECTION ---
-    Label(left_panel[left_row, 1:4], "COMPUTED GAINS", fontsize=16, font=:bold)
+    Label(left_panel[left_row, 1:4], "COMPUTED GAINS", fontsize=13, font=:bold)
     left_row += 1
     
     Label(left_panel[left_row, 1:4], state.L_display, fontsize=11)
@@ -426,6 +472,9 @@ function DyadControlSystems.launch_lqg_designer(spec::LQGAnalysisSpec)
     Label(left_panel[left_row, 1:4], state.K_display, fontsize=11)
     left_row += 1
     
+    rowgap!(left_panel, 4)
+    colgap!(left_panel, 6)
+
     # === RIGHT PANEL: Plots ===
     state.right_panel = fig[1, 2] = GridLayout()
     rebuild_plots!(state)
