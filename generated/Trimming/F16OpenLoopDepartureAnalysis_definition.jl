@@ -8,11 +8,11 @@ using DyadInterface
 using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel
 using ModelingToolkit: SymbolicT, toggle_namespacing
 using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
-@kwdef mutable struct Scenario0ClosedLoopSpec <: AbstractTransientAnalysisSpec
-  name::Symbol = :Scenario0ClosedLoop
+@kwdef mutable struct F16OpenLoopDepartureAnalysisSpec <: AbstractTransientAnalysisSpec
+  name::Symbol = :F16OpenLoopDepartureAnalysis
   var"alg"::ODEAlg.Type = ODEAlg.Auto()
   var"start"::Float64 = 0
-  var"stop"::Float64 = 100.0
+  var"stop"::Float64 = 40.0
   var"abstol"::Float64 = 0.000001
   var"reltol"::Float64 = 0.000001
   var"saveat"::Float64 = 0
@@ -24,12 +24,25 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
   var"respecialize"::Bool = false
   var"verbose"::DEVerbosity.Type = DEVerbosity.Standard()
   var"log_file"::String = ""
-  # Scenario 1: Closed-Loop Model with LQG controller feedback.
-  # Demonstrates controller stabilization from 10° pitch perturbation.
-  var"model"::Union{Nothing, System} = F16ModelWorkshop.Controls.F16ClosedLoopPerturbed(; name=:F16ClosedLoopPerturbed)
+  # Open-loop pitch departure from trim.
+  # 
+  # Identical to `F16OpenLoopTrim` except that `theta_init` is nudged 1 degree above the
+  # trim attitude and the horizon is long enough for the consequence to be unmistakable.
+  # 
+  # At the reference CG the F-16 is statically unstable in pitch (Cma = +0.082/rad), which
+  # puts a real pole at roughly +0.09 rad/s — a perturbation doubles about every 7.6 s and
+  # never comes back. Where `F16OpenLoopTrim` shows that the trim point is an equilibrium,
+  # this shows that it is an unstable one, which is the reason the aircraft needs the
+  # regulator designed in tutorial steps 3 and 4.
+  # 
+  # Set `plant.xcg = 0.30` to move the CG forward of the aerodynamic reference and watch
+  # the same perturbation decay instead.
+  # 
+  # Signal flow: Constants -> Mux5 -> F16PlantModel
+  var"model"::Union{Nothing, System} = F16ModelWorkshop.Trimming.F16OpenLoopDeparture(; name=:F16OpenLoopDeparture)
 end
 
-function DyadInterface.run_analysis(spec::Scenario0ClosedLoopSpec)
+function DyadInterface.run_analysis(spec::F16OpenLoopDepartureAnalysisSpec)
   overrides = Dict{SymbolicT, SymbolicT}()
   no_namespace_model = toggle_namespacing(spec.model, false)
   
@@ -39,5 +52,5 @@ function DyadInterface.run_analysis(spec::Scenario0ClosedLoopSpec)
   run_analysis(base_spec)
 end
 
-Scenario0ClosedLoop(;kwargs...) = run_analysis(Scenario0ClosedLoopSpec(;kwargs...))
-export Scenario0ClosedLoop, Scenario0ClosedLoopSpec
+F16OpenLoopDepartureAnalysis(;kwargs...) = run_analysis(F16OpenLoopDepartureAnalysisSpec(;kwargs...))
+export F16OpenLoopDepartureAnalysis, F16OpenLoopDepartureAnalysisSpec

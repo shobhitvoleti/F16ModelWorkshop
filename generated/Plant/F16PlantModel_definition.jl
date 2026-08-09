@@ -7,7 +7,7 @@
 import Moshi as __Ext__Moshi
 
 @doc Markdown.doc"""
-   F16PlantModel(; name, npos_init, epos_init, alt_init, phi_init, theta_init, psi_init, vt_init, alpha_init, beta_init, P_init, Q_init, R_init)
+   F16PlantModel(; name, npos_init, epos_init, alt_init, phi_init, theta_init, psi_init, vt_init, alpha_init, beta_init, P_init, Q_init, R_init, xcg)
 
 F16 6-DOF plant with vector I/O and matrix aerodynamics
 
@@ -19,14 +19,15 @@ F16 6-DOF plant with vector I/O and matrix aerodynamics
 | `epos_init`         |                          | --  |   0.0 |
 | `alt_init`         |                          | --  |   1000.0 |
 | `phi_init`         |                          | --  |   0.0 |
-| `theta_init`         |                          | --  |   -0.0170 |
+| `theta_init`         |                          | --  |   0.0591 |
 | `psi_init`         |                          | --  |   0.0 |
 | `vt_init`         |                          | --  |   152.4 |
-| `alpha_init`         |                          | --  |   -0.0170 |
+| `alpha_init`         |                          | --  |   0.0591 |
 | `beta_init`         |                          | --  |   0.0 |
 | `P_init`         |                          | --  |   0.0 |
 | `Q_init`         |                          | --  |   0.0 |
 | `R_init`         |                          | --  |   0.0 |
+| `xcg`         | CG position, fraction of cbar. 0.35 is the aerodynamic reference and leaves the aircraft statically unstable in pitch (Cma = +0.082/rad); moving it forward to 0.30 restores positive pitch stiffness.                         | --  |   0.35 |
 
 ## Connectors
 
@@ -86,7 +87,7 @@ F16 6-DOF plant with vector I/O and matrix aerodynamics
 | `N_tot`         |                          | --  |
 | `denom`         |                          | --  |
 """
-@component function F16PlantModel(; name = nothing, npos_init=Float64(0.0), epos_init=Float64(0.0), alt_init=Float64(1000.0), phi_init=Float64(0.0), theta_init=-0.017, psi_init=Float64(0.0), vt_init=152.4, alpha_init=-0.017, beta_init=Float64(0.0), P_init=Float64(0.0), Q_init=Float64(0.0), R_init=Float64(0.0), kwargs...)
+@component function F16PlantModel(; name = nothing, npos_init=Float64(0.0), epos_init=Float64(0.0), alt_init=Float64(1000.0), phi_init=Float64(0.0), theta_init=0.0591, psi_init=Float64(0.0), vt_init=152.4, alpha_init=0.0591, beta_init=Float64(0.0), P_init=Float64(0.0), Q_init=Float64(0.0), R_init=Float64(0.0), xcg=0.35, kwargs...)
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -119,7 +120,6 @@ F16 6-DOF plant with vector I/O and matrix aerodynamics
   append!(__params, @parameters (S::Real), [misc = "final"])
   append!(__params, @parameters (cbar::Real), [misc = "final"])
   append!(__params, @parameters (xcgr::Real), [misc = "final"])
-  append!(__params, @parameters (xcg::Real), [misc = "final"])
   append!(__params, @parameters (Heng::Real), [misc = "final"])
   append!(__params, @parameters (Jx::Real), [misc = "final"])
   append!(__params, @parameters (Jy::Real), [misc = "final"])
@@ -170,6 +170,11 @@ F16 6-DOF plant with vector I/O and matrix aerodynamics
   __local__R_init = R_init
   append!(__params, @parameters (R_init::Real))
   __initial_conditions[R_init] = __local__R_init
+  __local__xcg = xcg
+  append!(__params, @parameters (xcg::Real), [description = "CG position, fraction of cbar. 0.35 is the aerodynamic reference and leaves the
+  append!(__params, @parameters (xcg::Real), [description =  aircraft statically unstable in pitch (Cma = +0.082/rad); moving it forward to 0.30
+  append!(__params, @parameters (xcg::Real), [description =  restores positive pitch stiffness."])
+  __initial_conditions[xcg] = __local__xcg
 
   ### Final Parameters (assignments)
   __bindings[g] = 9.80665
@@ -178,17 +183,16 @@ F16 6-DOF plant with vector I/O and matrix aerodynamics
   __bindings[S] = 27.87
   __bindings[cbar] = 3.45
   __bindings[xcgr] = 0.35
-  __bindings[xcg] = 0.3
   __bindings[Heng] = 0.0
   __bindings[Jx] = 12874.8
   __bindings[Jy] = 75673.6
   __bindings[Jz] = 85552.1
   __bindings[Jxz] = 1331.4
   __bindings[deg2rad] = 3.14159265359 / 180.0
-  __bindings[C0_lon] = [-0.099, -0.366, 0.0411]
-  __bindings[Cmat_lon] = [0.205 -0.484 -0.0036 -0.267; -5.09 -3.57 -0.632 -3.0; -0.98 3.67 -1.28 -12.2]
+  __bindings[C0_lon] = [-0.027932, -0.096752, -0.01018]
+  __bindings[Cmat_lon] = [0.090904 1.1657 -0.008374 1.0946; -3.7128 0.49685 -0.43545 -30.249; 0.082392 -0.41732 -0.55797 -5.4525]
   __bindings[C0_lat] = [0.0, 0.0, 0.0]
-  __bindings[Cmat_lat] = [-0.83 0.0 0.23 -0.1 0.3; -0.14 0.134 0.0107 -0.56 0.25; 0.117 -0.0036 -0.15 -0.026 -0.25]
+  __bindings[Cmat_lat] = [-1.1459 0.060161 0.16425 0.033231 0.92628; -0.12812 -0.1433 0.025573 -0.41643 0.11158; 0.2279 -0.026385 -0.081572 0.012385 -0.37854]
 
   ### Final Path Parameters
   append!(__vars, @variables (u_in(t)[1:5]::Real), [input = true])
@@ -521,8 +525,8 @@ F16 6-DOF plant with vector I/O and matrix aerodynamics
   push!(__eqs, ModelingToolkit.D_nounits(alpha) ~ (U * Wdot - W * Udot) / (U * U + W * W))
   push!(__eqs, ModelingToolkit.D_nounits(beta) ~ (Vdot * vt - V_body * (U * Udot + V_body * Vdot + W * Wdot) / vt) / (vt * vt * cb))
   push!(__eqs, L_tot ~ C_lat[2] * qbar * S * B)
-  push!(__eqs, M_tot ~ C_lon[3] * qbar * S * cbar)
-  push!(__eqs, N_tot ~ C_lat[3] * qbar * S * B)
+  push!(__eqs, M_tot ~ (C_lon[3] + C_lon[2] * (xcgr - xcg)) * qbar * S * cbar)
+  push!(__eqs, N_tot ~ (C_lat[3] - C_lat[1] * (xcgr - xcg) * cbar / B) * qbar * S * B)
   push!(__eqs, denom ~ Jx * Jz - Jxz * Jxz)
   push!(__eqs, ModelingToolkit.D_nounits(P) ~ (Jz * L_tot + Jxz * N_tot - (Jz * (Jz - Jy) + Jxz * Jxz) * Q * R + Jxz * (Jx - Jy + Jz) * P * Q + Jxz * Q * Heng) / denom)
   push!(__eqs, ModelingToolkit.D_nounits(Q) ~ (M_tot + (Jz - Jx) * P * R - Jxz * (P * P - R * R) - R * Heng) / Jy)

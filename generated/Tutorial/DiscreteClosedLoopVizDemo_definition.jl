@@ -77,7 +77,7 @@ Sampled-data closed loop (04's 100 Hz controller) with the airframe rendered fro
     "S" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
     "cbar" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
     "xcgr" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
-    "xcg" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
+    "xcg" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
     "Heng" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
     "Jx" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
     "Jy" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),

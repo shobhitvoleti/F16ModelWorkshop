@@ -7,16 +7,30 @@
 import Moshi as __Ext__Moshi
 
 @doc Markdown.doc"""
-   F16OpenLoopViz(; name)
+   F16OpenLoopDeparture(; name)
 
-Open-loop pitch perturbation with 3-D OBJ visualizer (constant trim commands, no feedback)
+Open-loop pitch departure from trim.
+
+Identical to `F16OpenLoopTrim` except that `theta_init` is nudged 1 degree above the
+trim attitude and the horizon is long enough for the consequence to be unmistakable.
+
+At the reference CG the F-16 is statically unstable in pitch (Cma = +0.082/rad), which
+puts a real pole at roughly +0.09 rad/s — a perturbation doubles about every 7.6 s and
+never comes back. Where `F16OpenLoopTrim` shows that the trim point is an equilibrium,
+this shows that it is an unstable one, which is the reason the aircraft needs the
+regulator designed in tutorial steps 3 and 4.
+
+Set `plant.xcg = 0.30` to move the CG forward of the aerodynamic reference and watch
+the same perturbation decay instead.
+
+Signal flow: Constants -> Mux5 -> F16PlantModel
 """
-@component function F16OpenLoopViz(; name = nothing, kwargs...)
+@component function F16OpenLoopDeparture(; name = nothing, kwargs...)
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
   
-    @named model = F16OpenLoopViz()
+    @named model = F16OpenLoopDeparture()
   """))
 
   __overrides = __build_overrides(kwargs)
@@ -55,33 +69,27 @@ Open-loop pitch perturbation with 3-D OBJ visualizer (constant trim commands, no
   __constants = Any[]
 
   ### Components
-  # Subcomponent plant of type F16ModelWorkshop.Plant.F16PlantModel
-  plant_overrides = __pop_subcomponent_overrides!(__overrides, "plant")
-  push!(__systems, @named plant = F16ModelWorkshop.Plant.F16PlantModel(; alt_init=Float64(3000), theta_init=10 * pi / 180, plant_overrides...))
   # Subcomponent T_cmd of type BlockComponents.Sources.Constant
   T_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "T_cmd")
-  push!(__systems, @named T_cmd = BlockComponents.Sources.Constant(; k=28696.2327, T_cmd_overrides...))
+  push!(__systems, @named T_cmd = BlockComponents.Sources.Constant(; k=10794.89, T_cmd_overrides...))
   # Subcomponent el_cmd of type BlockComponents.Sources.Constant
   el_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "el_cmd")
-  push!(__systems, @named el_cmd = BlockComponents.Sources.Constant(; k=2.6304783, el_cmd_overrides...))
+  push!(__systems, @named el_cmd = BlockComponents.Sources.Constant(; k=-0.6949, el_cmd_overrides...))
   # Subcomponent ail_cmd of type BlockComponents.Sources.Constant
   ail_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "ail_cmd")
-  push!(__systems, @named ail_cmd = BlockComponents.Sources.Constant(; k=Float64(0), ail_cmd_overrides...))
+  push!(__systems, @named ail_cmd = BlockComponents.Sources.Constant(; k=Float64(0.0), ail_cmd_overrides...))
   # Subcomponent rud_cmd of type BlockComponents.Sources.Constant
   rud_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "rud_cmd")
-  push!(__systems, @named rud_cmd = BlockComponents.Sources.Constant(; k=Float64(0), rud_cmd_overrides...))
+  push!(__systems, @named rud_cmd = BlockComponents.Sources.Constant(; k=Float64(0.0), rud_cmd_overrides...))
   # Subcomponent lef_cmd of type BlockComponents.Sources.Constant
   lef_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "lef_cmd")
-  push!(__systems, @named lef_cmd = BlockComponents.Sources.Constant(; k=Float64(0), lef_cmd_overrides...))
+  push!(__systems, @named lef_cmd = BlockComponents.Sources.Constant(; k=Float64(0.0), lef_cmd_overrides...))
   # Subcomponent mux of type F16ModelWorkshop.Utils.Mux5
   mux_overrides = __pop_subcomponent_overrides!(__overrides, "mux")
   push!(__systems, @named mux = F16ModelWorkshop.Utils.Mux5(; mux_overrides...))
-  # Subcomponent pose of type F16ModelWorkshop.Utils.SignalPoseSource
-  pose_overrides = __pop_subcomponent_overrides!(__overrides, "pose")
-  push!(__systems, @named pose = F16ModelWorkshop.Utils.SignalPoseSource(; pose_overrides...))
-  # Subcomponent viz of type MultibodyComponents.ShapefileVisualizer
-  viz_overrides = __pop_subcomponent_overrides!(__overrides, "viz")
-  push!(__systems, @named viz = MultibodyComponents.ShapefileVisualizer(; shapefile=joinpath("assets", "object", "F-16.obj"), shape_scale=1.4, shape_transform=MultibodyComponents.Rp2T(MultibodyComponents.RotXYZ(0, 0, 0), [-32.9, 2.5, 0.1]), viz_overrides...))
+  # Subcomponent plant of type F16ModelWorkshop.Plant.F16PlantModel
+  plant_overrides = __pop_subcomponent_overrides!(__overrides, "plant")
+  push!(__systems, @named plant = F16ModelWorkshop.Plant.F16PlantModel(; alt_init=Float64(3000.0), vt_init=152.4, alpha_init=0.059129, theta_init=0.076582, beta_init=Float64(0.0), phi_init=Float64(0.0), psi_init=Float64(0.0), P_init=Float64(0.0), Q_init=Float64(0.0), R_init=Float64(0.0), plant_overrides...))
 
   ### Check there are no unmatched overrides
   isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
@@ -100,15 +108,8 @@ Open-loop pitch perturbation with 3-D OBJ visualizer (constant trim commands, no
   push!(__eqs, connect(rud_cmd.y, mux.u4))
   push!(__eqs, connect(lef_cmd.y, mux.u5))
   push!(__eqs, connect(mux.y, plant.u_in))
-  push!(__eqs, connect(plant.y_out[1], pose.pos[1]))
-  push!(__eqs, connect(plant.y_out[3], pose.pos[2]))
-  push!(__eqs, connect(plant.y_out[2], pose.pos[3]))
-  push!(__eqs, connect(plant.y_out[4], pose.ang[1]))
-  push!(__eqs, connect(plant.y_out[5], pose.ang[2]))
-  push!(__eqs, connect(plant.y_out[6], pose.ang[3]))
-  push!(__eqs, connect(pose.frame_a, viz.frame_a))
 
   # Return completely constructed System
   return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
-export F16OpenLoopViz
+export F16OpenLoopDeparture

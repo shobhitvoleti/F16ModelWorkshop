@@ -25,10 +25,10 @@ component F16PlantModel
   parameter epos_init::Real = 0.0
   parameter alt_init::Real = 1000.0
   parameter phi_init::Real = 0.0
-  parameter theta_init::Real = -0.0170
+  parameter theta_init::Real = 0.0591
   parameter psi_init::Real = 0.0
   parameter vt_init::Real = 152.4
-  parameter alpha_init::Real = -0.0170
+  parameter alpha_init::Real = 0.0591
   parameter beta_init::Real = 0.0
   parameter P_init::Real = 0.0
   parameter Q_init::Real = 0.0
@@ -40,7 +40,10 @@ component F16PlantModel
   final parameter S::Real = 27.87
   final parameter cbar::Real = 3.45
   final parameter xcgr::Real = 0.35
-  final parameter xcg::Real = 0.30
+  "CG position, fraction of cbar. 0.35 is the aerodynamic reference and leaves the
+  aircraft statically unstable in pitch (Cma = +0.082/rad); moving it forward to 0.30
+  restores positive pitch stiffness."
+  parameter xcg::Real = 0.35
   final parameter Heng::Real = 0.0
   final parameter Jx::Real = 12874.8
   final parameter Jy::Real = 75673.6
@@ -66,10 +69,15 @@ component F16PlantModel
   #                                                     [  P̂      ]
   #                                                     [  R̂      ]
   # ================================================================
-  final parameter C0_lon::Real[3] = [-0.099, -0.366, 0.0411]
-  final parameter Cmat_lon::Real[3, 4] = [[0.205, -0.484, -0.0036, -0.267], [-5.09, -3.57, -0.632, -3.0], [-0.98, 3.67, -1.28, -12.2]]
+  #  Coefficients are a least-squares condensation of the Stevens & Lewis F-16
+  #  tables about the tutorial operating point, taken at the reference CG so the
+  #  CG transfer below is the only place xcg enters. Regenerate with
+  #  scripts/fit_snl_aero.jl.
+  final parameter C0_lon::Real[3] = [-0.027932, -0.096752, -0.01018]
+  final parameter Cmat_lon::Real[3, 4] = [[0.090904, 1.1657, -0.008374, 1.0946], [-3.7128, 0.49685, -0.43545, -30.249], [0.082392, -0.41732, -0.55797, -5.4525]]
+  #  Zero by symmetry: no side force, roll or yaw at zero sideslip with centered controls.
   final parameter C0_lat::Real[3] = [0.0, 0.0, 0.0]
-  final parameter Cmat_lat::Real[3, 5] = [[-0.83, 0.0, 0.23, -0.1, 0.3], [-0.14, 0.134, 0.0107, -0.56, 0.25], [0.117, -0.0036, -0.15, -0.026, -0.25]]
+  final parameter Cmat_lat::Real[3, 5] = [[-1.1459, 0.060161, 0.16425, 0.033231, 0.92628], [-0.12812, -0.1433, 0.025573, -0.41643, 0.11158], [0.2279, -0.026385, -0.081572, 0.012385, -0.37854]]
   # ---- Intermediate variables ----
   # Control surfaces (mapped from u_in)
   variable T::Real
@@ -193,9 +201,12 @@ relations
   der(alpha) = (U * Wdot - W * Udot) / (U * U + W * W)
   der(beta) = (Vdot * vt - V_body * (U * Udot + V_body * Vdot + W * Wdot) / vt) / (vt * vt * cb)
   # ---- Aerodynamic moments ----
+  # Pitch and yaw carry the CG transfer: the deck is referenced to xcgr, so moving the
+  # CG to xcg swings the normal force Cz through the offset (xcgr - xcg)*cbar. This is
+  # the term that decides static stability — at xcgr it vanishes and Cma stays positive.
   L_tot = C_lat[2] * qbar * S * B
-  M_tot = C_lon[3] * qbar * S * cbar
-  N_tot = C_lat[3] * qbar * S * B
+  M_tot = (C_lon[3] + C_lon[2] * (xcgr - xcg)) * qbar * S * cbar
+  N_tot = (C_lat[3] - C_lat[1] * (xcgr - xcg) * cbar / B) * qbar * S * B
   # ---- Angular acceleration (inertia coupling) ----
   denom = Jx * Jz - Jxz * Jxz
   der(P) = (Jz * L_tot + Jxz * N_tot - (Jz * (Jz - Jy) + Jxz * Jxz) * Q * R + Jxz * (Jx - Jy + Jz) * P * Q + Jxz * Q * Heng) / denom

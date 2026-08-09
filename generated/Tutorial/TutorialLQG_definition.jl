@@ -17,9 +17,9 @@ using DyadControlSystems: AbstractLQGAnalysisSpec, LQGAnalysisSpec
   var"loop_openings"::Array{String, 1} = []
   var"t"::Float64 = 0.0
   var"q1_diag"::Array{Float64, 1} = [0.000001, 0.000001, 4.0, 131.312, 1.0, 820.702, 820.702, 32.8281]
-  var"q2_diag"::Array{Float64, 1} = [2.5e-9, 0.01, 0.01, 0.01, 0.01]
-  var"r1_diag"::Array{Float64, 1} = [0.01, 0.01, 0.01, 0.01, 0.01]
-  var"r2_diag"::Array{Float64, 1} = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+  var"q2_diag"::Array{Float64, 1} = [1.1111111e-7, 0.01, 0.01, 0.01, 0.01]
+  var"r1_diag"::Array{Float64, 1} = [40000.0, 0.25, 0.25, 0.25, 0.25]
+  var"r2_diag"::Array{Float64, 1} = [2500.0, 2500.0, 0.01, 0.000012184697, 0.000012184697, 0.000012184697, 0.0025, 0.0000030461742, 0.0000030461742, 7.6154355e-7, 7.6154355e-7, 7.6154355e-7]
   var"qQ"::Float64 = 0.0
   var"qR"::Float64 = 0.0
   var"disc"::String = "cont"

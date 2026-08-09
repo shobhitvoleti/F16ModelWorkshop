@@ -98,7 +98,7 @@ gains; `TutorialLinearize` (02) linearizes the same instrumented model.
     "S" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
     "cbar" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
     "xcgr" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
-    "xcg" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
+    "xcg" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
     "Heng" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
     "Jx" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
     "Jy" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=true, initial=false, guess=false),
@@ -278,7 +278,7 @@ gains; `TutorialLinearize` (02) linearizes the same instrumented model.
   __guesses[f16plant.lef_rad] = (0.0)
   __guesses[f16plant.x_lon] = ([ref_vals[8], ref_vals[8] * ref_vals[8], trim_vals[2] * 0.017453292519943295, ref_vals[11]])
   __guesses[f16plant.x_lat] = ([0.0, 0.0, 0.0, 0.0, 0.0])
-  __guesses[f16plant.C_lon] = ([-0.10262, -0.28126, 0.057741])
+  __guesses[f16plant.C_lon] = ([-0.01838, -0.30927, 0.0])
   __guesses[f16plant.C_lat] = ([0.0, 0.0, 0.0])
   __guesses[f16plant.y_out] = (ref_vals)
   __guesses[f16plant.u_in] = (trim_vals)

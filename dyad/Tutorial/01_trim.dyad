@@ -45,10 +45,10 @@ relations
   initial der(f16plant.alt) = 0.0
   initial der(f16plant.Q) = 0.0
   # Newton seeds for the four unknowns.
-  guess T_cmd.k = 30000.0
-  guess el_cmd.k = 2.0
-  guess f16plant.alpha_init = -0.02
-  guess f16plant.theta_init = -0.02
+  guess T_cmd.k = 11000.0
+  guess el_cmd.k = -0.7
+  guess f16plant.alpha_init = 0.06
+  guess f16plant.theta_init = 0.06
 metadata {
   "_links": {
     "f16plant": {

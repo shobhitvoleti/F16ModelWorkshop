@@ -204,9 +204,9 @@ component.
 end
 
 
+include("F16OpenLoopDepartureAnalysis_definition.jl")
+include("F16OpenLoopDeparture_definition.jl")
 include("F16OpenLoopTrimAnalysis_definition.jl")
 include("F16OpenLoopTrim_definition.jl")
 include("F16TrimmedPlantLinkedAnalysis_definition.jl")
 include("F16TrimmedPlantLinked_definition.jl")
-include("F16VizTrimAnalysis_definition.jl")
-include("F16VizTrim_definition.jl")

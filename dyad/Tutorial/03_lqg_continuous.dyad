@@ -69,7 +69,7 @@ relations
   guess f16plant.lef_rad = 0.0
   guess f16plant.x_lon = [ref_vals[8], ref_vals[8] * ref_vals[8], trim_vals[2] * 0.017453292519943295, ref_vals[11]]
   guess f16plant.x_lat = [0.0, 0.0, 0.0, 0.0, 0.0]
-  guess f16plant.C_lon = [-0.10262, -0.28126, 0.057741]
+  guess f16plant.C_lon = [-0.018380, -0.30927, 0.0]
   guess f16plant.C_lat = [0.0, 0.0, 0.0]
   guess f16plant.y_out = ref_vals
   guess f16plant.u_in = trim_vals
@@ -388,28 +388,55 @@ end
 """
 Tutorial 3 — synthesize the continuous LQG regulator.
 
-Weights follow Bryson's rule: each diagonal entry is `1 / (largest acceptable
-deviation)^2`, in that channel's own units. The rule exists because the channels are
-not commensurable — thrust is newtons while the surfaces are degrees, so a uniform
-penalty makes thrust ~10^6 times more expensive than it should be and the synthesis
-returns a controller with no usable throttle.
+All four weight matrices are set per channel in that channel's own units, because the
+channels are not commensurable — thrust is newtons while the surfaces are degrees, so
+a uniform penalty makes thrust ~10^6 times more expensive than it should be and the
+synthesis returns a controller with no usable throttle.
+
+`q1`/`q2` are **cost** weights and follow Bryson's rule, `1 / (largest acceptable
+deviation)^2` — bigger means the channel matters more:
 
   q1  (controlled outputs)          q2  (control inputs)
-    yalt    0.5 m                     uT     20000 N
+    yalt    0.5 m                     uT     3000 N
     ypitch  5 deg                     uEl    10 deg
     yvt     1 m/s                     uAil   10 deg
     yalpha  2 deg                     uRud   10 deg
     ybeta   2 deg                     uLef   10 deg
     yQ      10 deg/s
 
+`r1`/`r2` are **noise covariances**, so they take `sigma^2` — the reciprocal
+convention. Bigger means the channel is trusted *less*:
+
+  r1  (input disturbance)           r2  (sensor noise)
+    T       200 N                     npos/epos  50 m
+    surfaces  0.5 deg                 alt        0.1 m
+                                      angles     0.2 deg
+                                      vt         0.05 m/s
+                                      alpha/beta 0.1 deg
+                                      P/Q/R      0.05 deg/s
+
+The altitude and airspeed entries are what make the loop hold trim rather than merely
+survive: they are the only measurements of the aircraft's energy state, and loosening
+them leaves the regulator unable to tell a climb from a deceleration. Position is
+deliberately the loosest channel, for the reason given below.
+
 `yn`/`ye` carry only a placeholder 1e-6 (the solver rejects a zero entry): north and
 east position have no equilibrium in forward flight, so regulating them to a fixed
 reference asks for something the airframe cannot do — the error grows with distance
 flown until it dominates the cost and the loop departs. Position belongs to an outer
 guidance loop, not to this inner regulator.
+
+The thrust tolerance tracks the trim thrust: at 10 795 N a tolerance much above this
+lets the synthesis buy authority by commanding negative thrust, which the plant will
+happily accept and no engine can deliver. The plant carries no thrust limits, so this
+weight is the only thing keeping the commanded thrust physical.
+
+Unlike a conventional airframe, this plant has an unstable pitch root, so the
+regulator is not merely improving handling — without it the aircraft departs (see
+`Trimming.F16OpenLoopDeparture`).
 """
 analysis TutorialLQG
-  extends DyadControlSystems.LQGAnalysis(measurement = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"], controlled_output = ["yn", "ye", "yalt", "ypitch", "yvt", "yalpha", "ybeta", "yQ"], control_input = ["uT", "uEl", "uAil", "uRud", "uLef"], loop_openings = [], q1_diag = [1e-6, 1e-6, 4.0, 131.312, 1.0, 820.702, 820.702, 32.8281], q2_diag = [2.5e-9, 0.01, 0.01, 0.01, 0.01], r1_diag = [0.01, 0.01, 0.01, 0.01, 0.01], r2_diag = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01], duration = -1.0)
+  extends DyadControlSystems.LQGAnalysis(measurement = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"], controlled_output = ["yn", "ye", "yalt", "ypitch", "yvt", "yalpha", "ybeta", "yQ"], control_input = ["uT", "uEl", "uAil", "uRud", "uLef"], loop_openings = [], q1_diag = [1e-6, 1e-6, 4.0, 131.312, 1.0, 820.702, 820.702, 32.8281], q2_diag = [1.1111111e-7, 0.01, 0.01, 0.01, 0.01], r1_diag = [40000.0, 0.25, 0.25, 0.25, 0.25], r2_diag = [2500.0, 2500.0, 0.01, 1.2184697e-5, 1.2184697e-5, 1.2184697e-5, 0.0025, 3.0461742e-6, 3.0461742e-6, 7.6154355e-7, 7.6154355e-7, 7.6154355e-7], duration = -1.0)
   model = LQGDemo()
 relations
 end
@@ -422,7 +449,7 @@ rather than applying `c2d` to the continuous result afterwards — keeps one des
 the single source of truth for both loops.
 """
 analysis TutorialDiscreteLQG
-  extends DyadControlSystems.LQGAnalysis(measurement = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"], controlled_output = ["yn", "ye", "yalt", "ypitch", "yvt", "yalpha", "ybeta", "yQ"], control_input = ["uT", "uEl", "uAil", "uRud", "uLef"], loop_openings = [], q1_diag = [1e-6, 1e-6, 4.0, 131.312, 1.0, 820.702, 820.702, 32.8281], q2_diag = [2.5e-9, 0.01, 0.01, 0.01, 0.01], r1_diag = [0.01, 0.01, 0.01, 0.01, 0.01], r2_diag = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01], duration = -1.0, disc = "zoh", Ts = ControllerTs)
+  extends DyadControlSystems.LQGAnalysis(measurement = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"], controlled_output = ["yn", "ye", "yalt", "ypitch", "yvt", "yalpha", "ybeta", "yQ"], control_input = ["uT", "uEl", "uAil", "uRud", "uLef"], loop_openings = [], q1_diag = [1e-6, 1e-6, 4.0, 131.312, 1.0, 820.702, 820.702, 32.8281], q2_diag = [1.1111111e-7, 0.01, 0.01, 0.01, 0.01], r1_diag = [40000.0, 0.25, 0.25, 0.25, 0.25], r2_diag = [2500.0, 2500.0, 0.01, 1.2184697e-5, 1.2184697e-5, 1.2184697e-5, 0.0025, 3.0461742e-6, 3.0461742e-6, 7.6154355e-7, 7.6154355e-7, 7.6154355e-7], duration = -1.0, disc = "zoh", Ts = ControllerTs)
   model = LQGDemo()
 relations
 end

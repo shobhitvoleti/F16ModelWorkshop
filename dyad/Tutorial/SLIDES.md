@@ -45,6 +45,10 @@ Each step is **one `.dyad` file, one analysis**, building on the last.
 - **5 controls:** `T (thrust), el, ail, rud, lef`
 - **Vector I/O:** `u_in :: Real[5]`, `y_out :: Real[12]`
 
+Coefficients condense the Stevens & Lewis F-16 tables at the reference CG, so the
+aircraft is **statically unstable in pitch** — `Cma = +0.082/rad`, as the real
+airframe is. That is the whole reason the later steps exist.
+
 Operating point for the whole tutorial: **3000 m, 152.4 m/s**.
 
 ![w:520](img/f16_plant.png)
@@ -74,13 +78,37 @@ The solver returns the operating point:
 
 | control | value | state | value |
 |---|---|---|---|
-| `T` | 28 696 N | `alpha` | −0.0170 rad |
-| `el` | 2.63° | `theta` | −0.0170 rad |
+| `T` | 10 795 N | `alpha` | 0.0591 rad (3.39°) |
+| `el` | −0.69° | `theta` | 0.0591 rad |
 | `ail/rud/lef` | 0 | `vt` | 152.4 m/s |
+
+Trimming instead at the book's condition (502 ft/s, sea level) gives α = 0.03714 rad
+against S&L Table 3.6-3's 0.03691 — the plant is the published aircraft.
 
 <!-- Downstream steps load this operating point at build time via load_trim. -->
 
 Everything downstream loads this point from TOML — retrim once, the whole workshop follows.
+
+---
+
+## Step 1b — The trim is unstable
+
+An equilibrium, but not an attracting one. Longitudinal modes at the trim:
+
+```
+  -1.438,   +0.0915,   -0.129 ± 0.106j
+```
+
+The positive real root doubles a disturbance every **7.6 s**.
+
+```
+F16OpenLoopDeparture()    # 1 deg nose-up, controls frozen, 40 s
+```
+
+Pitch triples and 22 m/s of airspeed is gone. Move the CG forward — `plant.xcg = 0.30`
+— and the same perturbation decays.
+
+**This is why the aircraft needs steps 3 and 4.**
 
 ---
 
@@ -157,11 +185,11 @@ controls:      controller  → Demux5   ─(+trim)──── [uT..uLef] ──
 ## Step 3 — LQG weights (Bryson's rule)
 
 Don't hand-pick magnitudes. State a **largest acceptable deviation** per channel and
-let the weight be `1 / deviation²`:
+let the cost weight be `1 / deviation²`:
 
 | output | tolerance | weight | control | tolerance | weight |
 |---|---|---|---|---|---|
-| `alt` | 0.5 m | 4.0 | thrust | 20 000 N | 2.5e-9 |
+| `alt` | 0.5 m | 4.0 | thrust | 3 000 N | 1.1e-7 |
 | `theta` | 5° | 131 | elevator | 10° | 0.01 |
 | `vt` | 1 m/s | 1.0 | aileron | 10° | 0.01 |
 | `alpha`,`beta` | 2° | 821 | rudder | 10° | 0.01 |
@@ -170,6 +198,29 @@ let the weight be `1 / deviation²`:
 **Why it matters here:** thrust is in *newtons*, the surfaces in *degrees*. A uniform
 penalty makes thrust ~10⁶× too expensive and the synthesis returns a controller with
 **no usable throttle** — nothing holds airspeed.
+
+The thrust tolerance is bounded by the trim itself: at 10 795 N, a looser one buys
+authority by commanding **negative thrust**, which the plant accepts and no engine
+delivers.
+
+---
+
+## Step 3 — The other two weight matrices
+
+`q1`/`q2` are *costs* → `1 / tolerance²`. `r1`/`r2` are *noise covariances* → `σ²`.
+**Reciprocal conventions** — bigger `r` means trusted *less*.
+
+| `r1` input disturbance | | `r2` sensor noise | |
+|---|---|---|---|
+| thrust | 200 N | `npos`,`epos` | 50 m |
+| surfaces | 0.5° | `alt` | 0.1 m |
+| | | `vt` | 0.05 m/s |
+| | | angles | 0.2° |
+| | | rates | 0.05°/s |
+
+`alt` and `vt` are the only measurements of the aircraft's **energy state**. Loosen
+them and the regulator cannot tell a climb from a deceleration: it survives, but
+airspeed walks away. Tighten them and the loop returns to trim within 0.2 m/s.
 
 ---
 
@@ -186,9 +237,10 @@ until it dominates the cost — the regulator tries to fly *back*, and departs.
 
 **Position belongs to an outer guidance loop, not the inner regulator.**
 
-<!-- Measured: with position weighted at 0.1 the loop departs at ~19 s, commanding
-     2814 deg of elevator. With Bryson weights and position released, roll stays
-     under 0.007 rad and every surface sits far inside its travel limit. -->
+<!-- Measured over 60 s from the 10 deg attitude: pitch settles to 3.40 deg against a
+     3.39 deg trim, altitude to 3000.0 m, airspeed to 152.2 against 152.4. Thrust stays
+     within [9934, 12257] N and the elevator within +/-6.1 deg. With position weighted
+     at 0.1 instead, the loop departs at ~19 s commanding 2814 deg of elevator. -->
 
 ---
 

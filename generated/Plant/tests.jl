@@ -16,6 +16,5 @@ end
 
 
 @testset "`F16ModelWorkshop.Plant`" begin
-include("F16PlantIO_test.jl")
 include("F16PlantModel_test.jl")
 end

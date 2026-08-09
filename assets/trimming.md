@@ -50,10 +50,10 @@ relations
   initial der(f16plant.Q)     = 0.0
 
   # Guesses for the 4 decision variables
-  guess T_cmd.k = 30000.0
-  guess el_cmd.k = 2.0
-  guess f16plant.alpha_init = -0.02
-  guess f16plant.theta_init = -0.02
+  guess T_cmd.k = 11000.0
+  guess el_cmd.k = -0.7
+  guess f16plant.alpha_init = 0.06
+  guess f16plant.theta_init = 0.06
 end
 
 analysis TutorialTrim
@@ -73,13 +73,34 @@ end
 ### Result (h = 3000 m, V = 152.4 m/s)
 
 ```
-  α  =  -0.9712°
-  θ  =  -0.9712°
-  T  =  28696.23 N
-  δe =   2.6305°     (degrees — F16PlantModel control-surface units)
+  α  =   3.3879°
+  θ  =   3.3879°
+  T  =  10794.89 N   (2427 lbf)
+  δe =  -0.6949°     (degrees — F16PlantModel control-surface units)
 ```
 
 The elevator comes out in **degrees** directly, matching the units expected by `F16PlantModel` and all closed-loop models. No unit conversion is needed.
+
+### Validation against the book
+
+The plant's coefficients condense the Stevens & Lewis F-16 tables (`scripts/fit_snl_aero.jl`), so the trim can be checked against published numbers. Trimming at the book's nominal condition — 502 ft/s at sea level, `xcg = 0.35c̄` — reproduces Table 3.6-3:
+
+| | this model | S&L Table 3.6-3 |
+|---|---|---|
+| α | 0.03714 rad | 0.03691 rad |
+| δe | −0.790° | −0.7588° |
+
+`test/f16_snl_validation.jl` enforces both.
+
+### The trim is an unstable equilibrium
+
+At the reference CG the F-16 is statically unstable in pitch (`Cma = +0.082/rad`). The trim solve is unaffected — an equilibrium is an equilibrium whether or not it is attracting — but the longitudinal modes at that point are
+
+```
+  -1.438,  +0.0915,  -0.129 ± 0.106j
+```
+
+The positive real root is an exponential pitch divergence doubling roughly every 7.6 s. `Trimming.F16OpenLoopDeparture` starts 1° nose-up of trim with the controls frozen and shows it; setting `plant.xcg = 0.30` moves the CG forward of the aerodynamic reference and the same perturbation decays instead.
 
 ## Running the Trim
 
@@ -117,8 +138,8 @@ The trim equations involve `sin(θ)`, `cos(θ)`, `sin(α)`, `cos(α)`. Because t
 
 Examples of non-physical solutions the solver can find:
 
-- θ ≈ 18.83 rad (≈ 6π) — mathematically equivalent to θ ≈ -0.97° via 2π periodicity, but the raw value is nonsensical.
-- α ≈ -47°, T ≈ 110 kN — a completely different force-balance branch with extreme angle of attack and massive thrust.
+- θ ≈ 18.85 rad (≈ 6π) — mathematically equivalent to the physical θ via 2π periodicity, but the raw value is nonsensical.
+- A completely different force-balance branch at extreme angle of attack and massive thrust.
 
 Both satisfy the equilibrium equations exactly. The solver has no notion of physical plausibility.
 
@@ -133,6 +154,7 @@ Both satisfy the equilibrium equations exactly. The solver has no notion of phys
 | `TrimPlantAnalysis` | `src/trim_plant_analysis.jl` | Solves the trim and exports `trim/trim_point.toml` |
 | `F16TrimmedPlantLinked` | `dyad/Trimming/f16_trimmed_plant_linked.dyad` | Plant scenario that loads the exported trim point |
 | `F16PlantModel` | `dyad/Plant/f16_plant_model.dyad` | Simulation plant with vector I/O |
+| `F16OpenLoopDeparture` | `dyad/Trimming/scenario_open_loop_departure.dyad` | Same trim, controls frozen — shows the pitch divergence |
 | `ClosedLoopModel` | `dyad/Controls/lqg_design.dyad` | LQG closed-loop (uses trim values) |
 | `F16OpenLoop` | `dyad/Controls/scenario1_open_loop.dyad` | Open-loop with trim inputs |
 | `F16ClosedLoopPerturbed` | `dyad/Controls/scenario1_closed_loop.dyad` | Perturbed closed-loop |

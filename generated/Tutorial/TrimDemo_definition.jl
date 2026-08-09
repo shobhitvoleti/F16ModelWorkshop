@@ -100,10 +100,10 @@ Signal flow: Constants -> Mux5 -> F16PlantModel
   isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
 
   ### Guesses
-  __guesses[T_cmd.k] = (30000.0)
-  __guesses[el_cmd.k] = (2.0)
-  __guesses[f16plant.alpha_init] = (-0.02)
-  __guesses[f16plant.theta_init] = (-0.02)
+  __guesses[T_cmd.k] = (11000.0)
+  __guesses[el_cmd.k] = (-0.7)
+  __guesses[f16plant.alpha_init] = (0.06)
+  __guesses[f16plant.theta_init] = (0.06)
 
   ### Initialization Equations
   push!(__initialization_eqs, ModelingToolkit.D_nounits(f16plant.vt) ~ 0.0)

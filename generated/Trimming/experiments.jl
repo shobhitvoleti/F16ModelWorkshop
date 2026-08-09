@@ -9,6 +9,6 @@ if isfile(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Trimming
 end
 
 
+include("F16OpenLoopDeparture_experiment.jl")
 include("F16OpenLoopTrim_experiment.jl")
 include("F16TrimmedPlantLinked_experiment.jl")
-include("F16VizTrim_experiment.jl")

@@ -12,10 +12,10 @@
 # dyad/Trimming/f16_trimmed_plant_linked.dyad):
 #
 #     [T_cmd]
-#     k = 28696.23
+#     k = 10794.89
 #     ...
 #     [plant]
-#     alpha_init = -0.01695
+#     alpha_init = 0.059129
 #     ...
 #
 # so F16TrimmedPlantLinked can pull each value with
@@ -67,12 +67,17 @@ as a Dyad parameter-set TOML.
     whose missing control inputs / angles become the trim unknowns.
   - `export_path`: where the parameter-set TOML is written. Defaults to
     [`default_trim_path`](@ref) (`<project>/trim/trim_point.toml`).
+  - `write_assets`: also refresh the `apply`-able parameter sets under `assets/`.
+    Defaults to true only when `export_path` is the package's canonical trim, so
+    trimming at some other flight condition — a validation sweep, a what-if — cannot
+    silently replace the operating point every model in the package is built around.
   - `abstol`, `reltol`: tolerances passed to the underlying initialization solve.
 """
 Base.@kwdef mutable struct TrimPlantAnalysisSpec <: DyadInterface.AbstractAnalysisSpec
     name::Symbol = :TrimPlantAnalysis
     model::Union{Nothing, System} = Tutorial.TrimDemo(; name = :TrimDemo)
     export_path::String = default_trim_path()
+    write_assets::Bool = abspath(export_path) == abspath(default_trim_path())
     abstol::Float64 = 1e-6
     reltol::Float64 = 1e-6
 end
@@ -130,7 +135,7 @@ function DyadInterface.run_analysis(spec::TrimPlantAnalysisSpec)
         TOML.print(io, paramset; sorted = true)
     end
 
-    _write_trim_assets(plant_params, paramset, sol.retcode)
+    spec.write_assets && _write_trim_assets(plant_params, paramset, sol.retcode)
 
     return TrimPlantAnalysisSolution(spec, inner, paramset, path)
 end
@@ -141,6 +146,10 @@ end
 # (`F16PlantModel(apply "dyad://F16ModelWorkshop/trim_point.toml")`) instead of a
 # load_trim call per value. Written alongside the instance-keyed parameter set above,
 # which the pre-`apply` load_trim call sites still read.
+#
+# These files define the operating point every model in the package is built and
+# linearized around, so only a run exporting the canonical trim may rewrite them —
+# see `write_assets` on the spec.
 function _write_trim_assets(plant_params, paramset, retcode)
     dir = joinpath(_project_root(), "assets")
     mkpath(dir)

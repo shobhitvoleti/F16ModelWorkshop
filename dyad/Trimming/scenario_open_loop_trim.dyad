@@ -5,15 +5,15 @@ Demux outputs: [npos, epos, alt, phi, theta, psi, vt, alpha, beta, P, Q, R]
 """
 test component F16OpenLoopTrim
   # ---- Trim control inputs ----
-  T_cmd = BlockComponents.Sources.Constant(k = 28696.23) {^T_cmd}
-  el_cmd = BlockComponents.Sources.Constant(k = 2.6305) {^el_cmd}
+  T_cmd = BlockComponents.Sources.Constant(k = 10794.89) {^T_cmd}
+  el_cmd = BlockComponents.Sources.Constant(k = -0.6949) {^el_cmd}
   ail_cmd = BlockComponents.Sources.Constant(k = 0.0) {^ail_cmd}
   rud_cmd = BlockComponents.Sources.Constant(k = 0.0) {^rud_cmd}
   lef_cmd = BlockComponents.Sources.Constant(k = 0.0) {^lef_cmd}
   # ---- Signal routing ----
   mux = F16ModelWorkshop.Utils.Mux5() {^mux}
   # ---- Plant ----
-  plant = F16ModelWorkshop.Plant.F16PlantModel(alt_init = 3000.0, vt_init = 152.4, alpha_init = -0.01695, theta_init = -0.01695, beta_init = 0.0, phi_init = 0.0, psi_init = 0.0, P_init = 0.0, Q_init = 0.0, R_init = 0.0) {^plant}
+  plant = F16ModelWorkshop.Plant.F16PlantModel(alt_init = 3000.0, vt_init = 152.4, alpha_init = 0.059129, theta_init = 0.059129, beta_init = 0.0, phi_init = 0.0, psi_init = 0.0, P_init = 0.0, Q_init = 0.0, R_init = 0.0) {^plant}
 relations
   # Constants → Mux
   connect(T_cmd.y, mux.u1) {^id8}

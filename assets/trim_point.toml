@@ -6,12 +6,12 @@
 P_init = 0.0
 Q_init = 0.0
 R_init = 0.0
-alpha_init = -0.016950044342541125
+alpha_init = 0.059129200651428175
 alt_init = 3000.0
 beta_init = 0.0
 epos_init = 0.0
 npos_init = 0.0
 phi_init = 0.0
 psi_init = 0.0
-theta_init = -0.016950044342541125
+theta_init = 0.059129200651428175
 vt_init = 152.4
