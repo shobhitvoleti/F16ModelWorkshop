@@ -29,10 +29,10 @@ gains; `TutorialLinearize` (02) linearizes the same instrumented model.
 
 | Name         | Description                         | Units  |   Default value |
 | ------------ | ----------------------------------- | ------ | --------------- |
-| `ref_vals`         | State setpoints [npos,epos,alt,phi,theta,psi,vt,alpha,beta,P,Q,R], loaded from the trim point (single source of truth).                         | --  |   [F16ModelWo...t.R_init")] |
-| `trim_vals`         | Trim control offsets [T,el,ail,rud,lef], loaded from the trim point.                         | --  |   [F16ModelWo...ef_cmd.k")] |
+| `ref_vals`         | State set-points [npos,epos,alt,phi,theta,psi,vt,alpha,beta,P,Q,R], read from the applied trim asset so the initialization guesses equal the operating point.                         | --  |   F16ModelWor...reference") |
+| `trim_vals`         | Trim control offsets [T,el,ail,rud,lef], read from the applied trim asset.                         | --  |   F16ModelWor..._controls") |
 """
-@component function LQGDemo(; name = nothing, ref_vals=[F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.npos_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.epos_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.alt_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.phi_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.theta_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.psi_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.vt_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.alpha_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.beta_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.P_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.Q_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.R_init")], trim_vals=[F16ModelWorkshop.load_trim("trim/trim_point.toml", "T_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "el_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "ail_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "rud_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "lef_cmd.k")], kwargs...)
+@component function LQGDemo(; name = nothing, ref_vals=F16ModelWorkshop.trim_asset("trim_reference"), trim_vals=F16ModelWorkshop.trim_asset("trim_controls"), kwargs...)
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:

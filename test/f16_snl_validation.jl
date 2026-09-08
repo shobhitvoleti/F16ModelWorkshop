@@ -17,14 +17,16 @@ const _Tutorial = F16ModelWorkshop.Tutorial
 """
     trim_at(; alt, vt, xcg) -> (; T, el, alpha)
 
-Solve the straight-and-level trim at one flight condition and CG position.
+Solve the straight-and-level trim at one flight condition and CG position. The export
+goes to a scratch directory so the package's own trim assets are left alone.
 """
 function trim_at(; alt, vt, xcg)
     model = _Tutorial.TrimDemo(; name = :trim_probe,
         f16plant__alt_init = alt, f16plant__vt_init = vt, f16plant__xcg = xcg)
-    spec = F16ModelWorkshop.TrimPlantAnalysisSpec(; model, export_path = tempname() * ".toml")
+    spec = F16ModelWorkshop.TrimExportAnalysisSpec(; model, export_dir = mktempdir())
     ps = DyadInterface.run_analysis(spec).paramset
-    return (T = ps["T_cmd"]["k"], el = ps["el_cmd"]["k"], alpha = ps["plant"]["alpha_init"])
+    controls = ps["trim_controls"]["k"]
+    return (T = controls[1], el = controls[2], alpha = ps["trim_point"]["alpha_init"])
 end
 
 """

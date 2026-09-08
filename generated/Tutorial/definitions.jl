@@ -19,13 +19,8 @@ end
 import BlockComponents
 import DiscreteComponents
 import DyadControlSystems
-import DyadData
 import DyadInterface
-import ElectricalComponents
 import MultibodyComponents
-import RotationalComponents
-import ThermalComponents
-import TranslationalComponents
 @doc Markdown.doc"""
 This connector represents an electrical pin with voltage and current as the potential and flow variables, respectively.
 """
@@ -216,7 +211,6 @@ include("TutorialControllerCodegen_definition.jl")
 include("TutorialDiscreteClosedLoop_definition.jl")
 include("TutorialDiscreteLQG_definition.jl")
 include("TutorialLQG_definition.jl")
-include("TutorialLinearizeExport_definition.jl")
 include("TutorialLinearize_definition.jl")
 include("TutorialTrimExport_definition.jl")
 include("TutorialTrim_definition.jl")

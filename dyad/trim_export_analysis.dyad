@@ -1,0 +1,10 @@
+# Trims a model and writes its operating point as the package's trim assets
+# (trim_point.toml, trim_reference.toml, trim_controls.toml), which the other models
+# apply. Backed by TrimExportAnalysisSpec in src/trim_export_analysis.jl; the model
+# must be shaped like Tutorial.TrimDemo (an `f16plant` plus `*_cmd` Constant blocks).
+partial analysis TrimExportAnalysis
+  extends Analysis
+  model::Dyad.EmptyComponent = Dyad.EmptyComponent()
+  # Directory the three trim assets are written to (relative to the project root).
+  parameter export_dir::String = "assets"
+end

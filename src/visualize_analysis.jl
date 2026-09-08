@@ -11,13 +11,12 @@ abstract type AbstractVisualizeAnalysisSpec <: AbstractAnalysisSpec end
     name::Symbol = :VisualizeAnalysis
     model::Union{Nothing, System} = nothing
     stop::Float64 = 30.0
-    controller_name::String = ""
     filename::String = "assets/closed_loop.mp4"
     nominal_length::Float64 = 500.0
     camera::Vector{Float64} = [-500.0, 3200.0, 200.0]
     lookat::Vector{Float64} = [2000.0, 3000.0, 0.0]
     show_axis::Bool = false
-    overrides::_SymPair = _SymPair()
+    overrides::_Overrides = _Overrides()
 end
 
 # `MultibodyComponents.render` lives in that package's `Render` extension, which loads
@@ -40,8 +39,7 @@ function DyadInterface.run_analysis(spec::VisualizeAnalysisSpec)
     _assert_render_backend()
     res = DyadInterface.run_analysis(DyadInterface.TransientAnalysisSpec(;
         name = :TransientAnalysis, model = spec.model, stop = spec.stop,
-        overrides = seed_discrete_controller(spec.overrides, spec.model,
-                                             spec.controller_name)))
+        overrides = spec.overrides))
     path = _resolve_export(spec.filename)
     mkpath(dirname(path))
     # `display = false`: this analysis exists to write a file. Letting the renderer

@@ -1,447 +1,384 @@
-#=
-Interactive GLMakie app for LQG controller design.
-
-Usage:
-    using DyadControlSystems
-    spec = LQGAnalysisSpec(...)
-    state = launch_lqg_designer(spec)
-=#
+# Interactive GLMakie dashboard for tuning the F-16 LQG design.
+#
+# Every view is registered as a function of the current design. Moving the
+# input-penalty slider re-runs the Dyad LQG analysis and refreshes all views.
 
 using DyadControlSystems
-using DyadControlSystems: LQGAnalysisSpec, LQGAnalysisSolution, run_analysis, system_mapping, named_ss
+using DyadControlSystems: LQGAnalysisSpec, LQGAnalysisSolution, run_analysis
 using ControlSystemsBase
-using ControlSystemsBase: feedback, gangoffour, sigma, poles, tzeros, step
 using GLMakie
-using GLMakie: Observable, Figure, Axis, GridLayout, Label, Slider, Button, Toggle, Textbox
-using GLMakie: on, @lift, display, notify, rowsize!, colgap!, Fixed, contents, delete!
+using Printf
 
-# Load shared plugin infrastructure
-include(joinpath(@__DIR__, "shared_app_utils.jl"))
+const BLUE = RGBf(0.29, 0.43, 0.88)
+const INK = RGBf(0.10, 0.11, 0.14)
+const DARK = RGBf(0.25, 0.27, 0.32)
+const MUTED = RGBf(0.38, 0.42, 0.49)
+const SOFT = RGBf(0.61, 0.64, 0.70)
+const GRID = RGBf(0.86, 0.88, 0.91)
+const PANEL = RGBf(0.995, 0.995, 1.0)
+const AMBER = RGBf(0.66, 0.39, 0.12)
 
-# ============================================================================
-# State Container
-# ============================================================================
+const TAGLINE = "Q1 · Q2 · R1 · R2 · every panel recomputes"
+
+# Peak sensitivity target drawn on the Gang of Four panel.
+const MS_TARGET = 2.0
+
+"""A dashboard panel: a named function of the latest LQG solution."""
+struct DashboardPlugin
+    name::Symbol
+    title::String
+    update!::Function
+end
 
 mutable struct LQGDesignerState
     fig::Figure
     original_spec::LQGAnalysisSpec
-    
-    # Parameter observables
-    disc::Observable{String}
-    qQ::Observable{Float64}
-    qR::Observable{Float64}
-    t::Observable{Float64}
-    Ts::Observable{Float64}
-    wl::Observable{Float64}
-    wu::Observable{Float64}
-    num_frequencies::Observable{Int}
-    duration::Observable{Float64}
-    
-    # Vector parameters
-    q1_diag::Observable{Vector{Float64}}
-    q2_diag::Observable{Vector{Float64}}
-    r1_diag::Observable{Vector{Float64}}
-    r2_diag::Observable{Vector{Float64}}
-    integrator_indices::Observable{Vector{Int}}
-    integrator_r1_diag::Observable{Vector{Float64}}
-    
-    # Results
+    elevator_weight::Observable{Float64}
     sol::Observable{Union{Nothing, LQGAnalysisSolution}}
-    
-    # Robustness constraints (shared with plugins)
-    Ms::Observable{Float64}
-    Mt::Observable{Float64}
-    
-    # Plugin management
-    plugin_states::Dict{Symbol, Any}
-    plugin_enabled::Dict{Symbol, Observable{Bool}}
-    right_panel::Union{Nothing, GridLayout}
-    
-    # Status and trigger
     status::Observable{String}
-    trigger::Observable{Int}
-    
-    # Result displays
-    L_display::Observable{String}
-    K_display::Observable{String}
+    plugins::Vector{DashboardPlugin}
+    busy::Bool
+    pending_weight::Union{Nothing, Float64}
 end
 
-# ============================================================================
-# Spec Builder
-# ============================================================================
+function tuned_spec(spec::LQGAnalysisSpec, elevator_weight::Real)
+    q2 = copy(spec.q2_diag)
+    length(q2) >= 2 || error("The F-16 design must expose elevator as q2_diag[2].")
+    q2[2] = Float64(elevator_weight)
 
-function build_spec(state::LQGDesignerState)
-    orig = state.original_spec
     LQGAnalysisSpec(
-        name = orig.name,
-        model = orig.model,
-        measurement = orig.measurement,
-        controlled_output = orig.controlled_output,
-        control_input = orig.control_input,
-        disturbance_inputs = orig.disturbance_inputs,
-        loop_openings = orig.loop_openings,
-        t = state.t[],
-        q1_diag = state.q1_diag[],
-        q2_diag = state.q2_diag[],
-        r1_diag = state.r1_diag[],
-        r2_diag = state.r2_diag[],
-        qQ = state.qQ[],
-        qR = state.qR[],
-        disc = state.disc[],
-        Ts = state.Ts[],
-        integrator_indices = state.integrator_indices[],
-        integrator_r1_diag = state.integrator_r1_diag[],
-        wl = state.wl[],
-        wu = state.wu[],
-        num_frequencies = state.num_frequencies[],
-        duration = state.duration[],
+        name=spec.name,
+        model=spec.model,
+        measurement=spec.measurement,
+        controlled_output=spec.controlled_output,
+        control_input=spec.control_input,
+        disturbance_inputs=spec.disturbance_inputs,
+        loop_openings=spec.loop_openings,
+        t=spec.t,
+        q1_diag=spec.q1_diag,
+        q2_diag=q2,
+        r1_diag=spec.r1_diag,
+        r2_diag=spec.r2_diag,
+        qQ=spec.qQ,
+        qR=spec.qR,
+        disc=spec.disc,
+        Ts=spec.Ts,
+        integrator_indices=spec.integrator_indices,
+        integrator_r1_diag=spec.integrator_r1_diag,
+        wl=spec.wl,
+        wu=spec.wu,
+        num_frequencies=spec.num_frequencies,
+        duration=spec.duration,
+        maximum_order=spec.maximum_order,
+        overrides=copy(spec.overrides),
     )
 end
 
-# ============================================================================
-# Analysis Runner
-# ============================================================================
+function panel_axis(parent, title; kwargs...)
+    Axis(parent;
+        title=title,
+        titlealign=:left,
+        titlefont=:bold,
+        titlesize=13,
+        titlecolor=MUTED,
+        titlegap=10,
+        backgroundcolor=PANEL,
+        xgridvisible=false,
+        ygridvisible=false,
+        topspinecolor=GRID,
+        bottomspinecolor=GRID,
+        leftspinecolor=GRID,
+        rightspinecolor=GRID,
+        xtickcolor=GRID,
+        ytickcolor=GRID,
+        xticklabelsize=10,
+        yticklabelsize=10,
+        xticklabelcolor=SOFT,
+        yticklabelcolor=SOFT,
+        kwargs...,
+    )
+end
 
-function run_lqg!(state::LQGDesignerState)
+"""Annotation floated over a panel, in the same layout cell as its axis."""
+function panel_note!(slot, text; halign, valign, color=SOFT, fontsize=12)
+    Label(slot, text;
+        halign=halign,
+        valign=valign,
+        color=color,
+        fontsize=fontsize,
+        tellwidth=false,
+        tellheight=false,
+        padding=(16, 16, 12, 34),
+    )
+end
+
+"""Diagonal elevator return ratio, the loop the slider shapes."""
+function elevator_return_ratio(sol)
+    elevator_idx = findfirst(==("uEl"), input_names(sol.P))
+    elevator_idx === nothing && error("uEl is not present in the plant inputs.")
+    minreal((sol.Cfb * sol.P)[elevator_idx, elevator_idx], 1e-4)
+end
+
+function register_step_plugin!(state, slot)
+    ax = panel_axis(slot, "STEP RESPONSE")
+    t_obs = Observable(Float64[])
+    y_obs = Observable(Float64[])
+    lines!(ax, t_obs, y_obs; color=BLUE, linewidth=2.5)
+    hlines!(ax, [1.0]; color=GRID, linestyle=:dot, linewidth=1)
+
+    update! = function (sol, _w)
+        L = elevator_return_ratio(sol)
+        G = feedback(L)
+        duration = state.original_spec.duration > 0 ? state.original_spec.duration : 10.0
+        tv = range(0.0, duration; length=700)
+        result = step(G, tv)
+        t_obs[] = collect(result.t)
+        y_obs[] = vec(result.y[1, :, 1])
+        autolimits!(ax)
+    end
+    push!(state.plugins, DashboardPlugin(:step, "Step response", update!))
+end
+
+function register_pz_plugin!(state, slot)
+    ax = panel_axis(slot, "POLE–ZERO MAP")
+    pole_re = Observable(Float64[])
+    pole_im = Observable(Float64[])
+    zero_re = Observable(Float64[])
+    zero_im = Observable(Float64[])
+    hlines!(ax, [0.0]; color=GRID, linewidth=1)
+    vlines!(ax, [0.0]; color=GRID, linewidth=1)
+    scatter!(ax, pole_re, pole_im; marker=:xcross, markersize=16, color=BLUE, strokewidth=0)
+    scatter!(ax, zero_re, zero_im; marker=:circle, markersize=9,
+        color=(:white, 0.0), strokecolor=MUTED, strokewidth=1.5)
+    panel_note!(slot, "← more damping"; halign=:left, valign=:bottom)
+
+    update! = function (sol, _w)
+        T = feedback(elevator_return_ratio(sol))
+        # Keep the modes that determine the visible transient; very fast
+        # actuator/filter modes would otherwise collapse the useful scale.
+        p = filter(x -> abs(x) <= 10.0, poles(T))
+        z = filter(x -> abs(x) <= 10.0, tzeros(T))
+        pole_re[] = real.(p)
+        pole_im[] = imag.(p)
+        zero_re[] = real.(z)
+        zero_im[] = imag.(z)
+        autolimits!(ax)
+    end
+    push!(state.plugins, DashboardPlugin(:pzmap, "Pole-zero map", update!))
+end
+
+function register_loop_transfer_plugin!(state, slot)
+    ax = panel_axis(slot, "LOOP TRANSFER · σ"; xscale=log10)
+    bundle_x = Observable(Float64[])
+    bundle_y = Observable(Float64[])
+    top_x = Observable(Float64[])
+    top_y = Observable(Float64[])
+    zero_db_at = Observable(Point2f(1.0, 0.0))
+    channels = Observable("")
+    hlines!(ax, [0.0]; color=GRID, linestyle=:dot, linewidth=1)
+    lines!(ax, bundle_x, bundle_y; color=(SOFT, 0.75), linewidth=1.2)
+    lines!(ax, top_x, top_y; color=BLUE, linewidth=2.4)
+    text!(ax, zero_db_at; text="0 dB", color=SOFT, fontsize=11, align=(:left, :bottom))
+    panel_note!(slot, channels; halign=:right, valign=:top)
+
+    update! = function (sol, w)
+        # Return ratio broken at the plant input: one singular value per control
+        # channel. The largest is highlighted; the rest set the spread.
+        sv, _ = sigma(sol.Cfb * sol.P, w)
+        db = 20 .* log10.(sv)
+        wv = collect(w)
+        # NaN separators draw every singular value as one line object, so the
+        # panel does not need to know the channel count until the design exists.
+        joined_x = Float64[]
+        joined_y = Float64[]
+        for i in axes(db, 1)
+            append!(joined_x, wv)
+            append!(joined_y, view(db, i, :))
+            push!(joined_x, NaN)
+            push!(joined_y, NaN)
+        end
+        bundle_x[] = joined_x
+        bundle_y[] = joined_y
+        top_x[] = wv
+        top_y[] = collect(view(db, 1, :))
+        zero_db_at[] = Point2f(first(wv), 0.0)
+        channels[] = @sprintf("%d inputs", size(db, 1))
+        autolimits!(ax)
+    end
+    push!(state.plugins, DashboardPlugin(:loop_transfer, "Loop transfer", update!))
+end
+
+function register_gang_of_four_plugin!(state, slot)
+    ax = panel_axis(slot, "GANG OF FOUR"; xscale=log10, yscale=log10)
+    w_obs = Observable(Float64[])
+    s_obs = Observable(Float64[])
+    t_obs = Observable(Float64[])
+    ps_obs = Observable(Float64[])
+    cs_obs = Observable(Float64[])
+    hlines!(ax, [MS_TARGET]; color=AMBER, linestyle=:dash, linewidth=1.5)
+    lines!(ax, w_obs, ps_obs; color=(BLUE, 0.30), linewidth=1.3)
+    lines!(ax, w_obs, cs_obs; color=(DARK, 0.30), linewidth=1.3)
+    lines!(ax, w_obs, s_obs; color=BLUE, linewidth=2.4)
+    lines!(ax, w_obs, t_obs; color=DARK, linewidth=2.4)
+    panel_note!(slot, @sprintf("Ms = %g", MS_TARGET);
+        halign=:left, valign=:top, color=AMBER)
+    panel_note!(slot, "PS · CS"; halign=:right, valign=:top)
+    panel_note!(slot, "S"; halign=:left, valign=:bottom, color=BLUE)
+    panel_note!(slot, "T"; halign=:right, valign=:bottom, color=DARK)
+
+    update! = function (sol, w)
+        elevator_idx = findfirst(==("uEl"), input_names(sol.P))
+        elevator_idx === nothing && error("uEl is not present in the plant inputs.")
+        Pcol = sol.P[:, elevator_idx]
+        Crow = sol.Cfb[elevator_idx, :]
+        S, PS, CS, T = gangoffour(Pcol, Crow; minimal=true)
+        s, _ = sigma(S, w)
+        t, _ = sigma(T, w)
+        ps, _ = sigma(PS, w)
+        cs, _ = sigma(CS, w)
+        w_obs[] = collect(w)
+        # Show the worst-case singular value at each frequency. S and T are
+        # 12×12 for this one-actuator return-ratio construction; PS and CS
+        # are rectangular and therefore each have one singular value.
+        s_obs[] = vec(maximum(s; dims=1))
+        t_obs[] = vec(maximum(t; dims=1))
+        ps_obs[] = vec(maximum(ps; dims=1))
+        cs_obs[] = vec(maximum(cs; dims=1))
+        autolimits!(ax)
+    end
+    push!(state.plugins, DashboardPlugin(:gang_of_four, "Gang of Four", update!))
+end
+
+function update_all_plugins!(state::LQGDesignerState, sol)
+    w = 10.0 .^ range(-3.0, 3.0; length=420)
+    for plugin in state.plugins
+        plugin.update!(sol, w)
+    end
+end
+
+function run_lqg!(state::LQGDesignerState, requested_weight::Real=state.elevator_weight[])
+    weight = Float64(requested_weight)
+    if state.busy
+        state.pending_weight = weight
+        return
+    end
+
+    state.busy = true
     try
-        state.status[] = "Designing..."
-        
-        spec = build_spec(state)
-        sol = run_analysis(spec)
+        state.status[] = @sprintf("RECOMPUTING · Q2 = %.3g", weight)
+        sol = run_analysis(tuned_spec(state.original_spec, weight))
         state.sol[] = sol
-        
-        # Update result displays
-        if !isnothing(sol)
-            L = sol.L
-            K = sol.K
-            state.L_display[] = "L: " * join([string(round(l, digits=3)) for l in vec(L[1:min(5, length(L))])], ", ") * (length(L) > 5 ? "..." : "")
-            state.K_display[] = "K: " * join([string(round(k, digits=3)) for k in vec(K[1:min(5, length(K))])], ", ") * (length(K) > 5 ? "..." : "")
-        end
-        
-        # Update plots
-        update_all_plots!(state)
-        
-        state.status[] = "Done!"
-        
-    catch e
-        state.status[] = "Error: $(sprint(showerror, e))"
-        @error "LQG design failed" exception=(e, catch_backtrace())
+        update_all_plugins!(state, sol)
+        max_real_pole = maximum(real.(poles(feedback(sol.P * sol.Cfb))))
+        state.status[] = max_real_pole >= 0 ?
+            @sprintf("UNSTABLE · RIGHTMOST CLOSED-LOOP POLE %.3g", max_real_pole) :
+            TAGLINE
+    catch err
+        state.status[] = "DESIGN ERROR · " * sprint(showerror, err)
+        @error "F-16 LQG redesign failed" exception=(err, catch_backtrace())
+    finally
+        state.busy = false
     end
+
+    if state.pending_weight !== nothing
+        pending = state.pending_weight
+        state.pending_weight = nothing
+        !isapprox(pending, weight) && run_lqg!(state, pending)
+    end
+    return state.sol[]
 end
-
-# ============================================================================
-# Plot Update Functions
-# ============================================================================
-
-function update_all_plots!(state::LQGDesignerState)
-    sol = state.sol[]
-    isnothing(sol) && return
-    
-    # Extract plant and controller
-    Psys = named_ss(system_mapping(sol.P_ext),
-                    u=Symbol.(state.original_spec.control_input),
-                    y=Symbol.(state.original_spec.measurement))
-    Cfb = sol.Cfb
-    
-    # Frequency vector for plots
-    nfreq = 200
-    wl = state.wl[] > 0 ? state.wl[] : sol.w[1]
-    wu = state.wu[] > 0 ? state.wu[] : sol.w[end]
-    plot_w = exp10.(LinRange(log10(wl), log10(wu), nfreq))
-    
-    # Update each enabled plugin
-    ny = length(state.original_spec.measurement)
-    nu = length(state.original_spec.control_input)
-    
-    for (pname, plugin_state) in state.plugin_states
-        if state.plugin_enabled[pname][]
-            # Different update signatures for different plugins
-            if pname == :PZMap
-                T_cl = feedback(Psys * Cfb)
-                update_plugin!(plugin_state, T_cl)
-            elseif pname == :StepResponse
-                # Step response needs time-domain data
-                T_cl = feedback(Psys * Cfb)
-                duration = state.duration[] > 0 ? state.duration[] : 10.0
-                Ts_sim = ControlSystemsBase.isdiscrete(T_cl) ? T_cl.Ts : 0.01
-                tv = 0:Ts_sim:duration
-                step_res = step(T_cl, tv)
-                G_ur = feedback(Cfb, Psys)
-                control_res = step(G_ur, tv)
-                # Extract time, output, and control arrays from SimResult
-                update_plugin!(plugin_state, step_res.t, step_res.y, control_res.y)
-            else
-                # Standard frequency-domain plugins (GangOfFour, ControllerBode, Nyquist, LoopTransfer)
-                update_plugin!(plugin_state, Psys, Cfb, plot_w; ny=ny, nu=nu)
-            end
-        end
-    end
-end
-
-# ============================================================================
-# Dynamic Plot Rebuild
-# ============================================================================
-
-function rebuild_plots!(state::LQGDesignerState)
-    right_panel = state.right_panel
-    isnothing(right_panel) && return
-    
-    # Clear existing content
-    for c in copy(contents(right_panel))
-        delete!(c)
-    end
-    
-    # Get available plugins
-    ny = length(state.original_spec.measurement)
-    nu = length(state.original_spec.control_input)
-    all_plugins = available_plugins()
-    
-    # Rebuild enabled plugins
-    row = 1
-    for PluginType in all_plugins
-        pname = plugin_name(PluginType)
-        
-        if haskey(state.plugin_enabled, pname) && state.plugin_enabled[pname][]
-            plugin_state = state.plugin_states[pname]
-            grid_rows, grid_cols = grid_size(PluginType)
-            
-            # Create visuals with appropriate kwargs for each plugin type
-            if pname == :GangOfFour
-                # GangOfFour spans 2 columns and supports show_constraints
-                create_plugin_visuals!(right_panel, row, PluginType, plugin_state; show_constraints=true)
-            elseif pname == :Nyquist
-                # Nyquist supports show_constraints
-                create_plugin_visuals!(right_panel, row, PluginType, plugin_state; col=1, show_constraints=true)
-            elseif pname in [:ControllerBode, :LoopTransfer]
-                # Single column plugins, no show_constraints
-                create_plugin_visuals!(right_panel, row, PluginType, plugin_state; col=1)
-            else
-                # StepResponse, PZMap - use col but not show_constraints
-                create_plugin_visuals!(right_panel, row, PluginType, plugin_state; col=1)
-            end
-            
-            row += grid_rows
-        end
-    end
-end
-
-# ============================================================================
-# Main Entry Point
-# ============================================================================
 
 """
-    launch_lqg_designer(spec::LQGAnalysisSpec)
+    launch_lqg_designer(spec; elevator_weight=0.33)
 
-Launch an interactive GUI for LQG controller design.
-
-# Arguments
-- `spec`: An LQGAnalysisSpec with the model and initial parameters.
-
-# Returns
-- `LQGDesignerState`: Contains the designed solution and all GUI state.
-
-# Example
-```julia
-using DyadControlSystems
-spec = LQGAnalysisSpec(
-    name = :MyLQG,
-    model = my_model,
-    measurement = ["y"],
-    controlled_output = ["y"],
-    control_input = ["u"],
-    q1_diag = [1.0],
-    q2_diag = [0.1],
-    r1_diag = [0.01],
-    r2_diag = [0.1]
-)
-state = launch_lqg_designer(spec)
-```
+Launch the F-16 interactive tuning dashboard. The slider modifies the elevator
+entry of the LQG input-weight vector (`q2_diag[2]`); all registered views are
+recomputed from the resulting design.
 """
-function DyadControlSystems.launch_lqg_designer(spec::LQGAnalysisSpec)
-    
-    fig = Figure(size=(1920, 1080), pt_per_unit = 0.25)
-    
-    # Shared robustness constraints
-    Ms = Observable(1.5)
-    Mt = Observable(1.5)
-    
-    # Initialize plugin states for all available plugins
-    ny = length(spec.measurement)
-    nu = length(spec.control_input)
-    all_plugins = available_plugins()
-    
-    plugin_states = Dict{Symbol, Any}()
-    plugin_enabled = Dict{Symbol, Observable{Bool}}()
-    
-    for PluginType in all_plugins
-        pname = plugin_name(PluginType)
-        
-        # Initialize state with shared Ms/Mt if supported
-        if pname == :GangOfFour
-            plugin_states[pname] = init_plugin_state(PluginType, ny, nu; Ms=Ms, Mt=Mt)
-            plugin_enabled[pname] = Observable(true)  # Default: show Gang of Four
-        elseif pname == :Nyquist
-            # Only enable if SISO
-            is_siso = (ny == 1 || nu == 1)
-            plugin_states[pname] = init_plugin_state(PluginType, ny, nu; Ms=Ms, Mt=Mt)
-            plugin_enabled[pname] = Observable(is_siso)
-        elseif pname == :StepResponse
-            plugin_states[pname] = init_plugin_state(PluginType, ny, nu;
-                y_names=spec.measurement, u_names=spec.control_input)
-            plugin_enabled[pname] = Observable(true)
-        else
-            plugin_states[pname] = init_plugin_state(PluginType, ny, nu)
-            plugin_enabled[pname] = Observable(pname in [:ControllerBode, :LoopTransfer, :PZMap])  # Default enabled
-        end
-    end
-    
-    # Initialize state
+function DyadControlSystems.launch_lqg_designer(spec::LQGAnalysisSpec; elevator_weight=0.33)
+    set_theme!(Theme(
+        fontsize=12,
+        font="DejaVu Sans",
+        backgroundcolor=:white,
+        textcolor=INK,
+        Axis=(;
+            backgroundcolor=PANEL,
+            xgridvisible=false,
+            ygridvisible=false,
+            spinewidth=1,
+        ),
+    ))
+
+    fig = Figure(size=(1366, 728), backgroundcolor=:white)
+    plugins = DashboardPlugin[]
     state = LQGDesignerState(
         fig,
         spec,
-        Observable(spec.disc),
-        Observable(spec.qQ),
-        Observable(spec.qR),
-        Observable(spec.t),
-        Observable(spec.Ts),
-        Observable(Float64(spec.wl)),
-        Observable(Float64(spec.wu)),
-        Observable(spec.num_frequencies),
-        Observable(spec.duration),
-        Observable(copy(spec.q1_diag)),
-        Observable(copy(spec.q2_diag)),
-        Observable(copy(spec.r1_diag)),
-        Observable(copy(spec.r2_diag)),
-        Observable(copy(spec.integrator_indices)),
-        Observable(copy(spec.integrator_r1_diag)),
+        Observable(Float64(elevator_weight)),
         Observable{Union{Nothing, LQGAnalysisSolution}}(nothing),
-        Ms,
-        Mt,
-        plugin_states,
-        plugin_enabled,
-        nothing,  # right_panel (set below)
-        Observable("Ready - adjust parameters"),
-        Observable(0),
-        Observable("L: (not computed)"),
-        Observable("K: (not computed)"),
+        Observable("INITIALIZING F-16 DESIGN"),
+        plugins,
+        false,
+        nothing,
     )
-    
-    # === LEFT PANEL: Controls ===
-    left_panel = fig[1, 1] = GridLayout()
-    left_row = 1
-    
-    # --- LQR WEIGHTS SECTION ---
-    Label(left_panel[left_row, 1:4], "LQR WEIGHTS", fontsize=16, font=:bold)
-    left_row += 1
-    
-    log_range = exp10.(LinRange(-6, 6, 100))
-    for (i, q1_val) in enumerate(spec.q1_diag)
-        Label(left_panel[left_row, 1], "Q1[$i]:", halign=:right)
-        q1_slider = Slider(left_panel[left_row, 2:3], range=log_range, startvalue=q1_val)
-        Label(left_panel[left_row, 4], @lift(string(round($(q1_slider.value), sigdigits=3))))
-        let idx = i
-            on(q1_slider.value) do v
-                q1_vec = copy(state.q1_diag[])
-                q1_vec[idx] = v
-                state.q1_diag[] = q1_vec
-                state.trigger[] += 1
-            end
-        end
-        left_row += 1
+
+    # Header.
+    Label(fig[1, 1], rich(rich("·8o· ", color=BLUE), "JuliaHub");
+        halign=:left, fontsize=14, font=:bold)
+    Label(fig[1, 2], "TOOLING"; halign=:right, color=BLUE, fontsize=13, font=:bold)
+    Label(fig[2, 1:2], "Tune it live"; halign=:left, fontsize=36, font=:bold)
+
+    # Tuning row. A logarithmic weight grid gives useful resolution over decades.
+    controls = fig[3, 1:2] = GridLayout()
+    Label(controls[1, 1], "Q2 · INPUT PENALTY"; color=MUTED, font=:bold, halign=:left)
+    weight_grid = sort!(unique!(vcat(
+        10.0 .^ range(-4.0, 2.0; length=321),
+        Float64(elevator_weight),
+    )))
+    start_idx = findfirst(==(Float64(elevator_weight)), weight_grid)
+    slider = Slider(controls[1, 2]; range=weight_grid, startvalue=weight_grid[start_idx],
+        color_active=BLUE, color_inactive=GRID)
+    Label(controls[1, 3], @lift(@sprintf("Q2 = %.3g", $(slider.value)));
+        color=MUTED, font=:bold, halign=:left)
+    Label(controls[1, 4], state.status; halign=:right, color=SOFT, font=:bold)
+    colsize!(controls, 1, Fixed(180))
+    colsize!(controls, 2, Fixed(230))
+    colsize!(controls, 3, Fixed(110))
+
+    # Four independent view plugins in the 2×2 layout.
+    views = fig[4, 1:2] = GridLayout()
+    register_step_plugin!(state, views[1, 1])
+    register_pz_plugin!(state, views[1, 2])
+    register_loop_transfer_plugin!(state, views[2, 1])
+    register_gang_of_four_plugin!(state, views[2, 2])
+    rowgap!(views, 14)
+    colgap!(views, 14)
+
+    Label(fig[5, 1], rich("adding a view is ", rich("adding a function", font=:bold));
+        halign=:left, color=MUTED, fontsize=14)
+    Label(fig[5, 2], rich(rich("TRIM · LINEARIZE · DESIGN · ", color=SOFT),
+            rich("IMPLEMENT", color=BLUE));
+        halign=:right, font=:bold)
+
+    rowsize!(fig.layout, 1, Fixed(24))
+    rowsize!(fig.layout, 2, Fixed(52))
+    rowsize!(fig.layout, 3, Fixed(34))
+    rowsize!(fig.layout, 5, Fixed(26))
+    # Fill the window instead of shrinking the root grid to the natural title width.
+    state.fig.layout.width = nothing
+    state.fig.layout.tellwidth = false
+    colsize!(state.fig.layout, 1, Relative(0.5))
+    colsize!(state.fig.layout, 2, Relative(0.5))
+
+    colgap!(fig.layout, 12)
+    rowgap!(fig.layout, 10)
+
+    on(slider.value) do value
+        state.elevator_weight[] = Float64(value)
+        run_lqg!(state, value)
     end
-    
-    for (i, q2_val) in enumerate(spec.q2_diag)
-        Label(left_panel[left_row, 1], "Q2[$i]:", halign=:right)
-        q2_slider = Slider(left_panel[left_row, 2:3], range=log_range, startvalue=q2_val)
-        Label(left_panel[left_row, 4], @lift(string(round($(q2_slider.value), sigdigits=3))))
-        let idx = i
-            on(q2_slider.value) do v
-                q2_vec = copy(state.q2_diag[])
-                q2_vec[idx] = v
-                state.q2_diag[] = q2_vec
-                state.trigger[] += 1
-            end
-        end
-        left_row += 1
-    end
-    
-    # --- KALMAN VARIANCE SECTION ---
-    Label(left_panel[left_row, 1:4], "KALMAN VARIANCE", fontsize=16, font=:bold)
-    left_row += 1
-    
-    for (i, r1_val) in enumerate(spec.r1_diag)
-        Label(left_panel[left_row, 1], "R1[$i]:", halign=:right)
-        r1_slider = Slider(left_panel[left_row, 2:3], range=log_range, startvalue=r1_val)
-        Label(left_panel[left_row, 4], @lift(string(round($(r1_slider.value), sigdigits=3))))
-        let idx = i
-            on(r1_slider.value) do v
-                r1_vec = copy(state.r1_diag[])
-                r1_vec[idx] = v
-                state.r1_diag[] = r1_vec
-                state.trigger[] += 1
-            end
-        end
-        left_row += 1
-    end
-    
-    for (i, r2_val) in enumerate(spec.r2_diag)
-        Label(left_panel[left_row, 1], "R2[$i]:", halign=:right)
-        r2_slider = Slider(left_panel[left_row, 2:3], range=log_range, startvalue=r2_val)
-        Label(left_panel[left_row, 4], @lift(string(round($(r2_slider.value), sigdigits=3))))
-        let idx = i
-            on(r2_slider.value) do v
-                r2_vec = copy(state.r2_diag[])
-                r2_vec[idx] = v
-                state.r2_diag[] = r2_vec
-                state.trigger[] += 1
-            end
-        end
-        left_row += 1
-    end
-    
-    # --- VISUALIZATIONS SECTION ---
-    Label(left_panel[left_row, 1:4], "VISUALIZATIONS", fontsize=16, font=:bold)
-    left_row += 1
-    
-    for PluginType in all_plugins
-        pname = plugin_name(PluginType)
-        ptitle = plugin_title(PluginType)
-        
-        toggle = Toggle(left_panel[left_row, 1], active=state.plugin_enabled[pname][])
-        Label(left_panel[left_row, 2:4], ptitle)
-        on(toggle.active) do v
-            state.plugin_enabled[pname][] = v
-            rebuild_plots!(state)
-        end
-        left_row += 1
-    end
-    
-    # --- RESULTS SECTION ---
-    Label(left_panel[left_row, 1:4], "COMPUTED GAINS", fontsize=16, font=:bold)
-    left_row += 1
-    
-    Label(left_panel[left_row, 1:4], state.L_display, fontsize=11)
-    left_row += 1
-    
-    Label(left_panel[left_row, 1:4], state.K_display, fontsize=11)
-    left_row += 1
-    
-    # === RIGHT PANEL: Plots ===
-    state.right_panel = fig[1, 2] = GridLayout()
-    rebuild_plots!(state)
-    
-    # Status bar
-    status_label = Label(fig[2, 1:2], state.status, fontsize=14)
-    rowsize!(fig.layout, 2, Fixed(25))
-    
-    # === Reactive Updates ===
-    on(state.trigger) do _
-        run_lqg!(state)
-    end
-    
-    # Initial run
-    state.trigger[] += 1
-    
+
+    run_lqg!(state, slider.value[])
     display(fig)
     return state
 end

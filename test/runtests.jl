@@ -25,7 +25,7 @@ const TRIM_VT = 152.4
 @testset "discrete closed loop holds trim over the tutorial horizon" begin
     model = F16ModelWorkshop.Tutorial.DiscreteClosedLoopDemo(; name = :loop)
     sol = DyadInterface.run_analysis(
-        F16ModelWorkshop.DiscreteClosedLoopAnalysisSpec(; model, stop = 10.0)).sol
+        DyadInterface.TransientAnalysisSpec(; model, stop = 10.0)).sol
     p = model.f16plant
 
     @test SciMLBase.successful_retcode(sol.retcode)

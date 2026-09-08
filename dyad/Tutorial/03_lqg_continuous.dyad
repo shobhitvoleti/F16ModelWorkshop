@@ -52,10 +52,10 @@ component LQGDemo
   control_lef = BlockComponents.Math.Add(k1 = 1, k2 = 1) {^control_lef}
   "Gather the 5 control scalars into the plant's vector input."
   ctrl_mux = F16ModelWorkshop.Utils.Mux5(u_guess = trim_vals) {^ctrl_mux}
-  "State setpoints [npos,epos,alt,phi,theta,psi,vt,alpha,beta,P,Q,R], loaded from the trim point (single source of truth)."
-  structural parameter ref_vals::Real[12] = [F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.npos_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.epos_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.alt_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.phi_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.theta_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.psi_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.vt_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.alpha_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.beta_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.P_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.Q_init"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "plant.R_init")]
-  "Trim control offsets [T,el,ail,rud,lef], loaded from the trim point."
-  structural parameter trim_vals::Real[5] = [F16ModelWorkshop.load_trim("trim/trim_point.toml", "T_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "el_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "ail_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "rud_cmd.k"), F16ModelWorkshop.load_trim("trim/trim_point.toml", "lef_cmd.k")]
+  "State set-points [npos,epos,alt,phi,theta,psi,vt,alpha,beta,P,Q,R], read from the applied trim asset so the initialization guesses equal the operating point."
+  structural parameter ref_vals::Real[12] = F16ModelWorkshop.trim_asset("trim_reference")
+  "Trim control offsets [T,el,ail,rud,lef], read from the applied trim asset."
+  structural parameter trim_vals::Real[5] = F16ModelWorkshop.trim_asset("trim_controls")
 relations
   # ---- Operating point: every guess derived from the loaded trim (ref_vals / trim_vals) ----
   guess f16plant.T = trim_vals[1]

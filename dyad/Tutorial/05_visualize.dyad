@@ -213,11 +213,10 @@ end
 """
 Renders the 100 Hz sampled-data pitch recovery to `assets/f16_discrete_closed_loop.mp4`.
 
-`controller_name` seeds the clocked controller's state, as `TutorialDiscreteClosedLoop`
-does. Needs a Makie backend in the session (`using GLMakie`).
+Needs a Makie backend in the session (`using GLMakie`).
 """
 analysis TutorialVisualizeDiscrete
-  extends F16ModelWorkshop.VisualizeAnalysis(stop = 10.0, controller_name = "controller", filename = "assets/f16_discrete_closed_loop.mp4")
+  extends F16ModelWorkshop.VisualizeAnalysis(stop = 10.0, filename = "assets/f16_discrete_closed_loop.mp4")
   model = DiscreteClosedLoopVizDemo()
 relations
 end

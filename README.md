@@ -1,48 +1,59 @@
 # F16ModelWorkshop
 
-Workshop teaching material for modeling and control design in
-[Dyad](https://juliahub.com/products/dyad): a 6-DOF F16 aircraft plant, trimming,
-linearization, and LQG control — continuous and discrete (sampled-data).
+Workshop material for modeling and control design in
+[Dyad](https://juliahub.com/products/dyad): a 6-DOF F-16 plant taken from trim through
+linearization to an LQG regulator, its sampled-data implementation, a 3-D animation, and
+standalone C for the controller.
 
-## Repository layout
+## Layout
 
-Dyad sources live in `dyad/`; the compiler regenerates `generated/` from them
-(never edit `generated/` by hand — run `dyad compile .`).
+Dyad sources live in `dyad/`; the compiler regenerates `generated/` from them. Never edit
+`generated/` by hand — Dyad Studio regenerates it on save, or run `dyad compile .`.
 
-| Module | Contents |
+| Path | Contents |
 |---|---|
-| `dyad/Plant/` | `F16PlantModel` — the F16 6-DOF plant, vector I/O |
-| `dyad/Trimming/` | Trim scenarios: the trimmed plant, and the open-loop departure |
-| `dyad/VectorBlocks/` | Vector-connector building blocks (constant, add, sampler, ZOH, clock) |
-| `dyad/Utils/` | Mux/demux and the signal→pose bridge for visualization |
-| `dyad/Tutorial/` | **Start here** — a guided five-step walkthrough (below) |
+| `dyad/Tutorial/` | **Start here** — the six-step walkthrough below, one file per step |
+| `dyad/Plant/` | `F16PlantModel`, the 6-DOF plant with vector I/O |
+| `dyad/Trimming/` | The trimmed plant flown open loop, and its pitch departure |
+| `dyad/VectorBlocks/`, `dyad/Utils/` | Vector-signal blocks, mux/demux, and the signal-to-pose bridge the tutorial is wired with |
+| `dyad/*.dyad` | The three custom analyses (trim export, visualization, C export), each backed by a spec in `src/` |
+| `assets/` | Parameter sets the models `apply` — the trim point from step 1 and the two controllers from step 3 — plus icons and the airframe mesh |
+| `scripts/Tutorial/` | Regenerate the committed assets and animations from the command line |
+| `generated_c/` | The C emitted by step 6 |
+| `gui/` | Optional live tuning dashboard for the step-3 design (GLMakie) |
+| `test/` | Pins the plant to Stevens & Lewis and checks that both closed loops hold trim |
 
-## Tutorial walkthrough
+## The walkthrough
 
-The `Tutorial` module is a self-contained tour from a raw plant to a working
-sampled-data controller:
+Each step is a Dyad analysis in `dyad/Tutorial/`: run it from Dyad Studio, or call it by
+name in the REPL after `using F16ModelWorkshop, F16ModelWorkshop.Tutorial`. Steps 1 and 3
+produce the parameter-set assets that every later step applies, so the whole workshop
+follows a new flight condition or plant by re-running those two.
 
-1. **`01_trim.dyad` — `TutorialTrim` / `TutorialTrimExport`.** Find the steady
-   flight condition by declaring the unknown controls/states `missing` and solving
-   the equilibrium constraints. `TutorialTrimExport` (extends the custom
-   `TrimExportAnalysis`) does the same solve and writes the operating point to
-   `trim/tutorial_trim_point.toml`.
-2. **`02_linearize.dyad` — `TutorialLinearize` / `TutorialLinearizeExport`.**
-   Linearize the trimmed plant to the state-space model that control design is
-   built on. `TutorialLinearizeExport` (extends the custom `LinearizeExportAnalysis`)
-   also writes the A/B/C/D to `trim/tutorial_linear_model.toml`.
-3. **`03_lqg_continuous.dyad` — `TutorialLQG`.** Design a continuous LQG
-   regulator and simulate the closed-loop response to a pitch perturbation.
-4. **`04_lqg_discrete.dyad` — `TutorialDiscreteClosedLoop`.** The same loop as a
-   100 Hz sampled-data system, wired entirely with vector connectors: sampler →
-   discrete state-space controller → zero-order hold.
-5. **`05_visualize.dyad` — `TutorialVisualizeContinuous` /
-   `TutorialVisualizeDiscrete`.** Render either closed loop as a 3-D animation.
-   Each viz model `extends` its loop and adds only a measurement tap, a
-   `SignalPoseSource` and a `ShapefileVisualizer`; the analysis simulates the model
-   and writes the video to `assets/`. Requires a Makie backend (`using GLMakie`).
-6. **`06_codegen.dyad` — `TutorialControllerCodegen`.** Emit the discrete
-   controller as standalone C.
+1. **Trim — `01_trim.dyad`.** `TrimDemo` declares thrust, elevator and the pitch
+   attitude `missing` and pins the motion derivatives to zero, so the initialization
+   solver returns the steady flight condition. `TutorialTrim` solves it;
+   `TutorialTrimExport` also writes it to `assets/trim_point.toml`,
+   `trim_reference.toml` and `trim_controls.toml`.
+2. **Linearize — `02_linearize.dyad`.** `TutorialLinearize` opens the measurement loop of
+   the design model and linearizes the bare plant from its controls to its 12 measured
+   states: poles, zeros, Bode and step responses.
+3. **LQG, continuous — `03_lqg_continuous.dyad`.** `LQGDemo` closes the plant with a
+   state-space controller through scalar analysis points. `TutorialLQG` synthesizes the
+   regulator — the weights are set per channel in that channel's own units, and the
+   docstring tabulates them — and `TutorialDiscreteLQG` is the same design
+   ZOH-discretized at 100 Hz. `scripts/Tutorial/run_lqg_continuous_export.jl` and
+   `run_lqg_discrete_export.jl` write the two results to `assets/controller.toml` and
+   `assets/discrete_controller.toml`.
+4. **LQG, sampled-data — `04_lqg_discrete.dyad`.** `DiscreteClosedLoopDemo` runs the
+   discrete controller as a clocked `DiscreteStateSpace` between a vector sampler and a
+   zero-order hold; `TutorialDiscreteClosedLoop` recovers a 10° pitch perturbation.
+5. **Visualize — `05_visualize.dyad`.** `TutorialVisualizeContinuous` and
+   `TutorialVisualizeDiscrete` render the two closed loops as animations of the airframe
+   on the same perturbation. Needs a Makie backend in the session (`using GLMakie`).
+6. **C code — `06_codegen.dyad`.** `TutorialControllerCodegen` isolates the clocked
+   controller at its analysis points and emits it as standalone C under
+   `generated_c/f16_controller/`.
 
 ## The aircraft
 
@@ -59,28 +70,18 @@ Table 3.6-3 — α = 0.03714 rad against a published 0.03691. `scripts/fit_snl_a
 regenerates the deck from the tables in `scripts/snl_aero_tables.jl`, and
 `test/f16_snl_validation.jl` pins both the trim and the instability.
 
-## Running the models
+## Running
 
-1. Instantiate the environment (first run downloads dependencies):
-   ```
-   julia --project=. -e 'using Pkg; Pkg.instantiate()'
-   ```
-2. Run the test harness to confirm the models build:
-   ```
-   julia --project=. -e 'using Pkg; Pkg.test()'
-   ```
-3. Run an analysis and plot it. Analyses live in their module's namespace, so
-   bring the submodule into scope or fully-qualify:
-   ```julia
-   using F16ModelWorkshop, F16ModelWorkshop.Tutorial, Plots
-   plot(TutorialDiscreteClosedLoop())                     # sampled-data pitch recovery
-   TutorialLQG()                                          # synthesize the continuous LQG controller
-   plot(F16ModelWorkshop.Trimming.F16OpenLoopDepartureAnalysis())  # the same airframe with no regulator
-   ```
+```
+julia --project=. -e 'using Pkg; Pkg.instantiate()'   # first run downloads dependencies
+julia --project=. -e 'using Pkg; Pkg.test()'          # plant validation + both closed loops
+```
 
-## Trim workflow
+```julia
+using F16ModelWorkshop, F16ModelWorkshop.Tutorial, Plots
+plot(TutorialDiscreteClosedLoop())       # step 4: sampled-data pitch recovery
+TutorialLQG()                            # step 3: synthesize the continuous regulator
+plot(F16ModelWorkshop.Trimming.F16OpenLoopDepartureAnalysis())  # the same airframe with no regulator
+```
 
-`F16ModelWorkshop.TrimPlantAnalysis()` solves the trim and writes
-`trim/trim_point.toml`. Components load their operating point from that file at
-build time via `load_trim`, so re-running the trim and recompiling refreshes the
-whole workshop to the new condition automatically.
+`julia --project=. gui/launch_gui.jl` opens the tuning dashboard on the step-3 design.

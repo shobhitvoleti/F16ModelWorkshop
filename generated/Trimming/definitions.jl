@@ -19,13 +19,8 @@ end
 import BlockComponents
 import DiscreteComponents
 import DyadControlSystems
-import DyadData
 import DyadInterface
-import ElectricalComponents
 import MultibodyComponents
-import RotationalComponents
-import ThermalComponents
-import TranslationalComponents
 @doc Markdown.doc"""
 This connector represents an electrical pin with voltage and current as the potential and flow variables, respectively.
 """
@@ -208,5 +203,3 @@ include("F16OpenLoopDepartureAnalysis_definition.jl")
 include("F16OpenLoopDeparture_definition.jl")
 include("F16OpenLoopTrimAnalysis_definition.jl")
 include("F16OpenLoopTrim_definition.jl")
-include("F16TrimmedPlantLinkedAnalysis_definition.jl")
-include("F16TrimmedPlantLinked_definition.jl")

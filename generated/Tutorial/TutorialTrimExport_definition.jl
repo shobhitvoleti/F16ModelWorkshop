@@ -7,28 +7,27 @@
 using DyadInterface
 using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel
 using ModelingToolkit: SymbolicT, toggle_namespacing
-using F16ModelWorkshop.Tutorial: AbstractTrimExportAnalysisSpec, TrimExportAnalysisSpec
+using F16ModelWorkshop: AbstractTrimExportAnalysisSpec, TrimExportAnalysisSpec
 @kwdef mutable struct TutorialTrimExportSpec <: AbstractTrimExportAnalysisSpec
   name::Symbol = :TutorialTrimExport
-  var"export_path"::String = "trim/tutorial_trim_point.toml"
+  var"export_dir"::String = "assets"
   # Tutorial 1 — Trimming.
   # 
-  # Trim = the steady flight condition: control inputs and states that hold every
-  # motion derivative at zero. We find it by declaring the unknowns `missing` and
-  # letting the initialization solver satisfy the equilibrium constraints.
+  # Trim is the steady flight condition: the control inputs and states that hold every
+  # motion derivative at zero. It is found by declaring the unknowns `missing` and letting
+  # the initialization solver satisfy the equilibrium constraints.
   # 
-  #   - Unknowns: thrust `T_cmd.k`, elevator `el_cmd.k`, and the plant's `alpha`/
-  #     `theta` initial conditions (all `missing`).
+  #   - Unknowns: thrust `T_cmd.k`, elevator `el_cmd.k`, and the plant's `alpha`/`theta`
+  #     initial conditions (all `missing`).
   #   - Constraints: `initial der(...) = 0` on the states that must be steady.
   #   - `guess`es seed Newton; they do not bias the converged trim.
   # 
-  # Run `TutorialTrim` (a zero-duration TransientAnalysis) to solve the operating
-  # point. `TutorialTrimExport` does the same solve and additionally writes the
-  # operating point to `trim/tutorial_trim_point.toml`; it extends the custom
-  # `TrimExportAnalysis` (a Dyad analysis whose Julia `run_analysis` writes the file
-  # — see dyad/Tutorial/export_analyses.dyad and src/tutorial_export_analyses.jl).
-  # Steps 03/04 load the committed `trim/trim_point.toml` at build time; this tutorial
-  # export is a standalone demonstration and leaves that file untouched.
+  # `TutorialTrim` (a zero-duration TransientAnalysis) solves the operating point.
+  # `TutorialTrimExport` does the same solve and writes it as the package's trim assets —
+  # `assets/trim_point.toml`, `trim_reference.toml`, `trim_controls.toml` — which every
+  # later step loads with `apply "dyad://F16ModelWorkshop/..."`. Re-run it after changing
+  # the flight condition or the plant. It extends `TrimExportAnalysis`
+  # (dyad/trim_export_analysis.dyad, backed by src/trim_export_analysis.jl).
   # 
   # Signal flow: Constants -> Mux5 -> F16PlantModel
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.TrimDemo(; name=:TrimDemo)
@@ -39,7 +38,7 @@ function DyadInterface.run_analysis(spec::TutorialTrimExportSpec)
   no_namespace_model = toggle_namespacing(spec.model, false)
   
   base_spec = TrimExportAnalysisSpec(;
-    name=:TrimExportAnalysis, overrides, export_path=spec.export_path, model=spec.model
+    name=:TrimExportAnalysis, overrides, export_dir=spec.export_dir, model=spec.model
   )
   run_analysis(base_spec)
 end

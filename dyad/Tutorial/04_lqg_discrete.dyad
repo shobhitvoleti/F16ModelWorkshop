@@ -20,8 +20,6 @@ Scenario: 10 deg initial pitch perturbation about trim.
 """
 component DiscreteClosedLoopDemo
   "Vector-I/O F16 plant; 10 deg initial pitch perturbation about trim."
-  # Trim operating point, then a 10 deg pitch perturbation: modifications resolve
-  # left-to-right, so the named theta_init after the clause overrides the file value.
   f16plant = F16ModelWorkshop.Plant.F16PlantModel(apply "dyad://F16ModelWorkshop/trim_point.toml", theta_init = 0.17453292519943295) {^f16plant}
   "Discrete (ZOH) LQG controller as a clocked state-space block; trim folded into the output operating point y0."
   controller = DiscreteComponents.DiscreteStateSpace(nx = 12, nu = 12, ny = 5, apply "dyad://F16ModelWorkshop/discrete_controller.toml") {^controller}
@@ -62,12 +60,7 @@ metadata {
       }
     },
     "clk": {
-      "Dyad": {
-        "placement": {
-          "diagram": {"iconName": "default", "x1": 510, "y1": 500, "x2": 610, "y2": 600, "rot": 0}
-        },
-        "tags": []
-      }
+      "Dyad": {"placement": {"diagram": {"x1": 510, "y1": 520, "x2": 610, "y2": 620}}}
     },
     "ref": {
       "Dyad": {
@@ -121,8 +114,8 @@ metadata {
     },
     "id14": {
       "Dyad": {
-        "edges": [{"S": 1, "M": [{"x": 390, "y": 550}, {"x": 390, "y": 420}], "E": 2}],
-        "renderStyle": "standard"
+        "edges": [{"S": 1, "M": [{"x": 390, "y": 570}, {"x": 390, "y": 420}], "E": 2}],
+        "path": {}
       }
     }
   }
@@ -130,7 +123,7 @@ metadata {
 end
 
 analysis TutorialDiscreteClosedLoop
-  extends F16ModelWorkshop.DiscreteClosedLoopAnalysis(stop = 10.0)
+  extends TransientAnalysis(stop = 10.0)
   model = DiscreteClosedLoopDemo()
 relations
 end

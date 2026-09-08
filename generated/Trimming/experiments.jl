@@ -11,4 +11,3 @@ end
 
 include("F16OpenLoopDeparture_experiment.jl")
 include("F16OpenLoopTrim_experiment.jl")
-include("F16TrimmedPlantLinked_experiment.jl")

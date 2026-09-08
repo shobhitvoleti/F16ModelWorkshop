@@ -18,5 +18,4 @@ end
 @testset "`F16ModelWorkshop.Trimming`" begin
 include("F16OpenLoopDeparture_test.jl")
 include("F16OpenLoopTrim_test.jl")
-include("F16TrimmedPlantLinked_test.jl")
 end

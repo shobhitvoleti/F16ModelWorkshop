@@ -11,7 +11,6 @@ using F16ModelWorkshop: AbstractVisualizeAnalysisSpec, VisualizeAnalysisSpec
 @kwdef mutable struct TutorialVisualizeContinuousSpec <: AbstractVisualizeAnalysisSpec
   name::Symbol = :TutorialVisualizeContinuous
   var"stop"::Float64 = 10.0
-  var"controller_name"::String = ""
   var"filename"::String = "assets/f16_continuous_closed_loop.mp4"
   var"nominal_length"::Float64 = 500.0
   var"camera"::Array{Float64, 1} = [-500.0, 3200.0, 200.0]
@@ -26,7 +25,7 @@ function DyadInterface.run_analysis(spec::TutorialVisualizeContinuousSpec)
   no_namespace_model = toggle_namespacing(spec.model, false)
   
   base_spec = VisualizeAnalysisSpec(;
-    name=:VisualizeAnalysis, overrides, stop=spec.stop, controller_name=spec.controller_name, filename=spec.filename, nominal_length=spec.nominal_length, camera=spec.camera, lookat=spec.lookat, show_axis=spec.show_axis, model=spec.model
+    name=:VisualizeAnalysis, overrides, stop=spec.stop, filename=spec.filename, nominal_length=spec.nominal_length, camera=spec.camera, lookat=spec.lookat, show_axis=spec.show_axis, model=spec.model
   )
   run_analysis(base_spec)
 end

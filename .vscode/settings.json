@@ -6,6 +6,5 @@
   "julia.juliaup.server": "https://juliahub.com/juliabin",
   "julia.additionalArgs": [
     "--optimize=0"
-  ],
-  "julia.packageServer": "https://internal.juliahub.com/"
+  ]
 }

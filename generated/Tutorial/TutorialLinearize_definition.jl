@@ -18,6 +18,7 @@ using DyadControlSystems: AbstractLinearAnalysisSpec, LinearAnalysisSpec
   var"duration"::Float64 = -1
   var"loop_openings"::Array{String, 1} = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"]
   var"t"::Float64 = 0.0
+  var"symbolic"::Bool = false
   # Tutorial 3 — Continuous LQG control.
   # 
   # Design model built with vector connectors: the F16 plant (vector I/O) closed with
@@ -41,7 +42,7 @@ function DyadInterface.run_analysis(spec::TutorialLinearizeSpec)
   no_namespace_model = toggle_namespacing(spec.model, false)
   
   base_spec = LinearAnalysisSpec(;
-    name=:LinearAnalysis, overrides, inputs=spec.inputs, outputs=spec.outputs, wl=spec.wl, wu=spec.wu, num_frequencies=spec.num_frequencies, duration=spec.duration, loop_openings=spec.loop_openings, t=spec.t, model=spec.model
+    name=:LinearAnalysis, overrides, inputs=spec.inputs, outputs=spec.outputs, wl=spec.wl, wu=spec.wu, num_frequencies=spec.num_frequencies, duration=spec.duration, loop_openings=spec.loop_openings, t=spec.t, symbolic=spec.symbolic, model=spec.model
   )
   run_analysis(base_spec)
 end
