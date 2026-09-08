@@ -46,5 +46,7 @@ include("visualize_analysis.jl")
 include("controller_codegen_analysis.jl")
 
 include("../generated/module.jl")
+include("velocity_mpc.jl")
+export VelocityMPC
 
 end

@@ -75,3 +75,5 @@ end
     @test offset[end] > 5 * first(offset)
     @test sol[p.vt][end] < TRIM_VT - 10          # and bleeds airspeed doing it
 end
+
+include("velocity_mpc.jl")

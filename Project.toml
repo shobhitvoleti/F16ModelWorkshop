@@ -6,6 +6,11 @@ authors = [
 ]
 
 [deps]
+ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
+ControlSystemsMTK = "687d7614-c7e5-45fc-bfc3-9ee385575c88"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+LinearMPC = "82e1c212-e1a2-49d2-b26a-a31d6968e3bd"
+SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 BlockComponents = "1ef5d832-be8e-447f-9f2c-8b5d17d15fd3"
 ControlSystemsBase = "aaaaaaaa-a6ca-5380-bf3e-84a91bcd477e"
 DiscreteComponents = "b5590941-51af-4a5a-9bca-5ae7cd448b75"
@@ -36,6 +41,11 @@ rev = "e1deb4eaeefa071021056c28bb5b6745ce321e7e"
 url = "https://github.com/JuliaComputing/SynchToolkit.jl.git"
 
 [compat]
+ADTypes = "1"
+ControlSystemsMTK = "2.8"
+LinearAlgebra = "1"
+LinearMPC = "0.10"
+SciMLBase = "2, 3"
 BlockComponents = "=4.6.1"
 DiscreteComponents = "0.3"
 DyadControlSystems = "2.4"
