@@ -1,0 +1,32 @@
+# Velocity-scheduled linear MPC flown on the nonlinear plant, paired with
+# VelocityMPCAnalysisSpec in src/velocity_mpc_analysis.jl. `model` is the plant to
+# control: one constrained linear MPC is designed at each airspeed knot, about that
+# knot's own trim of this same plant, and the members' commands are blended by
+# measured true airspeed. The run flies a speed ramp from a pitch perturbation and
+# writes trajectory.csv, summary.toml and response.png.
+partial analysis VelocityMPCAnalysis
+  extends Analysis
+  model::Dyad.EmptyComponent = Dyad.EmptyComponent()
+  "Airspeed knots the controller bank is designed at, m/s, strictly increasing."
+  parameter velocities::Real[:] = [140.0, 152.4, 170.0]
+  "Altitude every knot is trimmed at, m."
+  parameter altitude::Real = 3000.0
+  "Controller sample period, s."
+  parameter Ts::Real = 0.05
+  "Prediction and control horizon, in samples."
+  parameter Np::Integer = 40
+  "Trimmed airspeed the rollout starts from, m/s."
+  parameter initial_velocity::Real = 148.0
+  "Airspeed the reference ramp ends at, m/s."
+  parameter final_velocity::Real = 160.0
+  "Time the reference ramp begins, s."
+  parameter ramp_start::Real = 2.0
+  "Length of the reference ramp, s."
+  parameter ramp_duration::Real = 12.0
+  "Pitch attitude added to the trimmed initial state, deg."
+  parameter pitch_perturbation::Real = 2.0
+  "Rollout duration, s; must be a whole number of sample periods."
+  parameter stop::Real = 25.0
+  "Directory the trajectory, summary and plot are written to (relative to the project root)."
+  parameter export_dir::String = "results/velocity_mpc"
+end

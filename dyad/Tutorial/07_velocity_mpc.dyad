@@ -1,0 +1,30 @@
+"""
+Tutorial 7 — Velocity-scheduled linear MPC.
+
+A bank of constrained `LinearMPC` controllers, one per airspeed knot. Each knot is
+trimmed on the same `F16PlantModel` this analysis is given, and the plant's symbolic
+linearization is evaluated at that trim, so every member is a discrete-time model of
+the same airframe at its own operating point.
+
+Measured true airspeed schedules the bank through hat-function weights: one solve
+exactly at a knot, two between knots. Each active member receives the measured state,
+the reference, and the previously applied command in its own trim coordinates, and its
+optimized command is returned to physical units before the weighted sum — the knots
+trim to different thrust and elevator, so blending deviations would bias the command.
+Convex blending of absolute commands preserves the box and slew limits, which every
+member shares.
+
+All ten flight states are fed back directly; there is no estimator. Positions are
+excluded, since they advance in straight flight and are not regulated.
+
+`TutorialVelocityMPC` designs the bank, flies a speed ramp from a pitch perturbation,
+and writes `trajectory.csv`, `summary.toml` and `response.png`. It extends
+`VelocityMPCAnalysis` (dyad/velocity_mpc_analysis.dyad, backed by
+src/velocity_mpc_analysis.jl). See 07_velocity_mpc.md for the weights, constraints,
+and scope.
+"""
+analysis TutorialVelocityMPC
+  extends F16ModelWorkshop.VelocityMPCAnalysis(export_dir = "results/velocity_mpc")
+  model = F16ModelWorkshop.Plant.F16PlantModel()
+relations
+end

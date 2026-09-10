@@ -1,26 +1,56 @@
 # Tutorial 7 — Velocity-scheduled linear MPC
 
 After steps 1–6 introduce trim, linearization, LQG, simulation, and C export,
-this step designs a constrained controller bank scheduled by measured airspeed.
-Run the Julia script [07_velocity_mpc.jl](07_velocity_mpc.jl) from the repository
-root with its project environment activated. It computes its own operating points.
+this step designs a constrained controller bank scheduled by measured airspeed. It is
+the Dyad analysis `TutorialVelocityMPC` ([07_velocity_mpc.dyad](07_velocity_mpc.dyad)):
+run it from Dyad Studio, or by name in the REPL. It computes its own operating points
+from the plant it is given as its `model`.
 
-`F16ModelWorkshop.VelocityMPC` builds a bank of constrained linear MPC controllers
-for the existing Dyad `Plant.F16PlantModel`. Measured true airspeed `vt` (m/s) is
-the scheduling variable. The speed reference is a separate set-point input.
+`F16ModelWorkshop.VelocityMPC` builds the bank of constrained linear MPC controllers
+for that Dyad `Plant.F16PlantModel`. Measured true airspeed `vt` (m/s) is the
+scheduling variable. The speed reference is a separate set-point input.
+
+```julia
+using F16ModelWorkshop, F16ModelWorkshop.Tutorial
+res = TutorialVelocityMPC()   # design the bank, fly the ramp, write the results
+res.bank                      # the scheduled VelocityMPCBank
+res.result                    # sample-aligned t, x, u, reference, weights
+res.files                     # the three files written
+```
+
+The default run is a speed ramp from 148 to 160 m/s with an initial 2° pitch
+perturbation; it writes `trajectory.csv`, `summary.toml`, and `response.png` into
+`results/velocity_mpc/`. The velocity knots, altitude, `Ts`, `Np`, the ramp, the
+perturbation, the duration, and the output directory are all analysis parameters:
+
+```julia
+res = TutorialVelocityMPC(velocities = [140.0, 152.4, 170.0], altitude = 3000.0,
+                          Ts = 0.05, Np = 40, initial_velocity = 148.0,
+                          final_velocity = 160.0, stop = 25.0,
+                          export_dir = "results/velocity_mpc")
+```
+
+The same run from the command line, through its script wrapper:
+
+```sh
+julia --project=. scripts/Tutorial/run_velocity_mpc.jl
+```
+
+The design and the rollout are also exposed as analysis artifacts: `:Bank`,
+`:Trajectory`, a `:Response` plot, and one download per written file. Existing trim
+and LQG assets are not inputs to the MPC design and are not overwritten.
+
+Underneath, the analysis is a thin wrapper over the module's own interface, which is
+what to call to design a bank by hand:
 
 ```julia
 using F16ModelWorkshop.VelocityMPC
-bank = build_velocity_mpc([140.0, 152.4, 170.0]; altitude=3000.0, Ts=0.05, Np=40)
-initial = trim_point(bank.dynamics, 148.0)
+dynamics = F16Dynamics(F16ModelWorkshop.Plant.F16PlantModel(; name = :plant))
+bank = build_velocity_mpc([140.0, 152.4, 170.0]; altitude=3000.0, Ts=0.05, Np=40, dynamics)
+initial = trim_point(dynamics, 148.0)
 reference(t) = trim_state(bank, 148 + 12*clamp((t-2)/12, 0, 1))
 result = VelocityMPC.simulate(bank; x0=initial.x, reference, applied0=initial.u, duration=25.0)
 ```
-
-Run `julia --project=. dyad/Tutorial/07_velocity_mpc.jl /path/to/output` for a
-speed ramp from 148 to 160 m/s with an initial 2° pitch perturbation. It writes
-`trajectory.csv`, `summary.toml`, and `response.png` into the chosen directory. Existing trim and
-LQG assets are not inputs to the MPC design and are not overwritten.
 
 ## Model and operating points
 
@@ -96,7 +126,8 @@ invariant sets in this implementation.
 
 `test/velocity_mpc.jl` checks scheduling edge cases, trim residuals, symbolic versus
 finite-difference Jacobians, exact-knot behavior, manually blended member commands,
-physical travel/slew limits, and a nonlinear speed transition across a knot. In a
+physical travel/slew limits, and a nonlinear speed transition across a knot. It runs
+the analysis once and asserts against that bank, rollout, files and artifacts. In a
 persistent development session run:
 
 ```julia

@@ -2,6 +2,7 @@ using Test
 using LinearAlgebra
 using F16ModelWorkshop
 using F16ModelWorkshop.VelocityMPC
+using DyadInterface
 import LinearMPC
 
 @testset "velocity scheduler" begin
@@ -27,9 +28,33 @@ import LinearMPC
     end
 end
 
+# Every rejection here happens before any controller is designed, so this testset is
+# cheap: only the plant model is built.
+@testset "velocity MPC analysis rejects unusable specs" begin
+    Spec = F16ModelWorkshop.VelocityMPCAnalysisSpec
+    run = DyadInterface.run_analysis
+    plant = F16ModelWorkshop.Plant.F16PlantModel(; name = :guard_plant)
+    @test_throws "needs a plant model" run(Spec())
+    @test_throws "outside the design grid" run(Spec(; model=plant, initial_velocity=100.0))
+    @test_throws "outside the design grid" run(Spec(; model=plant, final_velocity=200.0))
+    @test_throws "ramp_start must be nonnegative" run(Spec(; model=plant, ramp_start=-1.0))
+    @test_throws "ramp_duration must be positive" run(Spec(; model=plant, ramp_duration=0.0))
+    @test_throws "whole number of Ts" run(Spec(; model=plant, stop=25.03))
+    @test_throws "ends before the reference ramp" run(Spec(; model=plant, stop=10.0))
+end
+
+# The analysis designs the bank and flies the ramp once; everything below reads that
+# one run, so the expensive symbolic linearization and QP setups are not repeated.
 @testset "F16 velocity MPC" begin
-    bank = build_velocity_mpc()
+    res = F16ModelWorkshop.Tutorial.TutorialVelocityMPC(export_dir = mktempdir())
+    bank, result = res.bank, res.result
+
     @test bank.dynamics isa F16Dynamics
+    @test all(isfile, res.files)
+    @test sort(basename.(res.files)) == ["response.png","summary.toml","trajectory.csv"]
+    @test DyadInterface.artifacts(res,:Trajectory) === res.result
+    @test DyadInterface.artifacts(res,:Bank) === res.bank
+
     for member in bank.members
         tr = member.trim
         @test tr.residual_norm < 1e-7
@@ -57,6 +82,15 @@ end
         @test bank.solves-count0 == 1
         @test output.u ≈ tr.u atol=1e-5
     end
+
+    # The keyword constructor builds its own F16PlantModel; the analysis passed in the
+    # plant it flies. Both must compile the same airframe in the same state order.
+    keyword_dynamics = F16Dynamics(; xcg=0.35)
+    middle = bank.members[findfirst(≈(152.4), bank.grid)]
+    @test keyword_dynamics.permutation == bank.dynamics.permutation
+    @test linear_model(keyword_dynamics, middle.trim.x, middle.trim.u; Ts=bank.Ts).Ac ≈
+          middle.model.Ac rtol=1e-10
+
     x = trim_state(bank,146.2)
     x[5] += deg2rad(1)
     ref = trim_state(bank,146.2)
@@ -82,15 +116,12 @@ end
     @test_throws "applied command" control!(bank,x; reference=ref,applied=fill(-1e6,4))
     @test_throws "outside" trim_state(bank,200)
 
-    # Nonlinear rollout crosses the middle knot while recovering a pitch perturbation.
+    # The rollout crosses the middle knot while recovering the pitch perturbation.
     initial = trim_point(bank.dynamics,148.0)
-    x0 = copy(initial.x); x0[5] += deg2rad(2)
-    reference(t) = trim_state(bank,148.0 + 12.0*clamp((t-2.0)/12.0,0,1))
-    result = VelocityMPC.simulate(bank; x0, reference, applied0=initial.u, duration=25.0)
     @test all(isfinite,result.x)
     @test maximum(result.x[7,:]) > 153
-    @test abs(result.x[7,end]-160) < 2.0
-    @test abs(result.x[3,end]-3000) < 10
+    @test abs(result.x[7,end]-160) < 0.3
+    @test abs(result.x[3,end]-3000) < 5
     @test maximum(abs,result.x[4,:]) < 0.02
     @test maximum(abs,result.x[5,:]) < 0.2
     @test all(bank.umin .- 1e-4 .<= result.u .<= bank.umax .+ 1e-4)

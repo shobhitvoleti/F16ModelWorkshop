@@ -16,7 +16,7 @@ Dyad sources live in `dyad/`; the compiler regenerates `generated/` from them. N
 | `dyad/Plant/` | `F16PlantModel`, the 6-DOF plant with vector I/O |
 | `dyad/Trimming/` | The trimmed plant flown open loop, and its pitch departure |
 | `dyad/VectorBlocks/`, `dyad/Utils/` | Vector-signal blocks, mux/demux, and the signal-to-pose bridge the tutorial is wired with |
-| `dyad/*.dyad` | The three custom analyses (trim export, visualization, C export), each backed by a spec in `src/` |
+| `dyad/*.dyad` | The four custom analyses (trim export, visualization, C export, velocity MPC), each backed by a spec in `src/` |
 | `assets/` | Parameter sets the models `apply` — the trim point from step 1 and the two controllers from step 3 — plus icons and the airframe mesh |
 | `scripts/Tutorial/` | Regenerate the committed assets and animations from the command line |
 | `generated_c/` | The C emitted by step 6 |
@@ -25,11 +25,11 @@ Dyad sources live in `dyad/`; the compiler regenerates `generated/` from them. N
 
 ## The walkthrough
 
-Steps 1–6 are Dyad analyses in `dyad/Tutorial/`: run them from Dyad Studio, or call them by
-name in the REPL after `using F16ModelWorkshop, F16ModelWorkshop.Tutorial`. Steps 1 and 3
-produce the parameter-set assets used by the LQG walkthrough. Re-run those two
-to update its flight condition or plant. Step 7 is a Julia example that computes
-its own trim and linearization at each velocity knot.
+All seven steps are Dyad analyses in `dyad/Tutorial/`: run them from Dyad Studio, or call
+them by name in the REPL after `using F16ModelWorkshop, F16ModelWorkshop.Tutorial`. Steps 1
+and 3 produce the parameter-set assets used by the LQG walkthrough. Re-run those two
+to update its flight condition or plant. Step 7 computes its own trim and
+linearization at each velocity knot instead of applying those assets.
 
 1. **Trim — `01_trim.dyad`.** `TrimDemo` declares thrust, elevator and the pitch
    attitude `missing` and pins the motion derivatives to zero, so the initialization
@@ -56,14 +56,17 @@ its own trim and linearization at each velocity knot.
    controller at its analysis points and emits it as standalone C under
    `generated_c/f16_controller/`.
 
-7. **Velocity-scheduled MPC — [07_velocity_mpc.jl](dyad/Tutorial/07_velocity_mpc.jl).**
-   Build constrained linear MPC controllers at an airspeed grid, blend their commands
-   using measured true airspeed, and simulate a speed ramp on the nonlinear Dyad plant.
-   The [step-7 guide](dyad/Tutorial/07_velocity_mpc.md) explains the model, scheduling,
-   and actuator constraints. Run from the repository root:
+7. **Velocity-scheduled MPC — `07_velocity_mpc.dyad`.** `TutorialVelocityMPC` builds a
+   constrained linear MPC controller at each knot of an airspeed grid — trimming and
+   linearizing the plant it is given at every one — blends their commands by measured
+   true airspeed, and flies a speed ramp on that nonlinear plant. It extends
+   `VelocityMPCAnalysis` (dyad/velocity_mpc_analysis.dyad, backed by
+   src/velocity_mpc_analysis.jl). The [step-7 guide](dyad/Tutorial/07_velocity_mpc.md)
+   explains the model, scheduling, and actuator constraints.
+   `scripts/Tutorial/run_velocity_mpc.jl` is the command-line wrapper:
 
    ```sh
-   julia --project=. dyad/Tutorial/07_velocity_mpc.jl
+   julia --project=. scripts/Tutorial/run_velocity_mpc.jl
    ```
 
    Results are written to `results/velocity_mpc/`: trajectory CSV, summary TOML,

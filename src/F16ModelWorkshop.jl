@@ -44,6 +44,7 @@ const _Overrides = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}
 include("trim_export_analysis.jl")
 include("visualize_analysis.jl")
 include("controller_codegen_analysis.jl")
+include("velocity_mpc_analysis.jl")
 
 include("../generated/module.jl")
 include("velocity_mpc.jl")

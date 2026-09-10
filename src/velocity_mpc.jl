@@ -28,7 +28,7 @@ function finite_vector(x, n, name)
     x isa AbstractVector || throw(ArgumentError("$name must be a vector"))
     length(x) == n || throw(DimensionMismatch("$name must have $n entries"))
     all(isfinite, x) || throw(ArgumentError("$name must contain only finite values"))
-    return Float64[x...]
+    return Vector{Float64}(x)
 end
 
 function check_grid(velocities)
@@ -73,22 +73,30 @@ function scheduling_weights(velocities, velocity; method=:linear, outside=:error
 end
 
 """
+    F16Dynamics(plant::ModelingToolkit.System)
     F16Dynamics(; xcg=0.35)
 
-Compile the Dyad-generated plant into nonlinear dynamics and a symbolic Jacobian
-function once. Public state order is `STATE_NAMES`; inputs are thrust (N) and
-three surface deflections (degrees). Leading-edge flap is held at zero.
+Compile an F16 plant into nonlinear dynamics and a symbolic Jacobian function once.
+The keyword form builds `Plant.F16PlantModel` at the given CG; pass a `System` to use
+a plant configured elsewhere. Public state order is `STATE_NAMES`; inputs are thrust
+(N) and three surface deflections (degrees). Leading-edge flap is held at zero.
+`permutation` maps the public order onto the compiled system's unknowns, and
+`inverse_permutation` maps back.
 """
 struct F16Dynamics{F,L,P}
     rhs::F
     jacobian::L
     parameters::P
     permutation::Vector{Int}
+    inverse_permutation::Vector{Int}
 end
 
 function F16Dynamics(; xcg=0.35)
     isfinite(xcg) || throw(ArgumentError("xcg must be finite"))
-    plant = Plant.F16PlantModel(; name=:mpc_plant, xcg)
+    return F16Dynamics(Plant.F16PlantModel(; name=:mpc_plant, xcg))
+end
+
+function F16Dynamics(plant::MTK.System)
     plant = MTK.toggle_namespacing(plant, false)
     inputs = collect(plant.u_in)
     states = [getproperty(plant, s) for s in STATE_NAMES]
@@ -105,14 +113,15 @@ function F16Dynamics(; xcg=0.35)
         expression=Val(false), force_SA=true)
     rhs = MTK.generate_control_function(sys, inputs; split=false)
     p = MTK.varmap_to_vars(MTK.initial_conditions(sys), rhs.ps)
-    return F16Dynamics(rhs.f[1], (jacobian, pars, inputs, sys), p, Int[permutation...])
+    order = Int[permutation...]
+    return F16Dynamics(rhs.f[1], (jacobian, pars, inputs, sys), p, order, invperm(order))
 end
 
 function (d::F16Dynamics)(x, u)
     xx = finite_vector(x, 12, "state")
     uu = finite_vector(u, 4, "control")
     xx[VELOCITY] > 0 || throw(DomainError(xx[VELOCITY], "true airspeed must be positive"))
-    internal = xx[invperm(d.permutation)]
+    internal = xx[d.inverse_permutation]
     result = d.rhs(internal, [uu; 0.0], d.parameters, 0.0)
     return collect(result[d.permutation])
 end
@@ -163,7 +172,7 @@ function linear_model(d::F16Dynamics, x, u; Ts=0.05)
     jac, pars, inputs, sys = d.jacobian
     values = merge(MTK.initial_conditions(sys), Dict(inputs .=> [uu; 0.0]))
     p = MTK.varmap_to_vars(values, pars)
-    model = jac(xx[invperm(d.permutation)], p)
+    model = jac(xx[d.inverse_permutation], p)
     A = Matrix{Float64}(model.A[d.permutation, d.permutation])
     B = Matrix{Float64}(model.B[d.permutation, 1:4])
     discrete = CS.c2d(CS.ss(A[FLIGHT, FLIGHT], B[FLIGHT, :], Matrix{Float64}(I, 10, 10), zeros(10,4)), Ts)
