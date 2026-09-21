@@ -1,10 +1,10 @@
 # Discrete-controller C export, paired with the `partial analysis` in
 # dyad/controller_codegen_analysis.dyad. `ModelingToolkit.isolate_subsystem` cuts the
 # model at its input and output analysis points so only the clocked controller between
-# them remains; SynchToolkit compiles that to a synchronous node and SynchCompiler
+# them remains; SynchToolkit compiles that to a synchronous node and SynchJulia
 # emits the C sources.
 
-import SynchToolkit, SynchCompiler
+import SynchToolkit, SynchJulia
 
 abstract type AbstractControllerCodegenAnalysisSpec <: AbstractAnalysisSpec end
 
@@ -54,12 +54,12 @@ function DyadInterface.run_analysis(spec::ControllerCodegenAnalysisSpec)
         controller_sys; inputs = codegen_inputs, outputs = codegen_outputs)
     export_dir = _resolve_export(spec.export_dir)
     mkpath(export_dir)
-    # SynchCompiler writes its runtime header read-only. Make a previous export writable
+    # SynchJulia writes its runtime header read-only. Make a previous export writable
     # first so re-exporting replaces every file instead of failing after the sources.
     for f in readdir(export_dir; join = true)
         isfile(f) && chmod(f, 0o644)
     end
-    SynchCompiler.export_c(export_dir, SynchToolkit.node(compiled))
+    SynchJulia.export_c(export_dir, SynchToolkit.node(compiled))
     files = sort(readdir(export_dir))
     return ControllerCodegenAnalysisSolution(
         spec, controller_sys, input_vars, output_vars, compiled, export_dir, files)

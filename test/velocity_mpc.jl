@@ -3,130 +3,121 @@ using LinearAlgebra
 using F16ModelWorkshop
 using F16ModelWorkshop.VelocityMPC
 using DyadInterface
-import LinearMPC
+using SciMLBase
 
-@testset "velocity scheduler" begin
-    grid = [140.0,152.4,170.0]
-    @test scheduling_weights(grid,140.0) == [1,0,0]
-    @test scheduling_weights(grid,152.4) == [0,1,0]
-    @test scheduling_weights(grid,170.0) == [0,0,1]
-    @test scheduling_weights(grid,146.2) ≈ [0.5,0.5,0]
-    @test scheduling_weights(grid,160.0; method=:nearest) == [0,1,0]
-    @test scheduling_weights(grid,200.0; outside=:clamp) == [0,0,1]
-    @test_throws "outside the MPC design grid" scheduling_weights(grid,130.0)
-    @test_throws "strictly increasing" scheduling_weights([140,140],140)
-    @test_throws "strictly increasing" scheduling_weights([160,140],150)
-    @test_throws "finite" scheduling_weights(grid,NaN)
-    @test_throws "finite" scheduling_weights(grid,Inf; outside=:clamp)
-    @test_throws "at least two" scheduling_weights([140.0],140.0)
-    @test_throws "method" scheduling_weights(grid,150; method=:cubic)
-    for v in range(140,170; length=101)
-        w = scheduling_weights(grid,v)
-        @test sum(w) ≈ 1
-        @test all(>=(0),w)
-        @test count(>(0),w) <= 2
+# `VectorSelect` narrows the plant's twelve outputs to the ten the controller regulates,
+# so a wrong or reordered selection would feed the observer the wrong states. The Dyad
+# test model drives two integrators from the picked channels; their values at t = 1 s are
+# the picked channels themselves.
+@testset "vector channel selector" begin
+    result = F16ModelWorkshop.VectorBlocks.TestVectorSelectTransient()
+    sol = result.sol
+    model = DyadInterface.symbolic_container(result)
+
+    @test SciMLBase.successful_retcode(sol.retcode)
+    @test sol[model.pick_first.x][end]≈4.0 atol=1e-6
+    @test sol[model.pick_second.x][end]≈2.0 atol=1e-6
+end
+
+# The bank is designed in Julia from the compiled plant, so the plant and its symbolic
+# linearization are checked on their own terms: every knot trims, and the Jacobians the
+# members are built from agree with the nonlinear plant they came from.
+@testset "velocity MPC bank" begin
+    plant = VelocityMPC.dynamics()
+
+    for velocity in VelocityMPC.KNOTS
+        trim = trim_point(plant, velocity; altitude = VelocityMPC.ALTITUDE)
+        @test trim.residual_norm < 1e-7
+        u = trim.u ./ VelocityMPC.CONTROL_UNITS
+        @test 0 < u[1] < 50
+        @test abs(u[2]) < 25
+
+        # The symbolic Jacobians against an independent central difference.
+        model = linear_model(plant, trim.x, trim.u)
+        Afd, Bfd = zeros(12, 12), zeros(12, 4)
+        for k in eachindex(trim.x)
+            h = 1e-5 * max(1, abs(trim.x[k]))
+            up, um = copy(trim.x), copy(trim.x)
+            up[k] += h
+            um[k] -= h
+            Afd[:, k] = (plant(up, trim.u) - plant(um, trim.u)) / (2h)
+        end
+        for k in eachindex(trim.u)
+            h = 1e-5 * max(1, abs(trim.u[k]))
+            up, um = copy(trim.u), copy(trim.u)
+            up[k] += h
+            um[k] -= h
+            Bfd[:, k] = (plant(trim.x, up) - plant(trim.x, um)) / (2h)
+        end
+        @test model.Ac≈Afd rtol=1e-6 atol=1e-7
+        @test model.Bc≈Bfd rtol=1e-6 atol=1e-7
     end
 end
 
-# Every rejection here happens before any controller is designed, so this testset is
-# cheap: only the plant model is built.
-@testset "velocity MPC analysis rejects unusable specs" begin
-    Spec = F16ModelWorkshop.VelocityMPCAnalysisSpec
-    run = DyadInterface.run_analysis
-    plant = F16ModelWorkshop.Plant.F16PlantModel(; name = :guard_plant)
-    @test_throws "needs a plant model" run(Spec())
-    @test_throws "outside the design grid" run(Spec(; model=plant, initial_velocity=100.0))
-    @test_throws "outside the design grid" run(Spec(; model=plant, final_velocity=200.0))
-    @test_throws "ramp_start must be nonnegative" run(Spec(; model=plant, ramp_start=-1.0))
-    @test_throws "ramp_duration must be positive" run(Spec(; model=plant, ramp_duration=0.0))
-    @test_throws "whole number of Ts" run(Spec(; model=plant, stop=25.03))
-    @test_throws "ends before the reference ramp" run(Spec(; model=plant, stop=10.0))
+# Every member must be exact at its own trim: held at the state it was designed around,
+# with the trimmed command already applied, it must return that command and nothing else.
+# A bank's members have no public accessor (MPCComponents.jl#48), so the property is
+# asserted on the scheduled components themselves: `VelocityMPCHoldsTrim` feeds them a
+# constant trimmed state as both measurement and reference, one knot per analysis.
+@testset "bank members hold their own trim" begin
+    knots = (F16ModelWorkshop.Tutorial.VelocityMPCHoldsTrimLowTransient => 140.0,
+             F16ModelWorkshop.Tutorial.VelocityMPCHoldsTrimMidTransient => 152.4,
+             F16ModelWorkshop.Tutorial.VelocityMPCHoldsTrimHighTransient => 170.0)
+
+    for (analysis, velocity) in knots
+        result = analysis()
+        sol = result.sol
+        model = DyadInterface.symbolic_container(result)
+        held = (model.T_cmd, model.el_cmd, model.ail_cmd, model.rud_cmd)
+        expected = VelocityMPC.trim_command(velocity)
+
+        @test SciMLBase.successful_retcode(sol.retcode)
+        # A held signal reads back on the controller's clock, one entry per tick: twenty of
+        # them over a second at 20 Hz, starting at the t = 0 tick, so every entry is a
+        # solved command and none is a hold's initial value.
+        @test length(sol[model.exitflag]) == 20
+        @test all(>=(1), sol[model.exitflag])
+        for (channel, signal) in pairs(held)
+            @test maximum(abs, sol[signal] .- expected[channel]) < 1e-5
+        end
+    end
 end
 
-# The analysis designs the bank and flies the ramp once; everything below reads that
-# one run, so the expensive symbolic linearization and QP setups are not repeated.
-@testset "F16 velocity MPC" begin
-    res = F16ModelWorkshop.Tutorial.TutorialVelocityMPC(export_dir = mktempdir())
-    bank, result = res.bank, res.result
+@testset "velocity MPC bank rejects unusable designs" begin
+    @test_throws "strictly increasing" VelocityMPC.bank([160.0, 140.0])
+    @test_throws "at least two knots" VelocityMPC.bank([152.4])
+    @test_throws "outside the design grid" VelocityMPC.bank(VelocityMPC.KNOTS, 3000.0, 100.0)
+    @test_throws "Ts must be positive" VelocityMPC.bank(VelocityMPC.KNOTS, 3000.0, 148.0, 0.0)
+    @test_throws "umin must be below umax" VelocityMPC.bank(; umax = zeros(4))
+    @test_throws "rate must be positive" VelocityMPC.bank(; rate = zeros(4))
+end
 
-    @test bank.dynamics isa F16Dynamics
-    @test all(isfile, res.files)
-    @test sort(basename.(res.files)) == ["response.png","summary.toml","trajectory.csv"]
-    @test DyadInterface.artifacts(res,:Trajectory) === res.result
-    @test DyadInterface.artifacts(res,:Bank) === res.bank
+# The closed loop: a solved trajectory, not just a model that builds. The tolerances are
+# a little wider than the design achieves, tight enough that a broken schedule, a lost
+# reference channel or an infeasible QP fails here.
+@testset "velocity MPC tracks the airspeed ramp" begin
+    result = F16ModelWorkshop.Tutorial.TutorialVelocityMPC()
+    sol = result.sol
+    loop = DyadInterface.symbolic_container(result)
+    p = loop.f16plant
 
-    for member in bank.members
-        tr = member.trim
-        @test tr.residual_norm < 1e-7
-        @test bank.dynamics(tr.x,tr.u)[1] ≈ tr.velocity rtol=1e-8
-        @test 0 < tr.u[1] < 50000
-        @test abs(tr.u[2]) < 25
-        # Compare generated symbolic derivatives with an independent central difference.
-        Afd, Bfd = zeros(12,12), zeros(12,4)
-        for j in eachindex(tr.x)
-            h = 1e-5*max(1,abs(tr.x[j]))
-            up, um = copy(tr.x), copy(tr.x)
-            up[j] += h; um[j] -= h
-            Afd[:,j] = (bank.dynamics(up,tr.u)-bank.dynamics(um,tr.u))/(2h)
-        end
-        for j in eachindex(tr.u)
-            h = 1e-5*max(1,abs(tr.u[j]))
-            up, um = copy(tr.u), copy(tr.u)
-            up[j] += h; um[j] -= h
-            Bfd[:,j] = (bank.dynamics(tr.x,up)-bank.dynamics(tr.x,um))/(2h)
-        end
-        @test member.model.Ac ≈ Afd rtol=1e-6 atol=1e-7
-        @test member.model.Bc ≈ Bfd rtol=1e-6 atol=1e-7
-        count0 = bank.solves
-        output = control!(bank,tr.x; reference=tr.x,applied=tr.u)
-        @test bank.solves-count0 == 1
-        @test output.u ≈ tr.u atol=1e-5
-    end
+    @test SciMLBase.successful_retcode(sol.retcode)
+    @test sol.t[end] ≈ 25.0
 
-    # The keyword constructor builds its own F16PlantModel; the analysis passed in the
-    # plant it flies. Both must compile the same airframe in the same state order.
-    keyword_dynamics = F16Dynamics(; xcg=0.35)
-    middle = bank.members[findfirst(≈(152.4), bank.grid)]
-    @test keyword_dynamics.permutation == bank.dynamics.permutation
-    @test linear_model(keyword_dynamics, middle.trim.x, middle.trim.u; Ts=bank.Ts).Ac ≈
-          middle.model.Ac rtol=1e-10
+    # Accelerated onto the commanded 160 m/s while holding altitude and wings level.
+    @test sol[p.vt][end]≈160.0 atol=0.5
+    @test sol[p.alt][end]≈3000.0 atol=10.0
+    @test maximum(abs, sol[p.phi]) < 0.02
+    @test maximum(abs, sol[p.theta]) < 0.25
+    # The ramp crosses the middle knot, so both of the outer members are scheduled in.
+    @test maximum(sol[p.vt]) > 153.0
 
-    x = trim_state(bank,146.2)
-    x[5] += deg2rad(1)
-    ref = trim_state(bank,146.2)
-    previous = [11000.0,-0.5,0.1,-0.1]
-    w = scheduling_weights(bank.grid,x[7])
-    expected = zeros(4)
-    for i in findall(>(0),w)
-        tr, c = bank.members[i].trim, bank.members[i].controller
-        du = LinearMPC.compute_control(c,(x[3:12]-tr.x[3:12])./bank.state_scale;
-            r=(ref[3:12]-tr.x[3:12])./bank.state_scale,
-            uprev=(previous-tr.u)./bank.input_scale)
-        expected .+= w[i].*(tr.u+bank.input_scale.*du)
-    end
-    count0 = bank.solves
-    output = control!(bank,x; reference=ref,applied=previous)
-    @test bank.solves-count0 == 2
-    @test output.u ≈ expected atol=1e-5
-    @test all(bank.umin .<= output.u .<= bank.umax)
-    @test all(abs.(output.u-previous) .<= bank.slew*bank.Ts .+ 1e-4)
-    @test bank.previous == output.u
-    @test_throws "12 entries" control!(bank,zeros(11); reference=ref)
-    @test_throws "finite" control!(bank,fill(NaN,12); reference=ref)
-    @test_throws "applied command" control!(bank,x; reference=ref,applied=fill(-1e6,4))
-    @test_throws "outside" trim_state(bank,200)
+    # Held commands stay inside the limits the QP was given (thrust in newtons here).
+    @test all(-1.0 .<= sol[p.T] .<= 5.0e4)
+    @test maximum(abs, sol[p.el]) <= 25.0
+    @test maximum(abs, sol[p.ail]) <= 21.5
+    @test maximum(abs, sol[p.rud]) <= 30.0
 
-    # The rollout crosses the middle knot while recovering the pitch perturbation.
-    initial = trim_point(bank.dynamics,148.0)
-    @test all(isfinite,result.x)
-    @test maximum(result.x[7,:]) > 153
-    @test abs(result.x[7,end]-160) < 0.3
-    @test abs(result.x[3,end]-3000) < 5
-    @test maximum(abs,result.x[4,:]) < 0.02
-    @test maximum(abs,result.x[5,:]) < 0.2
-    @test all(bank.umin .- 1e-4 .<= result.u .<= bank.umax .+ 1e-4)
-    increments = diff(hcat(initial.u,result.u); dims=2)
-    @test all(abs.(increments) .<= bank.slew*bank.Ts .+ 1e-4)
-    @test all(abs.(sum(result.weights;dims=1).-1) .< 1e-12)
-    @test any(>(0),result.weights[1,:]) && any(>(0),result.weights[3,:])
+    # Every solve reported success; a negative composite flag is a failed member.
+    @test all(>=(1), sol[loop.exitflag])
 end

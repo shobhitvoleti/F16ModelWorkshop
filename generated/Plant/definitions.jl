@@ -20,6 +20,7 @@ import BlockComponents
 import DiscreteComponents
 import DyadControlSystems
 import DyadInterface
+import MPCComponents
 import MultibodyComponents
 @doc Markdown.doc"""
 This connector represents an electrical pin with voltage and current as the potential and flow variables, respectively.

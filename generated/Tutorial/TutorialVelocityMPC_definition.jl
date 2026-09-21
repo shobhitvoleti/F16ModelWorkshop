@@ -7,41 +7,88 @@
 using DyadInterface
 using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel
 using ModelingToolkit: SymbolicT, toggle_namespacing
-using F16ModelWorkshop: AbstractVelocityMPCAnalysisSpec, VelocityMPCAnalysisSpec
-@kwdef mutable struct TutorialVelocityMPCSpec <: AbstractVelocityMPCAnalysisSpec
+using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
+@kwdef mutable struct TutorialVelocityMPCSpec <: AbstractTransientAnalysisSpec
   name::Symbol = :TutorialVelocityMPC
-  # Airspeed knots the controller bank is designed at, m/s, strictly increasing.
-  var"velocities"::Array{Float64, 1} = [140.0, 152.4, 170.0]
-  # Altitude every knot is trimmed at, m.
-  var"altitude"::Float64 = 3000.0
-  # Controller sample period, s.
-  var"Ts"::Float64 = 0.05
-  # Prediction and control horizon, in samples.
-  var"Np"::Int = 40
-  # Trimmed airspeed the rollout starts from, m/s.
-  var"initial_velocity"::Float64 = 148.0
-  # Airspeed the reference ramp ends at, m/s.
-  var"final_velocity"::Float64 = 160.0
-  # Time the reference ramp begins, s.
-  var"ramp_start"::Float64 = 2.0
-  # Length of the reference ramp, s.
-  var"ramp_duration"::Float64 = 12.0
-  # Pitch attitude added to the trimmed initial state, deg.
-  var"pitch_perturbation"::Float64 = 2.0
-  # Rollout duration, s; must be a whole number of sample periods.
+  var"alg"::ODEAlg.Type = ODEAlg.Auto()
+  var"start"::Float64 = 0
   var"stop"::Float64 = 25.0
-  # Directory the trajectory, summary and plot are written to (relative to the project root).
-  var"export_dir"::String = "results/velocity_mpc"
-  # F16 6-DOF plant with vector I/O and matrix aerodynamics
-  var"model"::Union{Nothing, System} = F16ModelWorkshop.Plant.F16PlantModel(; name=:F16PlantModel)
+  var"abstol"::Float64 = 0.000001
+  var"reltol"::Float64 = 0.000001
+  var"saveat"::Float64 = 0
+  var"dtmax"::Float64 = 0
+  var"tstops"::Array{Float64, 1} = []
+  var"automatic_discontinuity_detection"::Bool = false
+  var"optimize"::OptimizationLevel.Type = OptimizationLevel.Aggressive()
+  var"progress"::Bool = true
+  var"respecialize"::Bool = false
+  var"verbose"::DEVerbosity.Type = DEVerbosity.Standard()
+  var"log_file"::String = ""
+  # Tutorial 7 — Velocity-scheduled linear MPC.
+  # 
+  # A bank of constrained `LinearMPC` controllers, one per airspeed knot, flown on the
+  # nonlinear plant at 20 Hz. `LinearMPCScheduler` turns measured airspeed into hat-function
+  # member weights, `LinearMPCScheduledObserver` blends the members' Kalman filters, and
+  # `LinearMPCScheduledOptimizer` solves the active members' quadratic programs and blends
+  # their first moves.
+  # 
+  # Signal flow (whole-array connections except where a channel is named):
+  # 
+  #   f16plant.y_out (12) --> meas_select (3:12) --> sample (20 Hz) --> observer.y (10)
+  #   sample.y[5] --> scheduler.rho, clock                 airspeed: measurement, schedule, clock
+  #   scheduler.w (3) --> observer.w, optimizer.w
+  #   observer.xhat (10) --> optimizer.xhat
+  #   vt_cmd --> sr_vt --> ref_map.u[1]                    commanded airspeed, sampled
+  #   scheduler.w --> ref_map.u[2:4]                       member weights
+  #   ref_map (10) + ref_bias (10) --> ref_sum --> optimizer.r
+  #   optimizer.u (4) --> zoh --> cmd_map (5) --> f16plant.u_in
+  # 
+  # Both clock crossings are vector blocks, and the single `PeriodicClock` is planted on the
+  # airspeed channel alone: the observer and the optimizer each have one block clock, which
+  # unifies all of their channels, exactly as `DiscreteStateSpace` does in step 4.
+  # 
+  # Design points, each of which the loop depends on:
+  # 
+  # - The three parts are instantiated separately rather than as the composed
+  #   `LinearMPCScheduledController`, which does not expose `u_init`. The command assumed
+  #   applied before the first tick must be the trimmed command, not zero.
+  # - The bank lives in one absolute frame — plant states, commands in kN and degrees — with
+  #   a per-knot offset `f_j = -A_j x_j - B_j u_j` making `ẋ = A_j x + B_j u + f_j` vanish at
+  #   knot `j`'s trim. Members agree on what a state and a command mean, each stays exact at
+  #   its own knot, and their weighted sum is an absolute command under shared box and rate
+  #   limits. `C` is the identity, so references and measurements are plain states.
+  # - Only the control *rate* is penalized. A penalty on the control level is minimized at
+  #   zero command while holding a reference needs a nonzero one, so the optimum would settle
+  #   short of the setpoint. Terminal weights are each member's discrete-LQR cost-to-go.
+  # - Thrust is kN in the controller and N at the plant: `cmd_map` carries that conversion,
+  #   because in newtons the command box spans 5e4 against 25 degrees of elevator and the QP
+  #   is badly scaled.
+  # - All ten regulated states are measured, so the observer's measurement covariance is a
+  #   millionth of its process covariance and the estimate is the measurement.
+  # - The reference is one linear map of `[commanded airspeed; member weights]` plus one
+  #   constant vector. `reference_gains` puts the commanded airspeed on the airspeed channel
+  #   and each knot's trimmed pitch attitude and angle of attack on the pitch and
+  #   angle-of-attack channels, so those two references are the weighted trims `Σ w_j θ_j`
+  #   and `Σ w_j α_j` — piecewise linear in airspeed and tied to the trims the members were
+  #   built from. `ref_bias` holds the commanded altitude; the remaining channels are
+  #   regulated to zero.
+  # 
+  # `F16ModelWorkshop.VelocityMPC` supplies only what a structural parameter cannot compute:
+  # trims at a flight condition (`trim_states`, `trim_command`, `reference_map`) and the bank
+  # (`bank`), which linearizes the plant symbolically at every knot. Plant initial state,
+  # reference gains and bank all read the same trims, so they cannot drift apart.
+  # 
+  # Scenario: trimmed at 148 m/s and 3000 m with 2° of extra pitch attitude, commanded to
+  # 160 m/s over 12 s starting at t = 2 s — a ramp that crosses the 152.4 m/s knot.
+  var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.VelocityMPCDemo(; name=:VelocityMPCDemo)
 end
 
 function DyadInterface.run_analysis(spec::TutorialVelocityMPCSpec)
   overrides = Dict{SymbolicT, SymbolicT}()
   no_namespace_model = toggle_namespacing(spec.model, false)
   
-  base_spec = VelocityMPCAnalysisSpec(;
-    name=:VelocityMPCAnalysis, overrides, velocities=spec.velocities, altitude=spec.altitude, Ts=spec.Ts, Np=spec.Np, initial_velocity=spec.initial_velocity, final_velocity=spec.final_velocity, ramp_start=spec.ramp_start, ramp_duration=spec.ramp_duration, pitch_perturbation=spec.pitch_perturbation, stop=spec.stop, export_dir=spec.export_dir, model=spec.model
+  base_spec = TransientAnalysisSpec(;
+    name=:TransientAnalysis, overrides, alg=spec.alg, start=spec.start, stop=spec.stop, abstol=spec.abstol, reltol=spec.reltol, saveat=spec.saveat, dtmax=spec.dtmax, tstops=spec.tstops, automatic_discontinuity_detection=spec.automatic_discontinuity_detection, optimize=spec.optimize, progress=spec.progress, respecialize=spec.respecialize, verbose=spec.verbose, log_file=spec.log_file, model=spec.model
   )
   run_analysis(base_spec)
 end

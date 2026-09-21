@@ -20,6 +20,7 @@ import BlockComponents
 import DiscreteComponents
 import DyadControlSystems
 import DyadInterface
+import MPCComponents
 import MultibodyComponents
 @doc Markdown.doc"""
 This connector represents an electrical pin with voltage and current as the potential and flow variables, respectively.
@@ -217,3 +218,11 @@ include("TutorialTrim_definition.jl")
 include("TutorialVelocityMPC_definition.jl")
 include("TutorialVisualizeContinuous_definition.jl")
 include("TutorialVisualizeDiscrete_definition.jl")
+include("VelocityMPCDemo_definition.jl")
+include("VelocityMPCHoldsTrimHighTransient_definition.jl")
+include("VelocityMPCHoldsTrimHigh_definition.jl")
+include("VelocityMPCHoldsTrimLowTransient_definition.jl")
+include("VelocityMPCHoldsTrimLow_definition.jl")
+include("VelocityMPCHoldsTrimMidTransient_definition.jl")
+include("VelocityMPCHoldsTrimMid_definition.jl")
+include("VelocityMPCHoldsTrim_definition.jl")

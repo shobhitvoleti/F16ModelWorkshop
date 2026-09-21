@@ -1,57 +1,69 @@
-#ifndef TOP_H
-#define TOP_H
+#ifndef SYNCHJULIA_top_H
+#define SYNCHJULIA_top_H
 
 #include "synchjulia.h"
 
-typedef struct {
-double elements[5];
-} julia_NTuple_5_double;
-typedef struct {
-julia_NTuple_5_double data;
-} syncharray_Float64_5;
-typedef struct {
-double elements[144];
-} julia_NTuple_144_double;
-typedef struct {
-julia_NTuple_144_double data;
-} syncharray_Float64_12x12;
-typedef struct {
-double elements[12];
-} julia_NTuple_12_double;
-typedef struct {
-julia_NTuple_12_double data;
-} syncharray_Float64_12;
-typedef struct {
-double elements[60];
-} julia_NTuple_60_double;
-typedef struct {
-julia_NTuple_60_double data;
-} syncharray_Float64_5x12;
+typedef struct AutoPars AutoPars;
 
 typedef struct {
-double output_demux_y1_t_;
-double output_demux_y2_t_;
-double output_demux_y3_t_;
-double output_demux_y4_t_;
-double output_demux_y5_t_;
+double elements[5];
+} NTuple5_f64;
+typedef struct {
+NTuple5_f64 data;
+} SynchArray_f64x5;
+typedef struct {
+double elements[144];
+} NTuple144_f64;
+typedef struct {
+NTuple144_f64 data;
+} SynchArray_f64x12x12;
+typedef struct {
+double elements[12];
+} NTuple12_f64;
+typedef struct {
+NTuple12_f64 data;
+} SynchArray_f64x12;
+typedef struct {
+double elements[60];
+} NTuple60_f64;
+typedef struct {
+NTuple60_f64 data;
+} SynchArray_f64x5x12;
+
+/* mutable struct SynchToolkit.var"##SynchRuntime#277".AutoPars */
+struct AutoPars {
+SynchArray_f64x12x12 controller_controller_A;
+SynchArray_f64x12x12 controller_controller_B;
+SynchArray_f64x5x12 controller_controller_C;
+SynchArray_f64x5x12 controller_controller_D;
+SynchArray_f64x12 controller_controller_u0;
+SynchArray_f64x5 controller_controller_y0;
+};
+
+typedef struct {
+double output_demux_y1_u28_t_u29;
+double output_demux_y2_u28_t_u29;
+double output_demux_y3_u28_t_u29;
+double output_demux_y4_u28_t_u29;
+double output_demux_y5_u28_t_u29;
 /* presence of output_demux₊y1(t); false means absent this tick */
-bool has_output_demux_y1_t_;
+bool has_output_demux_y1_u28_t_u29;
 /* presence of output_demux₊y2(t); false means absent this tick */
-bool has_output_demux_y2_t_;
+bool has_output_demux_y2_u28_t_u29;
 /* presence of output_demux₊y3(t); false means absent this tick */
-bool has_output_demux_y3_t_;
+bool has_output_demux_y3_u28_t_u29;
 /* presence of output_demux₊y4(t); false means absent this tick */
-bool has_output_demux_y4_t_;
+bool has_output_demux_y4_u28_t_u29;
 /* presence of output_demux₊y5(t); false means absent this tick */
-bool has_output_demux_y5_t_;
-} z3top_t7Float64_t7Float64_t7Float64_0f1ef30da8f01d18_out;
+bool has_output_demux_y5_u28_t_u29;
+} top_f64_f64_f64_f64_f64_f64_f64_f64_8a697563b70ba2db_out;
 
 typedef struct {
 bool first_tick_3;
-syncharray_Float64_12 controller_controller_x_t_;
-} z3top_t7Float64_t7Float64_t7Float64_0f1ef30da8f01d18_mem;
+SynchArray_f64x12 controller_controller_x_u28_t_u29;
+} top_f64_f64_f64_f64_f64_f64_f64_f64_8a697563b70ba2db_mem;
 
-z3top_t7Float64_t7Float64_t7Float64_0f1ef30da8f01d18_out z3top_t7Float64_t7Float64_t7Float64_0f1ef30da8f01d18_step(double input_mux_u1_t_, double input_mux_u2_t_, double input_mux_u3_t_, double input_mux_u4_t_, double input_mux_u5_t_, double input_mux_u6_t_, double input_mux_u7_t_, double input_mux_u8_t_, double input_mux_u9_t_, double input_mux_u10_t_, double input_mux_u11_t_, double input_mux_u12_t_, bool clock1, int64_t c_auto, z3top_t7Float64_t7Float64_t7Float64_0f1ef30da8f01d18_mem* self);
-void z3top_t7Float64_t7Float64_t7Float64_0f1ef30da8f01d18_reset(z3top_t7Float64_t7Float64_t7Float64_0f1ef30da8f01d18_mem* self);
-extern const size_t z3top_t7Float64_t7Float64_t7Float64_0f1ef30da8f01d18_state_size;
-#endif // TOP_H
+top_f64_f64_f64_f64_f64_f64_f64_f64_8a697563b70ba2db_out top_f64_f64_f64_f64_f64_f64_f64_f64_8a697563b70ba2db_step(double input_mux_u1_u28_t_u29, double input_mux_u2_u28_t_u29, double input_mux_u3_u28_t_u29, double input_mux_u4_u28_t_u29, double input_mux_u5_u28_t_u29, double input_mux_u6_u28_t_u29, double input_mux_u7_u28_t_u29, double input_mux_u8_u28_t_u29, double input_mux_u9_u28_t_u29, double input_mux_u10_u28_t_u29, double input_mux_u11_u28_t_u29, double input_mux_u12_u28_t_u29, bool clock1, AutoPars * auto_, top_f64_f64_f64_f64_f64_f64_f64_f64_8a697563b70ba2db_mem* self);
+void top_f64_f64_f64_f64_f64_f64_f64_f64_8a697563b70ba2db_reset(top_f64_f64_f64_f64_f64_f64_f64_f64_8a697563b70ba2db_mem* self);
+extern const size_t top_f64_f64_f64_f64_f64_f64_f64_f64_8a697563b70ba2db_state_size;
+#endif // SYNCHJULIA_top_H

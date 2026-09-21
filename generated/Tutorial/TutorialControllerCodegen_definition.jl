@@ -14,7 +14,7 @@ using F16ModelWorkshop: AbstractControllerCodegenAnalysisSpec, ControllerCodegen
   var"inputs"::Array{String, 1} = ["u1", "u2", "u3", "u4", "u5", "u6", "u7", "u8", "u9", "u10", "u11", "u12"]
   # Output analysis points bounding the controller subsystem.
   var"outputs"::Array{String, 1} = ["y1", "y2", "y3", "y4", "y5"]
-  # Directory for SynchCompiler C output.
+  # Directory for SynchJulia C output.
   var"export_dir"::String = "generated_c/f16_controller"
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.DiscreteControllerCodegen(; name=:DiscreteControllerCodegen)
 end

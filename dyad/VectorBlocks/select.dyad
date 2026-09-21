@@ -1,0 +1,91 @@
+"""
+Vector channel selector: routes chosen channels of an `n`-vector onto an `m`-vector.
+
+Templated like the other vector blocks (structural dimensions, array ports via
+comprehension). `indices` lists the input channels that appear on the output, in
+output order, so the block covers slices (`indices = [3, 4, 5]`), reorderings and
+repetitions alike; `m` follows from its length. Lets a wide vector port be narrowed
+to the channels a downstream component takes — a controller that regulates a subset
+of a plant's outputs, say — with one whole-array connection at each end instead of a
+demultiplexer tree and one wire per channel.
+
+The block is a pass-through, `y[j] = u[indices[j]]`: it carries no state, imposes no
+clock, and is equally usable on a continuous or a clocked signal.
+
+Connectors:
+- `u :: RealInput[n]`  — input vector.
+- `y :: RealOutput[m]` — selected channels of `u`.
+
+Parameters:
+- `n`       — width of the input vector.
+- `indices` — input channels to route out, in output order; each must lie in `1:n`.
+"""
+component VectorSelect
+  "Input connectors."
+  u = [RealInput() for i in 1:n] {^u}
+  "Output connectors."
+  y = [RealOutput() for j in 1:m] {^y}
+  "Width of the input vector."
+  structural parameter n::Integer = 1
+  "Input channels routed to the output, in output order."
+  structural parameter indices::Integer[:] = [1]
+  "Width of the output vector (derived)."
+  final structural parameter m::Integer = size(indices, 1)
+relations
+  for j in 1:m
+    y[j] = u[indices[j]]
+  end
+metadata {
+  "_links": {
+    "u": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 0, "y1": 450, "x2": 100, "y2": 550, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "y": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 550, "rot": 0}
+        },
+        "tags": []
+      }
+    }
+  }
+}
+end
+
+"""
+Minimal validation of the vector channel selector.
+
+A four-channel `VectorConstant` carrying `[1, 2, 3, 4]` feeds a `VectorSelect` that
+picks channels 4 and 2, in that order. Each selected channel drives an `Integrator`,
+which both consumes the signal continuously and gives the model a real ODE state (an
+empty `u0` crashes the auto-dt initializer).
+
+Expected: `retcode == Success`, and at t = 1 s the integrals are `pick_first.x == 4`
+and `pick_second.x == 2` — the selection is applied, and in the order `indices` gives
+rather than in ascending channel order.
+"""
+test component TestVectorSelect
+  "Four numbered channels."
+  src = VectorConstant(n = 4, k = [1.0, 2.0, 3.0, 4.0])
+  "Picks channel 4 onto output 1 and channel 2 onto output 2."
+  pick = VectorSelect(n = 4, indices = [4, 2])
+  "Running integral of the first selected channel."
+  pick_first = BlockComponents.Continuous.Integrator()
+  "Running integral of the second selected channel."
+  pick_second = BlockComponents.Continuous.Integrator()
+relations
+  connect(src.y, pick.u)
+  connect(pick.y[1], pick_first.u)
+  connect(pick.y[2], pick_second.u)
+end
+
+analysis TestVectorSelectTransient
+  extends TransientAnalysis(stop = 1.0)
+  model = TestVectorSelect()
+relations
+end

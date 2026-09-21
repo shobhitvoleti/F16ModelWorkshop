@@ -5,6 +5,6 @@ partial analysis ControllerCodegenAnalysis
   parameter inputs::String[:]
   "Output analysis points bounding the controller subsystem."
   parameter outputs::String[:]
-  "Directory for SynchCompiler C output."
+  "Directory for SynchJulia C output."
   parameter export_dir::String = "generated_c/f16_controller"
 end

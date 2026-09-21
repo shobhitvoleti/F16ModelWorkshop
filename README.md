@@ -16,12 +16,13 @@ Dyad sources live in `dyad/`; the compiler regenerates `generated/` from them. N
 | `dyad/Plant/` | `F16PlantModel`, the 6-DOF plant with vector I/O |
 | `dyad/Trimming/` | The trimmed plant flown open loop, and its pitch departure |
 | `dyad/VectorBlocks/`, `dyad/Utils/` | Vector-signal blocks, mux/demux, and the signal-to-pose bridge the tutorial is wired with |
-| `dyad/*.dyad` | The four custom analyses (trim export, visualization, C export, velocity MPC), each backed by a spec in `src/` |
+| `dyad/*.dyad` | The three custom analyses (trim export, visualization, C export), each backed by a spec in `src/` |
 | `assets/` | Parameter sets the models `apply` — the trim point from step 1 and the two controllers from step 3 — plus icons and the airframe mesh |
 | `scripts/Tutorial/` | Regenerate the committed assets and animations from the command line |
 | `generated_c/` | The C emitted by step 6 |
 | `gui/` | Optional live tuning dashboard for the step-3 design (GLMakie) |
-| `test/` | Pins the plant to Stevens & Lewis and checks that both closed loops hold trim |
+| `test/` | Pins the plant to Stevens & Lewis and checks that the closed loops hold trim and track |
+| `MPCCOMPONENTS_ISSUES.md` | Friction log for the MPCComponents dependency step 7 is built on |
 
 ## The walkthrough
 
@@ -56,21 +57,32 @@ linearization at each velocity knot instead of applying those assets.
    controller at its analysis points and emits it as standalone C under
    `generated_c/f16_controller/`.
 
-7. **Velocity-scheduled MPC — `07_velocity_mpc.dyad`.** `TutorialVelocityMPC` builds a
-   constrained linear MPC controller at each knot of an airspeed grid — trimming and
-   linearizing the plant it is given at every one — blends their commands by measured
-   true airspeed, and flies a speed ramp on that nonlinear plant. It extends
-   `VelocityMPCAnalysis` (dyad/velocity_mpc_analysis.dyad, backed by
-   src/velocity_mpc_analysis.jl). The [step-7 guide](dyad/Tutorial/07_velocity_mpc.md)
-   explains the model, scheduling, and actuator constraints.
-   `scripts/Tutorial/run_velocity_mpc.jl` is the command-line wrapper:
+7. **Velocity-scheduled MPC — `07_velocity_mpc.dyad`.** `VelocityMPCDemo` closes the
+   plant with the gain-scheduled MPC components of `MPCComponents.Experimental`:
+   `LinearMPCScheduler` turns measured true airspeed into member weights,
+   `LinearMPCScheduledObserver` blends the members' Kalman filters, and
+   `LinearMPCScheduledOptimizer` solves the active members' quadratic programs and
+   blends their first moves at 20 Hz between the vector samplers and zero-order holds of
+   `dyad/VectorBlocks/`. Like step 4 it is wired with whole-array connections:
+   `VectorSelect` narrows the plant's twelve outputs to the ten regulated states, and a
+   `MatrixGain` each carries the reference map and the controller-to-plant unit
+   conversion. `TutorialVelocityMPC` is a `TransientAnalysis` over it: trimmed at
+   148 m/s with 2° of extra pitch attitude, commanded to 160 m/s over a ramp that
+   crosses the middle knot.
+
+   The bank is the one piece designed in Julia (`src/velocity_mpc.jl`, module
+   `VelocityMPC`): it trims the plant and evaluates its symbolic linearization at each
+   airspeed knot, in one absolute physical frame with a per-knot affine offset, and
+   returns the `MPCComponents.MPCRef` the model takes as a structural parameter.
+   `MPCCOMPONENTS_ISSUES.md` records what that dependency forced.
 
    ```sh
    julia --project=. scripts/Tutorial/run_velocity_mpc.jl
    ```
 
-   Results are written to `results/velocity_mpc/`: trajectory CSV, summary TOML,
-   and a plot of speed tracking, altitude, elevator, and controller weights.
+   writes `results/velocity_mpc/response.png` — airspeed against its reference,
+   altitude, elevator and thrust. Exporting the bank to C needs `backend = C` on the
+   optimizer and a `CCodeExport` analysis, which is a follow-up.
 
 ## The aircraft
 

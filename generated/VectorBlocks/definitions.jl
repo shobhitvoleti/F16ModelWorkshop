@@ -20,6 +20,7 @@ import BlockComponents
 import DiscreteComponents
 import DyadControlSystems
 import DyadInterface
+import MPCComponents
 import MultibodyComponents
 @doc Markdown.doc"""
 This connector represents an electrical pin with voltage and current as the potential and flow variables, respectively.
@@ -203,6 +204,9 @@ include("MultiSampler_definition.jl")
 include("MultiZeroOrderHold_definition.jl")
 include("TestSampledIOTransient_definition.jl")
 include("TestSampledIO_definition.jl")
+include("TestVectorSelectTransient_definition.jl")
+include("TestVectorSelect_definition.jl")
 include("VectorAdd_definition.jl")
 include("VectorClock_definition.jl")
 include("VectorConstant_definition.jl")
+include("VectorSelect_definition.jl")

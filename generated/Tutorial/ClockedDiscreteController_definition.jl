@@ -70,11 +70,12 @@ analysis points to remove the surrounding source/sink blocks before
   ### Components
   # Subcomponent controller of type DiscreteComponents.DiscreteStateSpace
   controller_overrides = __pop_subcomponent_overrides!(__overrides, "controller")
-  __controller_apply_exclude = Set{String}(["nx", "nu", "ny", "initialization"])
+  __controller_apply_exclude = Set{String}(["nx", "nu", "ny", "with_D", "initialization"])
   __controller_apply_schema = Dict{String,NamedTuple}(
     "nx" => (base="Integer", dims=Int[], min=nothing, max=nothing, structural=true, final=false, initial=false, guess=false),
     "nu" => (base="Integer", dims=Int[], min=nothing, max=nothing, structural=true, final=false, initial=false, guess=false),
     "ny" => (base="Integer", dims=Int[], min=nothing, max=nothing, structural=true, final=false, initial=false, guess=false),
+    "with_D" => (base="Boolean", dims=Int[], min=nothing, max=nothing, structural=true, final=false, initial=false, guess=false),
     "initialization" => (base="opaque", dims=Int[], min=nothing, max=nothing, structural=true, final=false, initial=false, guess=false),
     "A" => (base="Real", dims=Union{Int,Nothing}[nothing, nothing], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
     "B" => (base="Real", dims=Union{Int,Nothing}[nothing, nothing], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
@@ -89,7 +90,7 @@ analysis points to remove the surrounding source/sink blocks before
   __controller_apply_1 = __dyad_load_parameters(pkgdir(@__MODULE__), String(nameof(Base.moduleroot(@__MODULE__))), "dyad://F16ModelWorkshop/discrete_controller.toml")
   __controller_apply_1_flat = __dyad_flatten(__controller_apply_1)
   __dyad_check_apply(__controller_apply_1_flat, __controller_apply_schema, "dyad://F16ModelWorkshop/discrete_controller.toml")
-  push!(__systems, @named controller = DiscreteComponents.DiscreteStateSpace(; __dyad_apply_kwargs(__controller_apply_1, (:initialization,), __controller_apply_schema)..., nx=12, nu=12, ny=5, __dyad_apply_overrides(__controller_apply_1, __controller_apply_1_flat, __controller_apply_exclude, __controller_apply_schema)..., controller_overrides...))
+  push!(__systems, @named controller = DiscreteComponents.DiscreteStateSpace(; __dyad_apply_kwargs(__controller_apply_1, (:with_D, :initialization), __controller_apply_schema)..., nx=12, nu=12, ny=5, __dyad_apply_overrides(__controller_apply_1, __controller_apply_1_flat, __controller_apply_exclude, __controller_apply_schema)..., controller_overrides...))
   # Subcomponent clk of type F16ModelWorkshop.VectorBlocks.VectorClock
   clk_overrides = __pop_subcomponent_overrides!(__overrides, "clk")
   push!(__systems, @named clk = F16ModelWorkshop.VectorBlocks.VectorClock(; n=12, dt=ControllerTs, clk_overrides...))

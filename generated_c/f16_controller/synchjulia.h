@@ -9,6 +9,10 @@
 #include <math.h>
 #include <string.h>
 
+/* Opaque Julia-managed object. */
+// cppcheck-suppress misra-c2012-2.3 ; used by generated units with opaque Julia handles
+typedef struct jl_value jl_value_t;
+
 /* `__extension__` keeps `-pedantic-errors` builds (gcc) quiet about __int128. */
 __extension__ typedef __int128 synch_int128_t;
 __extension__ typedef unsigned __int128 synch_uint128_t;
