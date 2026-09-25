@@ -5,7 +5,7 @@
 
 
 using DyadInterface
-using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel
+using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel, SpecializationLevel
 using ModelingToolkit: SymbolicT, toggle_namespacing
 using DyadControlSystems: AbstractLQGAnalysisSpec, LQGAnalysisSpec
 @kwdef mutable struct TutorialLQGSpec <: AbstractLQGAnalysisSpec

@@ -6,7 +6,6 @@
 
 using ModelingToolkit
 import Markdown
-import Moshi
 using ModelingToolkit: t_nounits as t
 using OrdinaryDiffEqDefault
 using RuntimeGeneratedFunctions
@@ -19,9 +18,14 @@ end
 import BlockComponents
 import DiscreteComponents
 import DyadControlSystems
+import DyadData
 import DyadInterface
+import ElectricalComponents
 import MPCComponents
 import MultibodyComponents
+import RotationalComponents
+import ThermalComponents
+import TranslationalComponents
 @doc Markdown.doc"""
 This connector represents an electrical pin with voltage and current as the potential and flow variables, respectively.
 """

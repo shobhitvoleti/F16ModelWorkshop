@@ -32,9 +32,11 @@ Design points, each of which the loop depends on:
   knot `j`'s trim. Members agree on what a state and a command mean, each stays exact at
   its own knot, and their weighted sum is an absolute command under shared box and rate
   limits. `C` is the identity, so references and measurements are plain states.
-- Only the control *rate* is penalized. A penalty on the control level is minimized at
-  zero command while holding a reference needs a nonzero one, so the optimum would settle
-  short of the setpoint. Terminal weights are each member's discrete-LQR cost-to-go.
+- The command *level* is penalized about each member's own trimmed command, not about
+  zero: the constant linear control cost `eu = -Q2 u_j` recenters it, so the penalty
+  costs nothing at that knot's trim and leaves no steady-state error there. Each terminal
+  weight is the Riccati cost-to-go of exactly that stage cost, so every member's
+  unconstrained solution is its infinite-horizon LQR whatever the horizon is.
 - Thrust is kN in the controller and N at the plant: `cmd_map` carries that conversion,
   because in newtons the command box spans 5e4 against 25 degrees of elevator and the QP
   is badly scaled.
@@ -522,5 +524,220 @@ end
 analysis VelocityMPCHoldsTrimHighTransient
   extends TransientAnalysis(stop = 1.0)
   model = VelocityMPCHoldsTrimHigh()
+relations
+end
+
+"""
+Every bank member's unconstrained optimum is the discrete LQR of its own stage cost.
+
+The scheduled parts of `VelocityMPCDemo` are instantiated on the same bank, with constants
+in place of the plant: the reference is the trimmed regulated state of `velocity` and the
+measurement is that same state plus the fixed offset `dx`. Each member carries the Riccati
+cost-to-go of its own stage cost as its terminal weight, so its unconstrained solution is
+`u_trim - K*dx`, where `K` is the discrete LQR gain of that cost — the `K` of
+`F16ModelWorkshop.VelocityMPC.member_design(velocity, altitude, Ts)` — for every horizon
+`Np`. `dx` is sized so that command is interior to the command box and to the slew limits,
+so the quadratic program solves the unconstrained problem and returns the same command at
+every tick: the held `T_cmd`, `el_cmd`, `ail_cmd` and `rud_cmd` must equal `u_trim - K*dx`
+at all twenty samples of a one-second run, and `exitflag` must stay at or above 1.
+
+The scheduling variable is the *reference* airspeed rather than the perturbed measurement,
+so at a knot of `velocities` the scheduler gives one member a weight of 1 and the rest 0
+and the blended command is that single member's.
+
+The assertion is a model rather than a Julia call because a bank's members are an
+implementation detail of MPCComponents with no public accessor (`MPCComponents.jl#48`);
+driving the public components with constant signals reaches the same property.
+"""
+test component VelocityMPCMemberIsLQR
+  "Airspeed knot under test; both the bank's operating point and the flight condition fed in."
+  structural parameter velocity::Real = 152.4
+  "Altitude every knot is trimmed at, m."
+  structural parameter altitude::Real = 3000.0
+  "Controller sample period, s."
+  structural parameter Ts::Real = 0.05
+  "Airspeed knots the bank is designed at, m/s, strictly increasing."
+  structural parameter velocities::Real[3] = [140.0, 152.4, 170.0]
+  "Number of regulated states, the width of the measurement and reference vectors."
+  structural parameter n_states::Integer = 10
+  "Prediction and control horizon of every member, in samples."
+  structural parameter Np::Integer = 40
+  """
+  Constant offset added to the measured state: 0.006 of the Bryson scales
+   `F16ModelWorkshop.VelocityMPC.STATE_SCALES`. At that size the LQR move `K*dx` stays
+   under a quarter of every per-tick slew limit at all three knots and leaves the command
+   far inside its box, so the optimum is interior and the quadratic program is solving the
+   unconstrained problem.
+  """
+  structural parameter dx::Real[10] = [0.6, 0.0006, 0.0006, 0.0006, 0.06, 0.0006, 0.0006, 0.0012, 0.0012, 0.0012]
+  "The bank of controllers, started at the trim of `velocity` so the observer needs no transient."
+  structural parameter mpc_bank::MPCComponents.MPCRef = F16ModelWorkshop.VelocityMPC.bank(velocities, altitude, velocity, Ts, Np = Np)
+  "Trimmed states of the flight condition under test, all twelve of them."
+  structural parameter trim_full::Real[12] = F16ModelWorkshop.VelocityMPC.trim_states(velocity, altitude)
+  "Trimmed command of that flight condition, [kN, deg, deg, deg]: `u_init`, and the command the expected output is measured from."
+  structural parameter u_trim::Real[4] = F16ModelWorkshop.VelocityMPC.trim_command(velocity, altitude)
+  "The trimmed state, held constant in place of a plant."
+  state_src = F16ModelWorkshop.VectorBlocks.VectorConstant(n = 12, k = trim_full) {^state_src}
+  "The ten regulated states out of the twelve: everything but the horizontal position."
+  state_select = F16ModelWorkshop.VectorBlocks.VectorSelect(n = 12, indices = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {^state_select}
+  "The constant state offset the measurement carries."
+  perturbation = F16ModelWorkshop.VectorBlocks.VectorConstant(n = n_states, k = dx) {^perturbation}
+  "The measured state: the trim plus the offset."
+  meas_sum = F16ModelWorkshop.VectorBlocks.VectorAdd(n = n_states) {^meas_sum}
+  "Measurement clock crossing: the perturbed state, sampled at `Ts`."
+  meas_sample = F16ModelWorkshop.VectorBlocks.MultiSampler(n = n_states) {^meas_sample}
+  "Reference clock crossing: the unperturbed trimmed state, so the state error is `dx`."
+  ref_sample = F16ModelWorkshop.VectorBlocks.MultiSampler(n = n_states) {^ref_sample}
+  "Controller sample clock, planted on the reference airspeed channel."
+  clock = DiscreteComponents.PeriodicClock(dt = Ts) {^clock}
+  "Reference airspeed to member weights; at a knot one weight is 1 and the rest are 0."
+  scheduler = MPCComponents.Experimental.LinearMPCScheduler(rho_grid = velocities) {^scheduler}
+  "Weight-blended state observer of the bank."
+  observer = MPCComponents.Experimental.LinearMPCScheduledObserver(mpc = mpc_bank) {^observer}
+  "Weight-blended constrained optimizer; `u_init` is the trimmed command, so the first tick's slew limit is centered on it."
+  optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(mpc = mpc_bank, u_init = u_trim) {^optimizer}
+  "Command clock crossing, so the solved commands can be read from the solution."
+  zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(n = 4) {^zoh}
+  "Hold for the solver status: clocked signals cannot be read back from the solution."
+  zoh_flag = DiscreteComponents.ZeroOrderHold(initial_condition = 1.0) {^zoh_flag}
+  """
+  Continuous consumer of the held thrust: provides a real ODE state so the otherwise
+   purely-clocked model is not state-empty (an empty u0 crashes the auto-dt initializer).
+  """
+  intg = BlockComponents.Continuous.Integrator() {^intg}
+  "Held thrust command, kN."
+  variable T_cmd::Real
+  "Held elevator command, deg."
+  variable el_cmd::Real
+  "Held aileron command, deg."
+  variable ail_cmd::Real
+  "Held rudder command, deg."
+  variable rud_cmd::Real
+  "Composite solver status of the last tick, held so it can be read from the solution."
+  variable exitflag::Real
+relations
+  T_cmd = zoh.y[1]
+  el_cmd = zoh.y[2]
+  ail_cmd = zoh.y[3]
+  rud_cmd = zoh.y[4]
+  exitflag = zoh_flag.y
+  # ---- Constant state: the reference is the trim, the measurement is the trim plus `dx` ----
+  connect(state_src.y, state_select.u) {^id01}
+  connect(state_select.y, meas_sum.u1, ref_sample.u) {^id02}
+  connect(perturbation.y, meas_sum.u2) {^id03}
+  connect(meas_sum.y, meas_sample.u) {^id04}
+  connect(meas_sample.y, observer.y) {^id05}
+  # The reference airspeed is the scheduling variable and the loop's clock.
+  connect(ref_sample.y[5], scheduler.rho, clock.y) {^id06}
+  connect(ref_sample.y, optimizer.r) {^id07}
+  # ---- Controller internals ----
+  connect(scheduler.w, observer.w, optimizer.w) {^id08}
+  connect(observer.xhat, optimizer.xhat) {^id09}
+  connect(optimizer.u, observer.u) {^id10}
+  # ---- Commands: optimizer -> holds ----
+  connect(optimizer.u, zoh.u) {^id11}
+  connect(optimizer.exitflag, zoh_flag.u) {^id12}
+  connect(zoh.y[1], intg.u) {^id13}
+metadata {
+  "_links": {
+    "state_src": {
+      "Dyad": {"placement": {"diagram": {"x1": 60, "y1": 400, "x2": 160, "y2": 500}}}
+    },
+    "state_select": {
+      "Dyad": {"placement": {"diagram": {"x1": 260, "y1": 400, "x2": 360, "y2": 500}}}
+    },
+    "perturbation": {
+      "Dyad": {"placement": {"diagram": {"x1": 260, "y1": 180, "x2": 360, "y2": 280}}}
+    },
+    "meas_sum": {
+      "Dyad": {"placement": {"diagram": {"x1": 460, "y1": 300, "x2": 560, "y2": 400}}}
+    },
+    "meas_sample": {
+      "Dyad": {"placement": {"diagram": {"x1": 660, "y1": 300, "x2": 760, "y2": 400}}}
+    },
+    "ref_sample": {
+      "Dyad": {"placement": {"diagram": {"x1": 660, "y1": 620, "x2": 760, "y2": 720}}}
+    },
+    "clock": {
+      "Dyad": {"placement": {"diagram": {"x1": 660, "y1": 860, "x2": 760, "y2": 960}}}
+    },
+    "scheduler": {
+      "Dyad": {"placement": {"diagram": {"x1": 880, "y1": 860, "x2": 980, "y2": 960}}}
+    },
+    "observer": {
+      "Dyad": {"placement": {"diagram": {"x1": 880, "y1": 300, "x2": 980, "y2": 400}}}
+    },
+    "optimizer": {
+      "Dyad": {"placement": {"diagram": {"x1": 1100, "y1": 400, "x2": 1200, "y2": 500}}}
+    },
+    "zoh": {
+      "Dyad": {"placement": {"diagram": {"x1": 1320, "y1": 400, "x2": 1420, "y2": 500}}}
+    },
+    "zoh_flag": {
+      "Dyad": {"placement": {"diagram": {"x1": 1320, "y1": 620, "x2": 1420, "y2": 720}}}
+    },
+    "intg": {
+      "Dyad": {"placement": {"diagram": {"x1": 1540, "y1": 400, "x2": 1640, "y2": 500}}}
+    }
+  }
+}
+end
+
+"""
+`VelocityMPCMemberIsLQR` at the lowest knot of the default grid, 140 m/s.
+
+`velocity` and `Np` are structural — they select the flight condition and the horizon the
+bank is built with — so each case is its own component rather than a parameter an analysis
+overrides.
+"""
+component VelocityMPCMemberIsLQRLow
+  extends VelocityMPCMemberIsLQR(velocity = 140.0)
+relations
+end
+
+"`VelocityMPCMemberIsLQR` at the middle knot of the default grid, 152.4 m/s."
+component VelocityMPCMemberIsLQRMid
+  extends VelocityMPCMemberIsLQR(velocity = 152.4)
+relations
+end
+
+"`VelocityMPCMemberIsLQR` at the highest knot of the default grid, 170 m/s."
+component VelocityMPCMemberIsLQRHigh
+  extends VelocityMPCMemberIsLQR(velocity = 170.0)
+relations
+end
+
+"""
+`VelocityMPCMemberIsLQR` at the middle knot on a five-step horizon.
+
+The terminal weight is the cost-to-go of the stage cost, so this short horizon must return
+the same command as the forty-step `VelocityMPCMemberIsLQRMid`.
+"""
+component VelocityMPCMemberIsLQRMidShort
+  extends VelocityMPCMemberIsLQR(velocity = 152.4, Np = 5)
+relations
+end
+
+analysis VelocityMPCMemberIsLQRLowTransient
+  extends TransientAnalysis(stop = 1.0)
+  model = VelocityMPCMemberIsLQRLow()
+relations
+end
+
+analysis VelocityMPCMemberIsLQRMidTransient
+  extends TransientAnalysis(stop = 1.0)
+  model = VelocityMPCMemberIsLQRMid()
+relations
+end
+
+analysis VelocityMPCMemberIsLQRHighTransient
+  extends TransientAnalysis(stop = 1.0)
+  model = VelocityMPCMemberIsLQRHigh()
+relations
+end
+
+analysis VelocityMPCMemberIsLQRMidShortTransient
+  extends TransientAnalysis(stop = 1.0)
+  model = VelocityMPCMemberIsLQRMidShort()
 relations
 end

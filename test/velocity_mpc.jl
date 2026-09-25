@@ -1,5 +1,4 @@
 using Test
-using LinearAlgebra
 using F16ModelWorkshop
 using F16ModelWorkshop.VelocityMPC
 using DyadInterface
@@ -83,6 +82,69 @@ end
     end
 end
 
+# The terminal weight of every member is the Riccati cost-to-go of its own stage cost, so
+# the member's unconstrained optimum is the infinite-horizon discrete LQR of that cost and
+# the horizon length cannot move it. A bank's members have no public accessor
+# (MPCComponents.jl#48), so the property is asserted on the scheduled components:
+# `VelocityMPCMemberIsLQR` holds the reference at a knot's trim and the measurement one
+# fixed `dx` away, so every tick must return `u - K * dx`.
+@testset "unconstrained member equals LQR" begin
+    Ts = 0.05
+    runs = (F16ModelWorkshop.Tutorial.VelocityMPCMemberIsLQRLowTransient => (140.0, 40),
+            F16ModelWorkshop.Tutorial.VelocityMPCMemberIsLQRMidTransient => (152.4, 40),
+            F16ModelWorkshop.Tutorial.VelocityMPCMemberIsLQRHighTransient => (170.0, 40),
+            F16ModelWorkshop.Tutorial.VelocityMPCMemberIsLQRMidShortTransient => (152.4, 5))
+
+    commands = Dict{Tuple{Float64,Int},Vector{Float64}}()
+    worst = 0.0
+    for (analysis, (velocity, Np)) in runs
+        result = analysis()
+        sol = result.sol
+        model = DyadInterface.symbolic_container(result)
+        @test SciMLBase.successful_retcode(sol.retcode)
+
+        # The offset is read back from the model, so its Dyad default is the only copy.
+        # That default is 0.006 of the Bryson state scales: a quarter of the largest
+        # multiple of them whose LQR move fits one tick's slew limit at every knot, rounded
+        # down to one significant figure. The optimum is interior only if the move stays
+        # well inside the slew limits and the command box, whichever way it points.
+        dx = sol.ps[model.perturbation.k]
+        @test dx ≈ 0.006 .* VelocityMPC.STATE_SCALES
+        design = member_design(velocity, VelocityMPC.ALTITUDE, Ts)
+        move = design.K * dx
+        expected = design.u .- move
+        @test all(abs.(move) .< 0.5 .* VelocityMPC.COMMAND_RATE .* Ts)
+        @test all(VelocityMPC.COMMAND_MIN .< design.u .- abs.(move))
+        @test all(design.u .+ abs.(move) .< VelocityMPC.COMMAND_MAX)
+
+        # One entry per controller tick: twenty over a second at 20 Hz, every one of them a
+        # solved command rather than a hold's initial value.
+        @test length(sol[model.exitflag]) == 20
+        @test all(>=(1), sol[model.exitflag])
+
+        held = (model.T_cmd, model.el_cmd, model.ail_cmd, model.rud_cmd)
+        settled = Float64[]
+        for (channel, signal) in pairs(held)
+            samples = sol[signal]
+            @test length(samples) == 20
+            # The measurement is constant and the optimum interior, so every tick returns
+            # the same LQR command. That includes the first: the observer corrects its
+            # initial estimate, the unperturbed trim, with the current measurement before
+            # the optimizer reads it.
+            deviation = maximum(abs, samples .- expected[channel])
+            worst = max(worst, deviation)
+            @test deviation < 1e-6
+            push!(settled, samples[end])
+        end
+        commands[(velocity, Np)] = settled
+    end
+
+    # The terminal weight removes the horizon from the answer, so five steps and forty at
+    # the same knot must agree.
+    @test commands[(152.4, 5)]≈commands[(152.4, 40)] atol=1e-6
+    @info "unconstrained member equals LQR: largest command deviation $worst"
+end
+
 @testset "velocity MPC bank rejects unusable designs" begin
     @test_throws "strictly increasing" VelocityMPC.bank([160.0, 140.0])
     @test_throws "at least two knots" VelocityMPC.bank([152.4])
@@ -90,6 +152,7 @@ end
     @test_throws "Ts must be positive" VelocityMPC.bank(VelocityMPC.KNOTS, 3000.0, 148.0, 0.0)
     @test_throws "umin must be below umax" VelocityMPC.bank(; umax = zeros(4))
     @test_throws "rate must be positive" VelocityMPC.bank(; rate = zeros(4))
+    @test_throws "q and r must be positive" VelocityMPC.bank(; r = zeros(4))
 end
 
 # The closed loop: a solved trajectory, not just a model that builds. The tolerances are

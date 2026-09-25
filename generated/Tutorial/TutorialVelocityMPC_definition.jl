@@ -5,7 +5,7 @@
 
 
 using DyadInterface
-using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel
+using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel, SpecializationLevel
 using ModelingToolkit: SymbolicT, toggle_namespacing
 using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
 @kwdef mutable struct TutorialVelocityMPCSpec <: AbstractTransientAnalysisSpec
@@ -22,6 +22,7 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
   var"optimize"::OptimizationLevel.Type = OptimizationLevel.Aggressive()
   var"progress"::Bool = true
   var"respecialize"::Bool = false
+  var"specialization"::SpecializationLevel.Type = SpecializationLevel.Despecialize()
   var"verbose"::DEVerbosity.Type = DEVerbosity.Standard()
   var"log_file"::String = ""
   # Tutorial 7 — Velocity-scheduled linear MPC.
@@ -57,9 +58,11 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
   #   knot `j`'s trim. Members agree on what a state and a command mean, each stays exact at
   #   its own knot, and their weighted sum is an absolute command under shared box and rate
   #   limits. `C` is the identity, so references and measurements are plain states.
-  # - Only the control *rate* is penalized. A penalty on the control level is minimized at
-  #   zero command while holding a reference needs a nonzero one, so the optimum would settle
-  #   short of the setpoint. Terminal weights are each member's discrete-LQR cost-to-go.
+  # - The command *level* is penalized about each member's own trimmed command, not about
+  #   zero: the constant linear control cost `eu = -Q2 u_j` recenters it, so the penalty
+  #   costs nothing at that knot's trim and leaves no steady-state error there. Each terminal
+  #   weight is the Riccati cost-to-go of exactly that stage cost, so every member's
+  #   unconstrained solution is its infinite-horizon LQR whatever the horizon is.
   # - Thrust is kN in the controller and N at the plant: `cmd_map` carries that conversion,
   #   because in newtons the command box spans 5e4 against 25 degrees of elevator and the QP
   #   is badly scaled.
@@ -88,7 +91,7 @@ function DyadInterface.run_analysis(spec::TutorialVelocityMPCSpec)
   no_namespace_model = toggle_namespacing(spec.model, false)
   
   base_spec = TransientAnalysisSpec(;
-    name=:TransientAnalysis, overrides, alg=spec.alg, start=spec.start, stop=spec.stop, abstol=spec.abstol, reltol=spec.reltol, saveat=spec.saveat, dtmax=spec.dtmax, tstops=spec.tstops, automatic_discontinuity_detection=spec.automatic_discontinuity_detection, optimize=spec.optimize, progress=spec.progress, respecialize=spec.respecialize, verbose=spec.verbose, log_file=spec.log_file, model=spec.model
+    name=:TransientAnalysis, overrides, alg=spec.alg, start=spec.start, stop=spec.stop, abstol=spec.abstol, reltol=spec.reltol, saveat=spec.saveat, dtmax=spec.dtmax, tstops=spec.tstops, automatic_discontinuity_detection=spec.automatic_discontinuity_detection, optimize=spec.optimize, progress=spec.progress, respecialize=spec.respecialize, specialization=spec.specialization, verbose=spec.verbose, log_file=spec.log_file, model=spec.model
   )
   run_analysis(base_spec)
 end

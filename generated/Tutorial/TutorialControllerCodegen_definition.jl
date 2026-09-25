@@ -5,7 +5,7 @@
 
 
 using DyadInterface
-using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel
+using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel, SpecializationLevel
 using ModelingToolkit: SymbolicT, toggle_namespacing
 using F16ModelWorkshop: AbstractControllerCodegenAnalysisSpec, ControllerCodegenAnalysisSpec
 @kwdef mutable struct TutorialControllerCodegenSpec <: AbstractControllerCodegenAnalysisSpec

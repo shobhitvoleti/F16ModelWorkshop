@@ -4,8 +4,6 @@
 ### Instead, update the Dyad source code and regenerate this file
 
 
-import Moshi as __Ext__Moshi
-
 @doc Markdown.doc"""
    VelocityMPCHoldsTrimMid(; name, velocity, altitude, Ts, velocities, n_states, mpc_bank, trim_full, u_trim)
 

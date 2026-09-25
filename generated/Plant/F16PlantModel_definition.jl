@@ -4,8 +4,6 @@
 ### Instead, update the Dyad source code and regenerate this file
 
 
-import Moshi as __Ext__Moshi
-
 @doc Markdown.doc"""
    F16PlantModel(; name, npos_init, epos_init, alt_init, phi_init, theta_init, psi_init, vt_init, alpha_init, beta_init, P_init, Q_init, R_init, xcg)
 
@@ -172,8 +170,8 @@ F16 6-DOF plant with vector I/O and matrix aerodynamics
   __initial_conditions[R_init] = __local__R_init
   __local__xcg = xcg
   append!(__params, @parameters (xcg::Real), [description = "CG position, fraction of cbar. 0.35 is the aerodynamic reference and leaves the
-  append!(__params, @parameters (xcg::Real), [description =  aircraft statically unstable in pitch (Cma = +0.082/rad); moving it forward to 0.30
-  append!(__params, @parameters (xcg::Real), [description =  restores positive pitch stiffness."])
+  append!(__params, @parameters (xcg::Real), [description =   aircraft statically unstable in pitch (Cma = +0.082/rad); moving it forward to 0.30
+  append!(__params, @parameters (xcg::Real), [description =   restores positive pitch stiffness."])
   __initial_conditions[xcg] = __local__xcg
 
   ### Final Parameters (assignments)

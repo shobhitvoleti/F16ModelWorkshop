@@ -4,8 +4,6 @@
 ### Instead, update the Dyad source code and regenerate this file
 
 
-import Moshi as __Ext__Moshi
-
 @doc Markdown.doc"""
    VelocityMPCDemo(; name, velocities, altitude, initial_velocity, Ts, final_velocity, ramp_start, ramp_duration, pitch_perturbation, newtons_per_kilonewton, n_states, mpc_bank, trim_init, u_trim, reference_gains)
 
@@ -42,9 +40,11 @@ Design points, each of which the loop depends on:
   knot `j`'s trim. Members agree on what a state and a command mean, each stays exact at
   its own knot, and their weighted sum is an absolute command under shared box and rate
   limits. `C` is the identity, so references and measurements are plain states.
-- Only the control *rate* is penalized. A penalty on the control level is minimized at
-  zero command while holding a reference needs a nonzero one, so the optimum would settle
-  short of the setpoint. Terminal weights are each member's discrete-LQR cost-to-go.
+- The command *level* is penalized about each member's own trimmed command, not about
+  zero: the constant linear control cost `eu = -Q2 u_j` recenters it, so the penalty
+  costs nothing at that knot's trim and leaves no steady-state error there. Each terminal
+  weight is the Riccati cost-to-go of exactly that stage cost, so every member's
+  unconstrained solution is its infinite-horizon LQR whatever the horizon is.
 - Thrust is kN in the controller and N at the plant: `cmd_map` carries that conversion,
   because in newtons the command box spans 5e4 against 25 degrees of elevator and the QP
   is badly scaled.
