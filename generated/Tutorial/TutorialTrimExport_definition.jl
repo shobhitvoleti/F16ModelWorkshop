@@ -10,6 +10,7 @@ using ModelingToolkit: SymbolicT, toggle_namespacing
 using F16ModelWorkshop: AbstractTrimExportAnalysisSpec, TrimExportAnalysisSpec
 @kwdef mutable struct TutorialTrimExportSpec <: AbstractTrimExportAnalysisSpec
   name::Symbol = :TutorialTrimExport
+  # Directory the three trim assets are written to, relative to the project root.
   var"export_dir"::String = "assets"
   # Tutorial 1 — Trimming.
   # 
@@ -24,9 +25,9 @@ using F16ModelWorkshop: AbstractTrimExportAnalysisSpec, TrimExportAnalysisSpec
   # 
   # `TutorialTrim` (a zero-duration TransientAnalysis) solves the operating point.
   # `TutorialTrimExport` does the same solve and writes it as the package's trim assets —
-  # `assets/trim_point.toml`, `trim_reference.toml`, `trim_controls.toml` — which every
-  # later step loads with `apply "dyad://F16ModelWorkshop/..."`. Re-run it after changing
-  # the flight condition or the plant. It extends `TrimExportAnalysis`
+  # `assets/trim_point.toml`, `trim_reference.toml`, `trim_controls.toml` — which steps 2–6
+  # load with `apply "dyad://F16ModelWorkshop/..."`. Re-run it after changing the flight
+  # condition or the plant. Steps 7 and 8 trim their own flight conditions in Julia. It extends `TrimExportAnalysis`
   # (dyad/trim_export_analysis.dyad, backed by src/trim_export_analysis.jl).
   # 
   # Signal flow: Constants -> Mux5 -> F16PlantModel

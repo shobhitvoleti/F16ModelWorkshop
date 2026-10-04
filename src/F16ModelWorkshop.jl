@@ -6,8 +6,8 @@ import Symbolics
 import TOML
 using DyadInterface: AbstractAnalysisSpec, AbstractAnalysisSolution, TransientAnalysisSpec
 
-# Controller sample period. Dyad components reference it as a parameter default: the
-# VectorClock period of the sampled loop and the Ts of the discrete LQG design.
+# Controller sample period of steps 3b, 4 and 6: the Ts of the discrete LQG design and the
+# period of the clocks that run it.
 const ControllerTs = 0.01
 export ControllerTs
 
@@ -47,6 +47,7 @@ include("controller_codegen_analysis.jl")
 
 include("../generated/module.jl")
 include("velocity_mpc.jl")
-export VelocityMPC
+include("envelope_mpc.jl")
+export VelocityMPC, EnvelopeMPC
 
 end

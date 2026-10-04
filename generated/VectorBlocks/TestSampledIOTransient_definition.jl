@@ -37,10 +37,8 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
   # staircase of the ramp sampled every 0.1 s (per-interval increments
   # `[0.0, 0.1, ..., 0.9] * 0.1`, total 0.45 at t = 1 s).
   # 
-  # A single channel is sufficient to validate the wrapper mechanics (array
-  # comprehension, clock inference, sample-hold physics). The multi-channel vector
-  # path is exercised end-to-end by `F16DiscreteClosedLoop`, where the controller's
-  # shared block clock unifies all channels.
+  # One channel validates the wrapper mechanics; the multi-channel path is exercised end to
+  # end by `Tutorial.DiscreteClosedLoopDemo`.
   var"model"::Union{Nothing, System} = F16ModelWorkshop.VectorBlocks.TestSampledIO(; name=:TestSampledIO)
 end
 

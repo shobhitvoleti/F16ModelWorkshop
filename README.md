@@ -3,34 +3,35 @@
 Workshop material for modeling and control design in
 [Dyad](https://juliahub.com/products/dyad): a 6-DOF F-16 plant taken from trim through
 linearization to an LQG regulator, its sampled-data implementation, a 3-D animation, and
-standalone C for the controller, followed by velocity-scheduled linear MPC.
+standalone C for the controller, followed by gain-scheduled linear MPC: first on airspeed,
+then across an airspeed–altitude envelope.
 
 ## Layout
 
 Dyad sources live in `dyad/`; the compiler regenerates `generated/` from them. Never edit
-`generated/` by hand — Dyad Studio regenerates it on save, or run `dyad compile .`.
+`generated/` by hand: Dyad Studio regenerates it on save.
 
 | Path | Contents |
 |---|---|
-| `dyad/Tutorial/` | **Start here** — the seven-step walkthrough below |
+| `dyad/Tutorial/` | **Start here**: the eight-step walkthrough below |
 | `dyad/Plant/` | `F16PlantModel`, the 6-DOF plant with vector I/O |
 | `dyad/Trimming/` | The trimmed plant flown open loop, and its pitch departure |
-| `dyad/VectorBlocks/`, `dyad/Utils/` | Vector-signal blocks, mux/demux, and the signal-to-pose bridge the tutorial is wired with |
+| `dyad/VectorBlocks/`, `dyad/Utils/` | Vector-signal blocks, mux/demux and the signal-to-pose bridge the tutorial is wired with |
 | `dyad/*.dyad` | The three custom analyses (trim export, visualization, C export), each backed by a spec in `src/` |
-| `assets/` | Parameter sets the models `apply` — the trim point from step 1 and the two controllers from step 3 — plus icons and the airframe mesh |
-| `scripts/Tutorial/` | Regenerate the committed assets and animations from the command line |
+| `assets/` | Parameter sets the models `apply` (the trim point from step 1, the two controllers from step 3), the step-8 trim lookup table, icons and the airframe mesh |
+| `src/` | The custom analyses' specs, and the MPC design code of steps 7 and 8 (`VelocityMPC`, `EnvelopeMPC`) |
+| `scripts/Tutorial/` | Regenerate the committed assets, animations and MPC plots from the command line |
 | `generated_c/` | The C emitted by step 6 |
 | `gui/` | Optional live tuning dashboard for the step-3 design (GLMakie) |
 | `test/` | Pins the plant to Stevens & Lewis and checks that the closed loops hold trim and track |
-| `MPCCOMPONENTS_ISSUES.md` | Friction log for the MPCComponents dependency step 7 is built on |
 
 ## The walkthrough
 
-All seven steps are Dyad analyses in `dyad/Tutorial/`: run them from Dyad Studio, or call
+All eight steps are Dyad analyses in `dyad/Tutorial/`: run them from Dyad Studio, or call
 them by name in the REPL after `using F16ModelWorkshop, F16ModelWorkshop.Tutorial`. Steps 1
-and 3 produce the parameter-set assets used by the LQG walkthrough. Re-run those two
-to update its flight condition or plant. Step 7 computes its own trim and
-linearization at each velocity knot instead of applying those assets.
+and 3 produce the parameter-set assets that steps 2–6 apply; re-run them to change the
+flight condition or the plant. Steps 7 and 8 trim and linearize their own flight
+conditions instead.
 
 1. **Trim — `01_trim.dyad`.** `TrimDemo` declares thrust, elevator and the pitch
    attitude `missing` and pins the motion derivatives to zero, so the initialization
@@ -53,10 +54,10 @@ linearization at each velocity knot instead of applying those assets.
 5. **Visualize — `05_visualize.dyad`.** `TutorialVisualizeContinuous` and
    `TutorialVisualizeDiscrete` render the two closed loops as animations of the airframe
    on the same perturbation. Needs a Makie backend in the session (`using GLMakie`).
-6. **C code — `06_codegen.dyad`.** `TutorialControllerCodegen` isolates the clocked
-   controller at its analysis points and emits it as standalone C under
-   `generated_c/f16_controller/`.
-
+6. **C code — `06_codegen.dyad`.** `ClockedDiscreteController` is step 4's controller
+   and its clock with whole-array `u[12]`/`y[5]` connectors. `TutorialControllerCodegen`
+   compiles it with SynchToolkit and writes standalone C to `generated_c/f16_controller/`,
+   whose step function takes `double u[12]` and fills `double y[5]` each tick.
 7. **Velocity-scheduled MPC — `07_velocity_mpc.dyad`.** `VelocityMPCDemo` closes the
    plant with the gain-scheduled MPC components of `MPCComponents.Experimental`:
    `LinearMPCScheduler` turns measured true airspeed into member weights,
@@ -74,15 +75,39 @@ linearization at each velocity knot instead of applying those assets.
    `VelocityMPC`): it trims the plant and evaluates its symbolic linearization at each
    airspeed knot, in one absolute physical frame with a per-knot affine offset, and
    returns the `MPCComponents.MPCRef` the model takes as a structural parameter.
-   `MPCCOMPONENTS_ISSUES.md` records what that dependency forced.
 
    ```sh
    julia --project=. scripts/Tutorial/run_velocity_mpc.jl
    ```
 
    writes `results/velocity_mpc/response.png` — airspeed against its reference,
-   altitude, elevator and thrust. Exporting the bank to C needs `backend = C` on the
-   optimizer and a `CCodeExport` analysis, which is a follow-up.
+   altitude, elevator and thrust.
+8. **Envelope-scheduled MPC — `08_envelope_mpc.dyad`.** `EnvelopeMPCDemo` schedules a
+   bank over a `velocities × altitudes` grid (3 × 3 by default) on both measured
+   airspeed and measured altitude. `LinearMPCScheduler` takes one scalar, so the second
+   axis is composed in Dyad: one scheduler per axis, and `VectorBlocks.OuterProduct`
+   multiplies their hat-function weights into the bilinear weights of the grid. The
+   observer and optimizer are step 7's. The grid is read from one lookup-table asset,
+   `assets/envelope_trim_alpha.csv` (`DyadData.DyadInterpolationTable2D`): its axes are the
+   knots, and its values are the trimmed angle of attack, which in level flight is also the
+   trimmed pitch attitude; the pitch and angle-of-attack references blend it. Edit the axes
+   and run `scripts/Tutorial/run_envelope_tables.jl` to move the grid.
+   `TutorialEnvelopeMPC` starts trimmed at 150 m/s and 3000 m and is commanded to
+   190 m/s and 4500 m, crossing a knot on each axis.
+
+   `src/envelope_mpc.jl` (module `EnvelopeMPC`) builds the bank from step 7's member
+   design, and `EnvelopeMPC.envelope()` trims and linearizes the plant at **10 000 flight
+   conditions** (100 × 100 over 140–250 m/s and 0–9000 m) in about ten seconds once compiled. The bank
+   is a coarse subset of those: the scheduled components hold one connector per member
+   and stack every member's observer matrices, so their size grows with the member count
+   and a 10 000-member bank is out of reach ([MPCComponents.jl#94](https://github.com/JuliaComputing/MPCComponents.jl/issues/94)).
+
+   ```sh
+   julia --project=. scripts/Tutorial/run_envelope_mpc.jl
+   ```
+
+   writes `results/envelope_mpc/envelope.png` (trim and pitch divergence rate over the
+   10 000-point envelope, with the bank nodes) and `response.png`.
 
 ## The aircraft
 
@@ -103,7 +128,7 @@ regenerates the deck from the tables in `scripts/snl_aero_tables.jl`, and
 
 ```
 julia --project=. -e 'using Pkg; Pkg.instantiate()'   # first run downloads dependencies
-julia --project=. -e 'using Pkg; Pkg.test()'          # plant validation + both closed loops
+julia --project=. -e 'using Pkg; Pkg.test()'          # plant validation and every closed loop
 ```
 
 ```julia
@@ -114,3 +139,13 @@ plot(F16ModelWorkshop.Trimming.F16OpenLoopDepartureAnalysis())  # the same airfr
 ```
 
 `julia --project=. gui/launch_gui.jl` opens the tuning dashboard on the step-3 design.
+
+## Dependencies
+
+- **MPCComponents** is pinned to a commit (`[sources]` in `Project.toml`). Its `main`
+  needs LinearMPC 0.11, which is only on an unregistered branch, so the pin stays until
+  that is released.
+- **DiscreteComponents** stays on 0.4 because the MPCComponents pin requires it. 0.5
+  rewrites `Sampler`/`ZeroOrderHold` in native Dyad with clock-typed connectors; once
+  it is available, `MultiSampler`/`MultiZeroOrderHold` can become `y = sample(u)` and
+  `y = hold(u)` on whole vectors instead of one scalar block per channel.

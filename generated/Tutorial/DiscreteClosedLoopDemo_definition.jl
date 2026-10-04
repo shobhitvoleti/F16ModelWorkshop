@@ -21,8 +21,8 @@ Signal flow (all vector ports):
   err --> sample (100 Hz) --> controller       continuous -> clocked (12 ch)
   controller --> zoh --> f16plant.u_in         clocked -> continuous (5 ch)
 
-The 100 Hz clock is planted on `controller.u` and propagated to the samplers and
-holds by clock inference.
+The 100 Hz clock is planted on one controller input; the controller's block clock
+carries it to the other eleven, and clock inference to the sampler and hold.
 
 Scenario: 10 deg initial pitch perturbation about trim.
 """
@@ -179,9 +179,9 @@ Scenario: 10 deg initial pitch perturbation about trim.
   __controller_apply_1_flat = __dyad_flatten(__controller_apply_1)
   __dyad_check_apply(__controller_apply_1_flat, __controller_apply_schema, "dyad://F16ModelWorkshop/discrete_controller.toml")
   push!(__systems, @named controller = DiscreteComponents.DiscreteStateSpace(; __dyad_apply_kwargs(__controller_apply_1, (:with_D, :initialization), __controller_apply_schema)..., nx=12, nu=12, ny=5, __dyad_apply_overrides(__controller_apply_1, __controller_apply_1_flat, __controller_apply_exclude, __controller_apply_schema)..., controller_overrides...))
-  # Subcomponent clk of type F16ModelWorkshop.VectorBlocks.VectorClock
+  # Subcomponent clk of type DiscreteComponents.PeriodicClock
   clk_overrides = __pop_subcomponent_overrides!(__overrides, "clk")
-  push!(__systems, @named clk = F16ModelWorkshop.VectorBlocks.VectorClock(; n=12, dt=ControllerTs, clk_overrides...))
+  push!(__systems, @named clk = DiscreteComponents.PeriodicClock(; dt=ControllerTs, clk_overrides...))
   # Subcomponent ref of type F16ModelWorkshop.VectorBlocks.VectorConstant
   ref_overrides = __pop_subcomponent_overrides!(__overrides, "ref")
   __ref_apply_exclude = Set{String}(["n"])
@@ -220,7 +220,7 @@ Scenario: 10 deg initial pitch perturbation about trim.
   push!(__eqs, connect(sample.y, controller.u))
   push!(__eqs, connect(controller.y, zoh.u))
   push!(__eqs, connect(zoh.y, f16plant.u_in))
-  push!(__eqs, connect(clk.y, controller.u))
+  push!(__eqs, connect(clk.y, controller.u[1]))
 
   # Return completely constructed System
   return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)

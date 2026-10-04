@@ -18,7 +18,7 @@ const GRID = RGBf(0.86, 0.88, 0.91)
 const PANEL = RGBf(0.995, 0.995, 1.0)
 const AMBER = RGBf(0.66, 0.39, 0.12)
 
-const TAGLINE = "Q1 · Q2 · R1 · R2 · every panel recomputes"
+const TAGLINE = "elevator weight · every panel recomputes"
 
 # Peak sensitivity target drawn on the Gang of Four panel.
 const MS_TARGET = 2.0

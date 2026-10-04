@@ -1,21 +1,9 @@
 """
-Vector sample block: continuous vector input -> clocked vector output.
+Vector sampler: continuous `n`-vector in, clocked `n`-vector out.
 
-Dimension-preserving clock-crossing block, templated like
-`DiscreteComponents.Examples.MatrixGain` (structural dimension parameter,
-array I/O via comprehension). Wraps `n` independent scalar
-`DiscreteComponents.Sampler` blocks, one per channel, so an `n`-wide
-continuous signal is sampled into an `n`-wide clocked signal.
-
-Clock-agnostic: the output clock of each channel is inferred from what the
-corresponding `y[i]` is connected to (place a `PeriodicClock` on the clocked
-side of the crossing, or feed a clocked block such as `DiscreteStateSpace`
-downstream). Unlike `MatrixGain`, a sampler is not a linear map, so there is a
-single channel-count `n` rather than separate `ny`/`nu`.
-
-Connectors:
-- `u :: RealInput[n]`  (continuous) — input signal.
-- `y :: RealOutput[n]` (clocked)    — sampled output signal.
+One `DiscreteComponents.Sampler` per channel. Each channel's clock is inferred from what
+its `y[i]` connects to: a `PeriodicClock`, or a clocked block such as
+`DiscreteStateSpace` whose block clock unifies all of them.
 """
 component MultiSampler
   "Continuous input connectors"
@@ -55,22 +43,10 @@ metadata {
 end
 
 """
-Vector zero-order-hold block: clocked vector input -> continuous vector output.
+Vector zero-order hold: clocked `n`-vector in, continuous `n`-vector out.
 
-Dimension-preserving clock-crossing block, templated like
-`DiscreteComponents.Examples.MatrixGain` (structural dimension parameter,
-array I/O via comprehension). Wraps `n` independent scalar
-`DiscreteComponents.ZeroOrderHold` blocks, one per channel, so an `n`-wide
-clocked signal is held into an `n`-wide continuous signal.
-
-Clock-agnostic: the input clock of each channel is inferred from what the
-corresponding `u[i]` is connected to (typically a clocked block output such as
-`DiscreteStateSpace.y`). Like `MultiSampler`, a hold is dimension-preserving, so
-there is a single channel-count `n`.
-
-Connectors:
-- `u :: RealInput[n]`  (clocked)    — input signal.
-- `y :: RealOutput[n]` (continuous) — held output signal.
+One `DiscreteComponents.ZeroOrderHold` per channel; each channel's clock is inferred
+from the clocked signal driving its `u[i]`.
 """
 component MultiZeroOrderHold
   "Clocked input connectors"
@@ -122,10 +98,8 @@ Expected: `retcode == Success`; `intg.x` accumulates the zero-order-hold
 staircase of the ramp sampled every 0.1 s (per-interval increments
 `[0.0, 0.1, ..., 0.9] * 0.1`, total 0.45 at t = 1 s).
 
-A single channel is sufficient to validate the wrapper mechanics (array
-comprehension, clock inference, sample-hold physics). The multi-channel vector
-path is exercised end-to-end by `F16DiscreteClosedLoop`, where the controller's
-shared block clock unifies all channels.
+One channel validates the wrapper mechanics; the multi-channel path is exercised end to
+end by `Tutorial.DiscreteClosedLoopDemo`.
 """
 test component TestSampledIO
   "Ramp: 0 -> 1 over 1 s."

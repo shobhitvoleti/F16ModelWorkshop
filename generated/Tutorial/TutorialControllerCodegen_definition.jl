@@ -10,13 +10,16 @@ using ModelingToolkit: SymbolicT, toggle_namespacing
 using F16ModelWorkshop: AbstractControllerCodegenAnalysisSpec, ControllerCodegenAnalysisSpec
 @kwdef mutable struct TutorialControllerCodegenSpec <: AbstractControllerCodegenAnalysisSpec
   name::Symbol = :TutorialControllerCodegen
-  # Input analysis points bounding the controller subsystem.
-  var"inputs"::Array{String, 1} = ["u1", "u2", "u3", "u4", "u5", "u6", "u7", "u8", "u9", "u10", "u11", "u12"]
-  # Output analysis points bounding the controller subsystem.
-  var"outputs"::Array{String, 1} = ["y1", "y2", "y3", "y4", "y5"]
-  # Directory for SynchJulia C output.
+  # Directory the C sources are written to, relative to the project root.
   var"export_dir"::String = "generated_c/f16_controller"
-  var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.DiscreteControllerCodegen(; name=:DiscreteControllerCodegen)
+  # Tutorial 6 — standalone C for the discrete LQG controller.
+  # 
+  # `ClockedDiscreteController` is step 4's controller on its own: the clocked
+  # `DiscreteStateSpace` and its 100 Hz clock, with the 12 tracking errors in and the 5
+  # absolute commands out as whole-array connectors. `TutorialControllerCodegen` compiles it
+  # with `SynchToolkit.stkcompile` and writes the C to `generated_c/f16_controller/`: once
+  # per tick, `top_*_step_c` takes `double u[12]` and fills `double y[5]`.
+  var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.ClockedDiscreteController(; name=:ClockedDiscreteController)
 end
 
 function DyadInterface.run_analysis(spec::TutorialControllerCodegenSpec)
@@ -24,7 +27,7 @@ function DyadInterface.run_analysis(spec::TutorialControllerCodegenSpec)
   no_namespace_model = toggle_namespacing(spec.model, false)
   
   base_spec = ControllerCodegenAnalysisSpec(;
-    name=:ControllerCodegenAnalysis, overrides, inputs=spec.inputs, outputs=spec.outputs, export_dir=spec.export_dir, model=spec.model
+    name=:ControllerCodegenAnalysis, overrides, export_dir=spec.export_dir, model=spec.model
   )
   run_analysis(base_spec)
 end

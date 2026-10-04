@@ -5,32 +5,35 @@
 
 
 @doc Markdown.doc"""
-   Mux12(; name)
+   OuterProduct(; name, n1, n2)
 
-Mux12: combine 12 scalar inputs into a vector output
+Outer product of two vectors, flattened with the first index fastest:
+`y[(j - 1) * n1 + i] = u1[i] * u2[j]`.
+
+Turns the hat-function weights of two one-dimensional schedulers into the bilinear
+weights of the two-dimensional grid they span. Both inputs sum to one, so the output
+does too, and at most four of its entries are nonzero.
+
+## Parameters:
+
+| Name         | Description                         | Units  |   Default value |
+| ------------ | ----------------------------------- | ------ | --------------- |
+| `n1`         | Width of the first input.                         | --  |   1 |
+| `n2`         | Width of the second input.                         | --  |   1 |
+| `n`         | Width of the output (derived).                         | --  |   n1 * n2 |
 
 ## Connectors
 
  * `u1` - This connector represents a real signal as an input to a component ([`RealInput`](@ref))
  * `u2` - This connector represents a real signal as an input to a component ([`RealInput`](@ref))
- * `u3` - This connector represents a real signal as an input to a component ([`RealInput`](@ref))
- * `u4` - This connector represents a real signal as an input to a component ([`RealInput`](@ref))
- * `u5` - This connector represents a real signal as an input to a component ([`RealInput`](@ref))
- * `u6` - This connector represents a real signal as an input to a component ([`RealInput`](@ref))
- * `u7` - This connector represents a real signal as an input to a component ([`RealInput`](@ref))
- * `u8` - This connector represents a real signal as an input to a component ([`RealInput`](@ref))
- * `u9` - This connector represents a real signal as an input to a component ([`RealInput`](@ref))
- * `u10` - This connector represents a real signal as an input to a component ([`RealInput`](@ref))
- * `u11` - This connector represents a real signal as an input to a component ([`RealInput`](@ref))
- * `u12` - This connector represents a real signal as an input to a component ([`RealInput`](@ref))
  * `y` - This connector represents a real signal as an output from a component ([`RealOutput`](@ref))
 """
-@component function Mux12(; name = nothing, kwargs...)
+@component function OuterProduct(; name = nothing, n1=1, n2=1, kwargs...)
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
   
-    @named model = Mux12()
+    @named model = OuterProduct()
   """))
 
   __overrides = __build_overrides(kwargs)
@@ -46,6 +49,7 @@ Mux12: combine 12 scalar inputs into a vector output
   ### Structural Parameters (functions)
 
   ### Structural Parameters (Final)
+  n = n1 * n2
 
   ### Path Parameters (functions)
 
@@ -60,19 +64,9 @@ Mux12: combine 12 scalar inputs into a vector output
   ### Final Parameters (assignments)
 
   ### Final Path Parameters
-  append!(__vars, @variables (u1(t)::Real), [input = true])
-  append!(__vars, @variables (u2(t)::Real), [input = true])
-  append!(__vars, @variables (u3(t)::Real), [input = true])
-  append!(__vars, @variables (u4(t)::Real), [input = true])
-  append!(__vars, @variables (u5(t)::Real), [input = true])
-  append!(__vars, @variables (u6(t)::Real), [input = true])
-  append!(__vars, @variables (u7(t)::Real), [input = true])
-  append!(__vars, @variables (u8(t)::Real), [input = true])
-  append!(__vars, @variables (u9(t)::Real), [input = true])
-  append!(__vars, @variables (u10(t)::Real), [input = true])
-  append!(__vars, @variables (u11(t)::Real), [input = true])
-  append!(__vars, @variables (u12(t)::Real), [input = true])
-  append!(__vars, @variables (y(t)[1:12]::Real), [output = true])
+  append!(__vars, @variables (u1(t)[1:n1]::Real), [input = true])
+  append!(__vars, @variables (u2(t)[1:n2]::Real), [input = true])
+  append!(__vars, @variables (y(t)[1:n]::Real), [output = true])
 
   ### Variables (declarations)
 
@@ -94,9 +88,15 @@ Mux12: combine 12 scalar inputs into a vector output
   __assertions = []
 
   ### Equations
-  push!(__eqs, y ~ [u1, u2, u3, u4, u5, u6, u7, u8, u9, u10, u11, u12])
+
+  ### Control Structures
+  for j in 1:n2
+    for i in 1:n1
+      push!(__eqs, y[(j - 1) * n1 + i] ~ u1[i] * u2[j])
+    end
+  end
 
   # Return completely constructed System
   return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
-export Mux12
+export OuterProduct

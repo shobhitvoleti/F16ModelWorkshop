@@ -1,14 +1,5 @@
 """
-Vector constant source: emits a fixed `n`-vector on its output.
-
-Vector analogue of `BlockComponents.Sources.Constant`, templated like
-`MatrixGain` (structural dimension, array output via comprehension). Lets a
-constant reference/offset vector be connected whole to a vector input port
-instead of instantiating `n` scalar `Constant` blocks and wiring them per
-channel.
-
-Connectors:
-- `y :: RealOutput[n]` — constant output vector, `y = k`.
+Vector constant source, `y = k`: the `n`-wide analogue of `BlockComponents.Sources.Constant`.
 """
 component VectorConstant
   "Output connectors."
@@ -35,18 +26,8 @@ metadata {
 end
 
 """
-Vector weighted adder: `y = k1*u1 + k2*u2`, elementwise over `n` channels.
-
-Vector analogue of `BlockComponents.Math.Add` (same `k1`/`k2` gain parameters),
-templated like `MatrixGain`. With `k2 = -1` it is a vector feedback/error block
-(`y = u1 - u2`); with `k2 = 1` it is a vector sum. Lets two vector ports be
-combined whole instead of instantiating `n` scalar `Add` blocks and wiring them
-per channel.
-
-Connectors:
-- `u1 :: RealInput[n]`  — first input vector.
-- `u2 :: RealInput[n]`  — second input vector.
-- `y  :: RealOutput[n]` — weighted sum `k1*u1 + k2*u2`.
+Vector weighted adder, `y = k1*u1 + k2*u2`: the `n`-wide analogue of
+`BlockComponents.Math.Add`. With `k2 = -1` it is a tracking-error block.
 """
 component VectorAdd
   "First input vector."
@@ -92,4 +73,32 @@ metadata {
     }
   }
 }
+end
+"""
+Outer product of two vectors, flattened with the first index fastest:
+`y[(j - 1) * n1 + i] = u1[i] * u2[j]`.
+
+Turns the hat-function weights of two one-dimensional schedulers into the bilinear
+weights of the two-dimensional grid they span. Both inputs sum to one, so the output
+does too, and at most four of its entries are nonzero.
+"""
+component OuterProduct
+  "First input vector; its index runs fastest in the output."
+  u1 = [RealInput() for i in 1:n1] {^u1}
+  "Second input vector."
+  u2 = [RealInput() for j in 1:n2] {^u2}
+  "Flattened outer product."
+  y = [RealOutput() for k in 1:n] {^y}
+  "Width of the first input."
+  structural parameter n1::Integer = 1
+  "Width of the second input."
+  structural parameter n2::Integer = 1
+  "Width of the output (derived)."
+  final structural parameter n::Integer = n1 * n2
+relations
+  for j in 1:n2
+    for i in 1:n1
+      y[(j - 1) * n1 + i] = u1[i] * u2[j]
+    end
+  end
 end

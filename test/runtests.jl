@@ -77,3 +77,4 @@ end
 end
 
 include("velocity_mpc.jl")
+include("envelope_mpc.jl")

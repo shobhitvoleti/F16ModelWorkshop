@@ -7,13 +7,13 @@
 @doc Markdown.doc"""
    ClockedDiscreteController(; name)
 
-Tutorial 6 — isolate and generate C for the discrete LQG controller.
+Tutorial 6 — standalone C for the discrete LQG controller.
 
-The closed-loop model keeps vector signals around the clocked controller but exposes
-scalar analysis points through Demux12/Mux12 and Demux5/Mux5 pairs, matching the LQG
-design pattern. `ModelingToolkit.isolate_subsystem` uses the 12 `u*` and 5 `y*`
-analysis points to remove the surrounding source/sink blocks before
-`SynchToolkit.stkcompile`.
+`ClockedDiscreteController` is step 4's controller on its own: the clocked
+`DiscreteStateSpace` and its 100 Hz clock, with the 12 tracking errors in and the 5
+absolute commands out as whole-array connectors. `TutorialControllerCodegen` compiles it
+with `SynchToolkit.stkcompile` and writes the C to `generated_c/f16_controller/`: once
+per tick, `top_*_step_c` takes `double u[12]` and fills `double y[5]`.
 
 ## Connectors
 
@@ -89,9 +89,9 @@ analysis points to remove the surrounding source/sink blocks before
   __controller_apply_1_flat = __dyad_flatten(__controller_apply_1)
   __dyad_check_apply(__controller_apply_1_flat, __controller_apply_schema, "dyad://F16ModelWorkshop/discrete_controller.toml")
   push!(__systems, @named controller = DiscreteComponents.DiscreteStateSpace(; __dyad_apply_kwargs(__controller_apply_1, (:with_D, :initialization), __controller_apply_schema)..., nx=12, nu=12, ny=5, __dyad_apply_overrides(__controller_apply_1, __controller_apply_1_flat, __controller_apply_exclude, __controller_apply_schema)..., controller_overrides...))
-  # Subcomponent clk of type F16ModelWorkshop.VectorBlocks.VectorClock
-  clk_overrides = __pop_subcomponent_overrides!(__overrides, "clk")
-  push!(__systems, @named clk = F16ModelWorkshop.VectorBlocks.VectorClock(; n=12, dt=ControllerTs, clk_overrides...))
+  # Subcomponent clock of type DiscreteComponents.PeriodicClock
+  clock_overrides = __pop_subcomponent_overrides!(__overrides, "clock")
+  push!(__systems, @named clock = DiscreteComponents.PeriodicClock(; dt=ControllerTs, clock_overrides...))
 
   ### Check there are no unmatched overrides
   isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
@@ -105,7 +105,7 @@ analysis points to remove the surrounding source/sink blocks before
 
   ### Equations
   push!(__eqs, connect(u, controller.u))
-  push!(__eqs, connect(clk.y, controller.u))
+  push!(__eqs, connect(clock.y, controller.u[1]))
   push!(__eqs, connect(controller.y, y))
 
   # Return completely constructed System

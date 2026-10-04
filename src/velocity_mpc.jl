@@ -13,7 +13,6 @@ module VelocityMPC
 using LinearAlgebra
 using ADTypes: AutoFiniteDiff
 import ControlSystemsBase as CS
-import ControlSystemsMTK
 import MPCComponents
 import ModelingToolkit as MTK
 import Symbolics
@@ -21,7 +20,7 @@ import NonlinearSolve
 import SciMLBase
 using ..F16ModelWorkshop: Plant
 
-export F16Dynamics, bank, linear_model, member_design, reference_map, trim_command, trim_point,
+export F16Dynamics, bank, build_bank, linear_model, member_design, reference_map, trim_command, trim_point,
     trim_states
 
 "Public state order of the plant, matching `F16PlantModel.y_out`."
@@ -76,12 +75,12 @@ function finite_vector(x, n, name)
     return Vector{Float64}(x)
 end
 
-function check_grid(velocities)
-    grid = Float64[velocities...]
-    length(grid) >= 2 || throw(ArgumentError("velocity grid needs at least two knots"))
-    all(isfinite, grid) && all(>(0), grid) ||
-        throw(ArgumentError("velocity knots must be finite and positive (m/s)"))
-    all(>(0), diff(grid)) || throw(ArgumentError("velocity knots must be strictly increasing"))
+"A scheduling grid as a `Vector{Float64}`: at least two finite, strictly increasing knots."
+function check_grid(knots)
+    grid = Float64[knots...]
+    length(grid) >= 2 || throw(ArgumentError("a scheduling grid needs at least two knots"))
+    all(isfinite, grid) || throw(ArgumentError("knots must be finite"))
+    all(>(0), diff(grid)) || throw(ArgumentError("knots must be strictly increasing"))
     return grid
 end
 
@@ -119,8 +118,7 @@ function F16Dynamics(plant::MTK.System)
     length(unknowns) == 12 && all(!isnothing, permutation) ||
         error("MPC linearization must preserve the twelve physical plant states")
     pars = MTK.parameters(sys)
-    # The generated state-space function follows ControlSystemsMTK's symbolic
-    # linearization interface; input operating values remain explicit parameters.
+    # Compile the symbolic Jacobian once; the input operating values stay parameters.
     symbolic_model = CS.ss(mats.A, mats.B, mats.C, mats.D)
     jacobian = Symbolics.build_function(symbolic_model, unknowns, pars;
         expression=Val(false), force_SA=true)
@@ -319,53 +317,53 @@ end
 """
     bank(velocities=KNOTS, altitude=ALTITUDE, initial_velocity=INITIAL_VELOCITY, Ts=0.05; kwargs...)
 
-The `MPCComponents.MPCRef` bank of constrained `LinearMPC` controllers that
-`VelocityMPCDemo` schedules on measured true airspeed: one member per knot of
-`velocities`, each of them a `member_design` at that knot's straight-and-level trim.
-`bank` adds what the members share — the command box, the slew limits, the horizon, the
-observer covariances and the scheduling grid.
-
-All members are built in **one absolute physical frame** — states in the plant's units,
-commands in kilonewtons and degrees — rather than in per-knot deviation coordinates:
-the scheduled components require every member to share an operating point, and an
-absolute frame also makes the weighted sum of the members' commands an absolute command.
-Each knot carries its own affine offset `f_j = -A_j x_j - B_j u_j`, so `ẋ = A_j x + B_j u + f_j`
-vanishes at that knot's trim and the member is exact there. `C` is the identity, so the
-references, the output weights and the measurements are all plain physical states.
-
-The cost weights `q` and `r` are given per channel in units of `sx` (states) and `su`
-(commands), the Bryson-rule scales. The stage cost penalizes the command *level* about
-knot `j`'s own trimmed command `u_j`,
-`(x - reference)' Q1 (x - reference) + (u - u_j)' Q2 (u - u_j)`, with
-`Q1 = diagm(q ./ sx.^2)` and `Q2 = diagm(r ./ su.^2)`. The centering is carried by
-LinearMPC's constant linear control cost `eu = -Q2 u_j`: in its `0.5 u' Q2 u + eu'u`
-convention that is `0.5 (u - u_j)' Q2 (u - u_j)` up to a constant. The penalty therefore
-costs nothing at the knot's own trim and leaves no steady-state error there.
-
-Each member's terminal weight is the discrete algebraic Riccati solution
-`are(Discrete, F_j, G_j, Q1, Q2)` of exactly that stage cost, so the terminal cost *is*
-the cost-to-go of the horizon's own running cost: the unconstrained solution of every
-member is its infinite-horizon discrete LQR, `u = u_j - K_j (x - x_j)`, for any `Np`.
-The horizon then buys constraint handling alone, not closed-loop behavior.
-
-When the reference is not the member's own trim, the level penalty is centered on the
-knot's command `u_j` rather than on the equilibrium command of the reference, so the
-member trades airspeed error against command travel away from its design point. The
-scheduler's hat-function blend of the neighboring members interpolates that centering
-across the grid.
-
-`umin`/`umax` bound the command and `rate` its change per second; both are common to all
-members, so the convex blend of their commands respects them too. `x0` is the trim state
-at `initial_velocity` and `measurement_noise` the observer's measurement covariance,
-small enough against the unit process covariance that the Kalman gain is the identity to
-one part in a million and the estimate is the measurement.
+The `MPCComponents.MPCRef` bank `VelocityMPCDemo` schedules on measured airspeed: one
+`member_design` per knot of `velocities`, all at `altitude`. See `build_bank` for what the
+members share and for the keyword arguments.
 """
-function bank(velocities=KNOTS, altitude=ALTITUDE, initial_velocity=INITIAL_VELOCITY, Ts=0.05;
+function bank(velocities=KNOTS, altitude=ALTITUDE, initial_velocity=INITIAL_VELOCITY, Ts=0.05; kwargs...)
+    grid = check_grid(velocities)
+    first(grid) <= initial_velocity <= last(grid) ||
+        throw(ArgumentError("initial_velocity $initial_velocity m/s is outside the design grid $grid"))
+    return build_bank(grid, [(v, altitude) for v in grid], (initial_velocity, altitude), Ts; kwargs...)
+end
+
+"""
+    build_bank(knots, conditions, initial, Ts=0.05; xcg, Np=40, q, sx, r, su, umin, umax,
+               rate, measurement_noise=1e-6) -> MPCComponents.MPCRef
+
+A bank of constrained `LinearMPC` members, member `j` the `member_design` at the flight
+condition `conditions[j] = (velocity, altitude)` and filed under `knots[j]`. Steps 7 and 8
+both build their banks here; they differ only in the conditions and in how the members
+are scheduled.
+
+All members share **one absolute physical frame** — states in plant units, commands in kN
+and degrees — because the scheduled components require one operating point and because
+it makes the weighted sum of the members' commands an absolute command. Each member
+carries its own affine offset `f_j = -A_j x_j - B_j u_j`, so it is exact at its own trim.
+`C` is the identity: references, output weights and measurements are plain states.
+
+The stage cost is `(x - r)' Q1 (x - r) + (u - u_j)' Q2 (u - u_j)`, with
+`Q1 = diagm(q ./ sx.^2)` and `Q2 = diagm(r ./ su.^2)` (Bryson scales `sx`, `su`). The
+centering on the member's own trimmed command `u_j` is LinearMPC's linear control cost
+`eu = -Q2 u_j`, so the penalty costs nothing at that trim. The terminal weight is the
+discrete Riccati cost-to-go of the same stage cost, so each member's unconstrained
+optimum is its infinite-horizon LQR for any horizon `Np`: the horizon buys constraint
+handling, not closed-loop behaviour.
+
+`umin`/`umax` bound the command and `rate` its change per second; they are common to all
+members, so the convex blend of the members' commands respects them too. The observer
+starts at the trim of `initial = (velocity, altitude)`, and `measurement_noise` is small
+enough against the unit process covariance that the estimate is the measurement.
+"""
+function build_bank(knots, conditions, initial, Ts=0.05;
         xcg=XCG, Np=40,
         q=STATE_WEIGHTS, sx=STATE_SCALES, r=COMMAND_WEIGHTS, su=COMMAND_SCALES,
         umin=COMMAND_MIN, umax=COMMAND_MAX,
         rate=COMMAND_RATE, measurement_noise=1e-6)
-    grid = check_grid(velocities)
+    grid = check_grid(knots)
+    length(conditions) == length(grid) ||
+        throw(DimensionMismatch("$(length(grid)) knots but $(length(conditions)) flight conditions"))
     isfinite(Ts) && Ts > 0 || throw(ArgumentError("Ts must be positive and finite"))
     Np isa Integer && Np >= 2 || throw(ArgumentError("Np must be an integer at least 2"))
     qq = finite_vector(q, 10, "q")
@@ -381,28 +379,22 @@ function bank(velocities=KNOTS, altitude=ALTITUDE, initial_velocity=INITIAL_VELO
     all(>(0), slew) || throw(ArgumentError("rate must be positive on every channel"))
     isfinite(measurement_noise) && measurement_noise > 0 ||
         throw(ArgumentError("measurement_noise must be positive and finite"))
-    first(grid) <= initial_velocity <= last(grid) ||
-        throw(ArgumentError("initial_velocity $initial_velocity m/s is outside the design grid $grid"))
 
+    designs = [member_design(v, h, Ts; xcg, q=qq, sx=sxx, r=rr, su=suu) for (v, h) in conditions]
+    for (design, (v, h)) in zip(designs, conditions)
+        all(lower .<= design.u .<= upper) || throw(ArgumentError(
+            "the trim command at $v m/s and $h m, $(design.u), is outside [umin, umax]"))
+    end
+    # Only the model, its offset, the recentred control cost and the terminal weight vary
+    # between members; everything passed to build_linear_mpc_bank below is shared.
+    members = Dict(k => (; d.A, d.B, d.f_offset, d.eu, d.Qf) for (k, d) in zip(grid, designs))
     Inu = Matrix{Float64}(I, 4, 4)
     Inx = Matrix{Float64}(I, 10, 10)
-    x0 = _trim(initial_velocity, altitude, xcg).x[FLIGHT]
+    x0 = _trim(initial..., xcg).x[FLIGHT]
 
-    designs = [member_design(velocity, altitude, Ts; xcg, q=qq, sx=sxx, r=rr, su=suu)
-               for velocity in grid]
-    for design in designs
-        all(lower .<= design.u .<= upper) || throw(ArgumentError(
-            "the trim command at $(design.velocity) m/s, $(design.u), is outside [umin, umax]"))
-    end
-    # Only the model, its affine offset, the recentered control cost and the terminal
-    # weight vary from member to member; everything else below is shared.
-    knots = Dict(design.velocity => (; design.A, design.B, design.f_offset, design.eu,
-        design.Qf) for design in designs)
-    Q1, Q2 = first(designs).Q1, first(designs).Q2
-
-    return MPCComponents.Experimental.build_linear_mpc_bank(grid, rho -> knots[rho];
+    return MPCComponents.Experimental.build_linear_mpc_bank(grid, k -> members[k];
         C=Inx, continuous=true, Ts, Np, Nc=Np,
-        Q1, Q2,
+        Q1=first(designs).Q1, Q2=first(designs).Q2,
         umin=lower, umax=upper,
         # Slew limit as a general constraint block: -rate*Ts <= u - u_prev <= rate*Ts.
         Au=Inu, Aup=-Inu, lb=-slew .* Ts, ub=slew .* Ts, constraint_ks=1:Np,

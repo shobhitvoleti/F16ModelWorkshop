@@ -39,8 +39,8 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
   #   err --> sample (100 Hz) --> controller       continuous -> clocked (12 ch)
   #   controller --> zoh --> f16plant.u_in         clocked -> continuous (5 ch)
   # 
-  # The 100 Hz clock is planted on `controller.u` and propagated to the samplers and
-  # holds by clock inference.
+  # The 100 Hz clock is planted on one controller input; the controller's block clock
+  # carries it to the other eleven, and clock inference to the sampler and hold.
   # 
   # Scenario: 10 deg initial pitch perturbation about trim.
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.DiscreteClosedLoopDemo(; name=:DiscreteClosedLoopDemo)

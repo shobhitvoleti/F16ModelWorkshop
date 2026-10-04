@@ -109,11 +109,12 @@ end
 
 @testset "trimmed level flight over the speed range" begin
     # S&L Table 3.6-2: as speed drops, alpha rises monotonically. Both points sit
-    # inside the alpha range the deck was fitted over.
-    slow = trim_at(alt = 0.0, vt = 400 * 0.3048, xcg = 0.35)
-    fast = trim_at(alt = 0.0, vt = 600 * 0.3048, xcg = 0.35)
-    @test slow.alpha > fast.alpha
-    @test fast.alpha > 0
+    # inside the alpha range the deck was fitted over. They are far from `TrimDemo`'s
+    # guesses, so they are trimmed with the Newton solve of `VelocityMPC` on the same
+    # plant rather than with the initialization solver.
+    plant = F16ModelWorkshop.VelocityMPC.dynamics(0.35)
+    alpha(vt) = F16ModelWorkshop.VelocityMPC.trim_point(plant, vt; altitude = 0.0).x[8]
+    @test alpha(400 * 0.3048) > alpha(600 * 0.3048) > 0
 end
 
 @testset "statically unstable in pitch at the reference CG" begin

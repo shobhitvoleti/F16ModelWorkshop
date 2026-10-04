@@ -7,9 +7,12 @@
 @doc Markdown.doc"""
    F16OpenLoopTrim(; name)
 
-Open-loop trim scenario using F16PlantModel with vector I/O.
-Signal flow: Constants → Mux5 → F16PlantModel → Demux12
-Demux outputs: [npos, epos, alt, phi, theta, psi, vt, alpha, beta, P, Q, R]
+The trimmed plant flown open loop: the 3000 m / 152.4 m/s trim controls held constant.
+
+Started at the trim it stays close to it over the 10 s horizon: the trim is an equilibrium.
+`F16OpenLoopDeparture` shows that it is an unstable one.
+
+Signal flow: Constants -> Mux5 -> F16PlantModel
 """
 @component function F16OpenLoopTrim(; name = nothing, kwargs...)
   isnothing(name) && throw(ArgumentError("""

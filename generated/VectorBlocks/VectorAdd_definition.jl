@@ -7,18 +7,8 @@
 @doc Markdown.doc"""
    VectorAdd(; name, n, k1, k2)
 
-Vector weighted adder: `y = k1*u1 + k2*u2`, elementwise over `n` channels.
-
-Vector analogue of `BlockComponents.Math.Add` (same `k1`/`k2` gain parameters),
-templated like `MatrixGain`. With `k2 = -1` it is a vector feedback/error block
-(`y = u1 - u2`); with `k2 = 1` it is a vector sum. Lets two vector ports be
-combined whole instead of instantiating `n` scalar `Add` blocks and wiring them
-per channel.
-
-Connectors:
-- `u1 :: RealInput[n]`  — first input vector.
-- `u2 :: RealInput[n]`  — second input vector.
-- `y  :: RealOutput[n]` — weighted sum `k1*u1 + k2*u2`.
+Vector weighted adder, `y = k1*u1 + k2*u2`: the `n`-wide analogue of
+`BlockComponents.Math.Add`. With `k2 = -1` it is a tracking-error block.
 
 ## Parameters:
 

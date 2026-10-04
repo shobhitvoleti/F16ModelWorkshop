@@ -162,9 +162,9 @@ Sampled-data closed loop (04's 100 Hz controller) with the airframe rendered fro
   __controller_apply_1_flat = __dyad_flatten(__controller_apply_1)
   __dyad_check_apply(__controller_apply_1_flat, __controller_apply_schema, "dyad://F16ModelWorkshop/discrete_controller.toml")
   push!(__systems, @named controller = DiscreteComponents.DiscreteStateSpace(; __dyad_apply_kwargs(__controller_apply_1, (:with_D, :initialization), __controller_apply_schema)..., nx=12, nu=12, ny=5, __dyad_apply_overrides(__controller_apply_1, __controller_apply_1_flat, __controller_apply_exclude, __controller_apply_schema)..., controller_overrides...))
-  # Subcomponent clk of type F16ModelWorkshop.VectorBlocks.VectorClock
+  # Subcomponent clk of type DiscreteComponents.PeriodicClock
   clk_overrides = __pop_subcomponent_overrides!(__overrides, "clk")
-  push!(__systems, @named clk = F16ModelWorkshop.VectorBlocks.VectorClock(; n=12, dt=ControllerTs, clk_overrides...))
+  push!(__systems, @named clk = DiscreteComponents.PeriodicClock(; dt=ControllerTs, clk_overrides...))
   # Subcomponent ref of type F16ModelWorkshop.VectorBlocks.VectorConstant
   ref_overrides = __pop_subcomponent_overrides!(__overrides, "ref")
   __ref_apply_exclude = Set{String}(["n"])
@@ -218,7 +218,7 @@ Sampled-data closed loop (04's 100 Hz controller) with the airframe rendered fro
   push!(__eqs, connect(sample.y, controller.u))
   push!(__eqs, connect(controller.y, zoh.u))
   push!(__eqs, connect(zoh.y, f16plant.u_in))
-  push!(__eqs, connect(clk.y, controller.u))
+  push!(__eqs, connect(clk.y, controller.u[1]))
   push!(__eqs, connect(f16plant.y_out, demux.u))
   push!(__eqs, connect(demux.y1, demux_pos.u))
   push!(__eqs, connect(demux_pos.y1, pose_mux.u1))

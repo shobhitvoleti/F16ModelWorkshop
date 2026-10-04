@@ -1,7 +1,10 @@
 """
-Open-loop trim scenario using F16PlantModel with vector I/O.
-Signal flow: Constants → Mux5 → F16PlantModel → Demux12
-Demux outputs: [npos, epos, alt, phi, theta, psi, vt, alpha, beta, P, Q, R]
+The trimmed plant flown open loop: the 3000 m / 152.4 m/s trim controls held constant.
+
+Started at the trim it stays close to it over the 10 s horizon: the trim is an equilibrium.
+`F16OpenLoopDeparture` shows that it is an unstable one.
+
+Signal flow: Constants -> Mux5 -> F16PlantModel
 """
 test component F16OpenLoopTrim
   # ---- Trim control inputs ----
@@ -15,7 +18,6 @@ test component F16OpenLoopTrim
   # ---- Plant ----
   plant = F16ModelWorkshop.Plant.F16PlantModel(alt_init = 3000.0, vt_init = 152.4, alpha_init = 0.059129, theta_init = 0.059129, beta_init = 0.0, phi_init = 0.0, psi_init = 0.0, P_init = 0.0, Q_init = 0.0, R_init = 0.0) {^plant}
 relations
-  # Constants → Mux
   connect(T_cmd.y, mux.u1) {^id8}
   connect(el_cmd.y, mux.u2) {^id9}
   connect(ail_cmd.y, mux.u3) {^id10}

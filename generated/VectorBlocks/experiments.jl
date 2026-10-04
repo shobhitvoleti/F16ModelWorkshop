@@ -11,9 +11,9 @@ end
 
 include("MultiSampler_experiment.jl")
 include("MultiZeroOrderHold_experiment.jl")
+include("OuterProduct_experiment.jl")
 include("TestSampledIO_experiment.jl")
 include("TestVectorSelect_experiment.jl")
 include("VectorAdd_experiment.jl")
-include("VectorClock_experiment.jl")
 include("VectorConstant_experiment.jl")
 include("VectorSelect_experiment.jl")

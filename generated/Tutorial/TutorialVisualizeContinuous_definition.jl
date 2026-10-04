@@ -10,11 +10,17 @@ using ModelingToolkit: SymbolicT, toggle_namespacing
 using F16ModelWorkshop: AbstractVisualizeAnalysisSpec, VisualizeAnalysisSpec
 @kwdef mutable struct TutorialVisualizeContinuousSpec <: AbstractVisualizeAnalysisSpec
   name::Symbol = :TutorialVisualizeContinuous
+  # Simulated duration, s.
   var"stop"::Float64 = 10.0
+  # Destination of the animation, relative to the project root.
   var"filename"::String = "assets/f16_continuous_closed_loop.mp4"
+  # Characteristic scene size; sets the renderer's default scaling.
   var"nominal_length"::Float64 = 500.0
+  # Camera position [x, y, z] in the visualizer's Y-up world frame.
   var"camera"::Array{Float64, 1} = [-500.0, 3200.0, 200.0]
+  # Point the camera is aimed at [x, y, z].
   var"lookat"::Array{Float64, 1} = [2000.0, 3000.0, 0.0]
+  # Draw the world axes.
   var"show_axis"::Bool = false
   # Continuous closed loop (03's regulator) with the airframe rendered from its pose.
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.ContinuousClosedLoopVizDemo(; name=:ContinuousClosedLoopVizDemo)

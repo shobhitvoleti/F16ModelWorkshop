@@ -1,10 +1,13 @@
+"""
+Compile a clocked controller to standalone C.
+
+The model's top-level `u` and `y` array connectors become the node's input and output;
+it must carry its own `PeriodicClock` of period `ControllerTs`. Backed by
+`ControllerCodegenAnalysisSpec` in src/controller_codegen_analysis.jl.
+"""
 partial analysis ControllerCodegenAnalysis
   extends Analysis
   model::Dyad.EmptyComponent = Dyad.EmptyComponent()
-  "Input analysis points bounding the controller subsystem."
-  parameter inputs::String[:]
-  "Output analysis points bounding the controller subsystem."
-  parameter outputs::String[:]
-  "Directory for SynchJulia C output."
+  "Directory the C sources are written to, relative to the project root."
   parameter export_dir::String = "generated_c/f16_controller"
 end

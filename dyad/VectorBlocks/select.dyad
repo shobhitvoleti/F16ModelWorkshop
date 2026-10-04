@@ -1,24 +1,9 @@
 """
 Vector channel selector: routes chosen channels of an `n`-vector onto an `m`-vector.
 
-Templated like the other vector blocks (structural dimensions, array ports via
-comprehension). `indices` lists the input channels that appear on the output, in
-output order, so the block covers slices (`indices = [3, 4, 5]`), reorderings and
-repetitions alike; `m` follows from its length. Lets a wide vector port be narrowed
-to the channels a downstream component takes — a controller that regulates a subset
-of a plant's outputs, say — with one whole-array connection at each end instead of a
-demultiplexer tree and one wire per channel.
-
-The block is a pass-through, `y[j] = u[indices[j]]`: it carries no state, imposes no
-clock, and is equally usable on a continuous or a clocked signal.
-
-Connectors:
-- `u :: RealInput[n]`  — input vector.
-- `y :: RealOutput[m]` — selected channels of `u`.
-
-Parameters:
-- `n`       — width of the input vector.
-- `indices` — input channels to route out, in output order; each must lie in `1:n`.
+`y[j] = u[indices[j]]`, so the block covers slices, reorderings and repetitions alike.
+It carries no state and imposes no clock, so it works on continuous and clocked signals.
+Steps 7 and 8 use it to narrow the plant's 12 outputs to the 10 regulated states.
 """
 component VectorSelect
   "Input connectors."

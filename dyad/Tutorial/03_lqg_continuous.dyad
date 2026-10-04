@@ -57,9 +57,9 @@ component LQGDemo
   "Trim control offsets [T,el,ail,rud,lef], read from the applied trim asset."
   structural parameter trim_vals::Real[5] = F16ModelWorkshop.trim_asset("trim_controls")
 relations
-  # ---- Operating point: every guess derived from the loaded trim (ref_vals / trim_vals) ----
+  # ---- Operating point: every guess is derived from the applied trim ----
   guess f16plant.T = trim_vals[1]
-  # Derived aero/atmosphere seeds (functions of the trim, refined by the solver).
+  # Aero and atmosphere seeds at the trim; the solver refines them.
   guess f16plant.rho = 0.909
   guess f16plant.qbar = 10557.0
   guess f16plant.Udot = 0.0
@@ -73,13 +73,11 @@ relations
   guess f16plant.C_lat = [0.0, 0.0, 0.0]
   guess f16plant.y_out = ref_vals
   guess f16plant.u_in = trim_vals
-  # Demux stages (grouped state values).
   # Broken-loop side of the 12 measurement analysis points.
   guess err.u2 = ref_vals
   guess controller.x = fill(0.0, 12)
   guess controller.u = fill(0.0, 12)
   guess controller.y = fill(0.0, 5)
-  # Broken-loop side of the 5 control analysis points.
   # ---- Analysis points: SCALAR, at the demux/mux taps ----
   yn: analysis_point(demux_pos.y1, mux_pos.u1)
   ye: analysis_point(demux_pos.y2, mux_pos.u2)

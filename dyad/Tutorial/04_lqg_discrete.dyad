@@ -13,8 +13,8 @@ Signal flow (all vector ports):
   err --> sample (100 Hz) --> controller       continuous -> clocked (12 ch)
   controller --> zoh --> f16plant.u_in         clocked -> continuous (5 ch)
 
-The 100 Hz clock is planted on `controller.u` and propagated to the samplers and
-holds by clock inference.
+The 100 Hz clock is planted on one controller input; the controller's block clock
+carries it to the other eleven, and clock inference to the sampler and hold.
 
 Scenario: 10 deg initial pitch perturbation about trim.
 """
@@ -23,8 +23,8 @@ component DiscreteClosedLoopDemo
   f16plant = F16ModelWorkshop.Plant.F16PlantModel(apply "dyad://F16ModelWorkshop/trim_point.toml", theta_init = 0.17453292519943295) {^f16plant}
   "Discrete (ZOH) LQG controller as a clocked state-space block; trim folded into the output operating point y0."
   controller = DiscreteComponents.DiscreteStateSpace(nx = 12, nu = 12, ny = 5, apply "dyad://F16ModelWorkshop/discrete_controller.toml") {^controller}
-  "Controller sample clock (100 Hz), vector: one clock per controller input."
-  clk = F16ModelWorkshop.VectorBlocks.VectorClock(n = 12, dt = ControllerTs) {^clk}
+  "Controller sample clock (100 Hz), planted on one controller input."
+  clk = DiscreteComponents.PeriodicClock(dt = ControllerTs) {^clk}
   "Reference set-points for the 12 measured states (vector source)."
   ref = F16ModelWorkshop.VectorBlocks.VectorConstant(n = 12, apply "dyad://F16ModelWorkshop/trim_reference.toml") {^ref}
   "Tracking error block: error = ref - measurement (12 ch)."
@@ -40,7 +40,7 @@ relations
   connect(sample.y, controller.u) {^id11}
   connect(controller.y, zoh.u) {^id12}
   connect(zoh.y, f16plant.u_in) {^id13}
-  connect(clk.y, controller.u) {^id14}
+  connect(clk.y, controller.u[1]) {^id14}
 metadata {
   "_links": {
     "f16plant": {
