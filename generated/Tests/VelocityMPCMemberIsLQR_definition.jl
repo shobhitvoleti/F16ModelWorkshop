@@ -5,19 +5,21 @@
 
 
 @doc Markdown.doc"""
-   VelocityMPCMemberIsLQRLow(; name, velocity, altitude, Ts, velocities, n_states, Np, dx, mpc_bank, trim_full, u_trim)
+   VelocityMPCMemberIsLQR(; name, velocity, altitude, Ts, velocities, n_states, Np, dx, mpc_bank, trim_full, u_trim)
 
-`VelocityMPCMemberIsLQR` at the lowest knot of the default grid, 140 m/s.
+Every bank member's unconstrained optimum is the discrete LQR of its own stage cost.
 
-`velocity` and `Np` are structural — they select the flight condition and the horizon the
-bank is built with — so each case is its own component rather than a parameter an analysis
-overrides.
+The reference is the trimmed state of `velocity` and the measurement is that state plus `dx`.
+Each member's terminal weight is the Riccati cost-to-go of its stage cost, so for any horizon
+`Np` it must return `u_trim - K*dx`, with `K` from `VelocityMPC.member_design`. `dx` keeps
+that command inside the box and slew limits. The reference airspeed schedules the bank, so at
+a knot only that knot's member is active.
 
 ## Parameters:
 
 | Name         | Description                         | Units  |   Default value |
 | ------------ | ----------------------------------- | ------ | --------------- |
-| `velocity`         | Airspeed knot under test; both the bank's operating point and the flight condition fed in.                         | --  |   140.0 |
+| `velocity`         | Airspeed knot under test; both the bank's operating point and the flight condition fed in.                         | --  |   152.4 |
 | `altitude`         | Altitude every knot is trimmed at, m.                         | --  |   3000.0 |
 | `Ts`         | Controller sample period, s.                         | --  |   0.05 |
 | `velocities`         | Airspeed knots the bank is designed at, m/s, strictly increasing.                         | --  |   [140.0, 152.4, 170.0] |
@@ -38,12 +40,12 @@ overrides.
 | `rud_cmd`         | Held rudder command, deg.                         | --  |
 | `exitflag`         | Composite solver status of the last tick, held so it can be read from the solution.                         | --  |
 """
-@component function VelocityMPCMemberIsLQRLow(; name = nothing, velocity=Float64(140.0), altitude=Float64(3000.0), Ts=0.05, velocities=[Float64(140.0), 152.4, Float64(170.0)], n_states=10, Np=40, dx=[0.6, 0.0006, 0.0006, 0.0006, 0.06, 0.0006, 0.0006, 0.0012, 0.0012, 0.0012], trim_full=F16ModelWorkshop.VelocityMPC.trim_states(velocity, altitude), u_trim=F16ModelWorkshop.VelocityMPC.trim_command(velocity, altitude), mpc_bank=F16ModelWorkshop.VelocityMPC.bank(velocities, altitude, velocity, Ts; Np=Np), kwargs...)
+@component function VelocityMPCMemberIsLQR(; name = nothing, velocity=152.4, altitude=Float64(3000.0), Ts=0.05, velocities=[Float64(140.0), 152.4, Float64(170.0)], n_states=10, Np=40, dx=[0.6, 0.0006, 0.0006, 0.0006, 0.06, 0.0006, 0.0006, 0.0012, 0.0012, 0.0012], trim_full=F16ModelWorkshop.VelocityMPC.trim_states(velocity, altitude), u_trim=F16ModelWorkshop.VelocityMPC.trim_command(velocity, altitude), mpc_bank=F16ModelWorkshop.VelocityMPC.bank(velocities, altitude, velocity, Ts; Np=Np), kwargs...)
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
   
-    @named model = VelocityMPCMemberIsLQRLow()
+    @named model = VelocityMPCMemberIsLQR()
   """))
 
   __overrides = __build_overrides(kwargs)
@@ -180,4 +182,4 @@ overrides.
   # Return completely constructed System
   return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
-export VelocityMPCMemberIsLQRLow
+export VelocityMPCMemberIsLQR

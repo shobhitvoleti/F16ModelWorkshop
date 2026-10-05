@@ -235,19 +235,12 @@ trim_command(velocity=INITIAL_VELOCITY, altitude=ALTITUDE; xcg=XCG) =
 """
     reference_map(velocities=KNOTS, altitude=ALTITUDE; xcg=XCG) -> Matrix{Float64}
 
-The `10 x (1 + length(velocities))` matrix `VelocityMPCDemo` gives its reference
-`MatrixGain`, mapping `[commanded airspeed; member weights]` onto the references of the
-ten regulated states `STATE_NAMES[FLIGHT]`.
-
-Column 1 routes the commanded airspeed into the airspeed channel. Column `1 + j` holds
-knot `j`'s trimmed pitch attitude and angle of attack in the pitch and angle-of-attack
-channels, so those two references come out as `Σ_j w_j θ_j` and `Σ_j w_j α_j`:
-piecewise linear in airspeed, exact at the knots the bank members were built from, and
-read from the same trim solve as the members themselves. Every other channel is
-regulated to a constant the model supplies separately, so its row is zero.
-
-`altitude` selects the flight condition the trims are taken at; it does not itself
-appear in the matrix.
+The `10 x (1 + length(velocities))` matrix of `VelocityMPCDemo`'s reference `MatrixGain`,
+mapping `[commanded airspeed; member weights]` onto the ten regulated states' references.
+Column 1 routes the commanded airspeed to the airspeed channel; column `1 + j` holds knot
+`j`'s trimmed pitch attitude and angle of attack, so those references are the weighted
+trims `Σ_j w_j θ_j` and `Σ_j w_j α_j`, exact at the knots. The other rows are zero; the
+model adds their constant references separately.
 """
 function reference_map(velocities=KNOTS, altitude=ALTITUDE; xcg=XCG)
     grid = check_grid(velocities)
@@ -366,21 +359,15 @@ function build_bank(knots, conditions, initial, Ts=0.05;
         throw(DimensionMismatch("$(length(grid)) knots but $(length(conditions)) flight conditions"))
     isfinite(Ts) && Ts > 0 || throw(ArgumentError("Ts must be positive and finite"))
     Np isa Integer && Np >= 2 || throw(ArgumentError("Np must be an integer at least 2"))
-    qq = finite_vector(q, 10, "q")
-    sxx = finite_vector(sx, 10, "sx")
-    rr = finite_vector(r, 4, "r")
-    suu = finite_vector(su, 4, "su")
     lower = finite_vector(umin, 4, "umin")
     upper = finite_vector(umax, 4, "umax")
     slew = finite_vector(rate, 4, "rate")
-    all(>(0), sxx) && all(>(0), suu) || throw(ArgumentError("sx and su must be positive"))
-    all(>(0), qq) && all(>(0), rr) || throw(ArgumentError("q and r must be positive"))
     all(lower .< upper) || throw(ArgumentError("umin must be below umax on every channel"))
     all(>(0), slew) || throw(ArgumentError("rate must be positive on every channel"))
     isfinite(measurement_noise) && measurement_noise > 0 ||
         throw(ArgumentError("measurement_noise must be positive and finite"))
 
-    designs = [member_design(v, h, Ts; xcg, q=qq, sx=sxx, r=rr, su=suu) for (v, h) in conditions]
+    designs = [member_design(v, h, Ts; xcg, q, sx, r, su) for (v, h) in conditions]
     for (design, (v, h)) in zip(designs, conditions)
         all(lower .<= design.u .<= upper) || throw(ArgumentError(
             "the trim command at $v m/s and $h m, $(design.u), is outside [umin, umax]"))

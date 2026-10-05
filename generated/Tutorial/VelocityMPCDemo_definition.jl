@@ -18,53 +18,33 @@ their first moves.
 Signal flow (whole-array connections except where a channel is named):
 
   f16plant.y_out (12) --> meas_select (3:12) --> sample (20 Hz) --> observer.y (10)
-  sample.y[5] --> scheduler.rho, clock                 airspeed: measurement, schedule, clock
+  sample.y[5] --> scheduler.rho, clock                 airspeed: schedule and clock
   scheduler.w (3) --> observer.w, optimizer.w
   observer.xhat (10) --> optimizer.xhat
-  vt_cmd --> sr_vt --> ref_map.u[1]                    commanded airspeed, sampled
+  vt_cmd --> sr_vt --> ref_map.u[1]                    commanded airspeed
   scheduler.w --> ref_map.u[2:4]                       member weights
   ref_map (10) + ref_bias (10) --> ref_sum --> optimizer.r
   optimizer.u (4) --> zoh --> cmd_map (5) --> f16plant.u_in
 
-Both clock crossings are vector blocks, and the single `PeriodicClock` is planted on the
-airspeed channel alone: the observer and the optimizer each have one block clock, which
-unifies all of their channels, exactly as `DiscreteStateSpace` does in step 4.
+Design points:
 
-Design points, each of which the loop depends on:
-
-- The three parts are instantiated separately rather than as the composed
-  `LinearMPCScheduledController`, which does not expose `u_init`. The command assumed
-  applied before the first tick must be the trimmed command, not zero.
-- The bank lives in one absolute frame — plant states, commands in kN and degrees — with
-  a per-knot offset `f_j = -A_j x_j - B_j u_j` making `ẋ = A_j x + B_j u + f_j` vanish at
-  knot `j`'s trim. Members agree on what a state and a command mean, each stays exact at
-  its own knot, and their weighted sum is an absolute command under shared box and rate
-  limits. `C` is the identity, so references and measurements are plain states.
-- The command *level* is penalized about each member's own trimmed command, not about
-  zero: the constant linear control cost `eu = -Q2 u_j` recenters it, so the penalty
-  costs nothing at that knot's trim and leaves no steady-state error there. Each terminal
-  weight is the Riccati cost-to-go of exactly that stage cost, so every member's
-  unconstrained solution is its infinite-horizon LQR whatever the horizon is.
-- Thrust is kN in the controller and N at the plant: `cmd_map` carries that conversion,
-  because in newtons the command box spans 5e4 against 25 degrees of elevator and the QP
-  is badly scaled.
-- All ten regulated states are measured, so the observer's measurement covariance is a
-  millionth of its process covariance and the estimate is the measurement.
-- The reference is one linear map of `[commanded airspeed; member weights]` plus one
-  constant vector. `reference_gains` puts the commanded airspeed on the airspeed channel
-  and each knot's trimmed pitch attitude and angle of attack on the pitch and
-  angle-of-attack channels, so those two references are the weighted trims `Σ w_j θ_j`
-  and `Σ w_j α_j` — piecewise linear in airspeed and tied to the trims the members were
-  built from. `ref_bias` holds the commanded altitude; the remaining channels are
-  regulated to zero.
-
-`F16ModelWorkshop.VelocityMPC` supplies only what a structural parameter cannot compute:
-trims at a flight condition (`trim_states`, `trim_command`, `reference_map`) and the bank
-(`bank`), which linearizes the plant symbolically at every knot. Plant initial state,
-reference gains and bank all read the same trims, so they cannot drift apart.
+- The bank (`F16ModelWorkshop.VelocityMPC.bank`) lives in one absolute frame, with a
+  per-knot offset `f_j = -A_j x_j - B_j u_j` so each member is exact at its own trim and
+  the members' weighted sum is an absolute command under shared box and rate limits.
+- The command level is penalized about each member's own trimmed command (`eu = -Q2 u_j`),
+  and each terminal weight is the Riccati cost-to-go, so every member's unconstrained
+  solution is its LQR for any horizon.
+- The three parts are instantiated separately because, at the pinned MPCComponents
+  revision, the composed `LinearMPCScheduledController` cannot take the trimmed command
+  as `u_init`.
+- `cmd_map` converts thrust from kN (controller) to N (plant), keeping the QP well scaled.
+- The reference is `ref_map * [commanded airspeed; weights] + ref_bias`: the commanded
+  airspeed, the weighted knot trims on pitch and angle of attack, and the commanded
+  altitude in `ref_bias`. All ten states are measured, so the observer's estimate is the
+  measurement.
 
 Scenario: trimmed at 148 m/s and 3000 m with 2° of extra pitch attitude, commanded to
-160 m/s over 12 s starting at t = 2 s — a ramp that crosses the 152.4 m/s knot.
+160 m/s over 12 s from t = 2 s, a ramp that crosses the 152.4 m/s knot.
 
 ## Parameters:
 

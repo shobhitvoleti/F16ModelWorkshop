@@ -11,8 +11,8 @@ using OrdinaryDiffEqDefault
 using RuntimeGeneratedFunctions
 RuntimeGeneratedFunctions.init(@__MODULE__)
 
-if isfile(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Tutorial", "definitions.jl"))
-  include(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Tutorial", "definitions.jl"))
+if isfile(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Tests", "definitions.jl"))
+  include(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Tests", "definitions.jl"))
 end
 
 import BlockComponents
@@ -200,23 +200,5 @@ component.
 end
 
 
-include("ClockedDiscreteController_definition.jl")
-include("ContinuousClosedLoopDemo_definition.jl")
-include("ContinuousClosedLoopVizDemo_definition.jl")
-include("DiscreteClosedLoopDemo_definition.jl")
-include("DiscreteClosedLoopVizDemo_definition.jl")
-include("EnvelopeMPCDemo_definition.jl")
-include("LQGDemo_definition.jl")
-include("TrimDemo_definition.jl")
-include("TutorialControllerCodegen_definition.jl")
-include("TutorialDiscreteClosedLoop_definition.jl")
-include("TutorialDiscreteLQG_definition.jl")
-include("TutorialEnvelopeMPC_definition.jl")
-include("TutorialLQG_definition.jl")
-include("TutorialLinearize_definition.jl")
-include("TutorialTrimExport_definition.jl")
-include("TutorialTrim_definition.jl")
-include("TutorialVelocityMPC_definition.jl")
-include("TutorialVisualizeContinuous_definition.jl")
-include("TutorialVisualizeDiscrete_definition.jl")
-include("VelocityMPCDemo_definition.jl")
+include("VelocityMPCHoldsTrim_definition.jl")
+include("VelocityMPCMemberIsLQR_definition.jl")

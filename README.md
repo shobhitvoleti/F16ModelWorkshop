@@ -1,151 +1,232 @@
-# F16ModelWorkshop
+# F-16 control design in Dyad
 
-Workshop material for modeling and control design in
-[Dyad](https://juliahub.com/products/dyad): a 6-DOF F-16 plant taken from trim through
-linearization to an LQG regulator, its sampled-data implementation, a 3-D animation, and
-standalone C for the controller, followed by gain-scheduled linear MPC: first on airspeed,
-then across an airspeed–altitude envelope.
+In this workshop you take a 6-degree-of-freedom F-16 model from a steady flight condition to
+working controllers, in eight steps:
 
-## Layout
+| Step | You will | File in `dyad/Tutorial/` |
+|---|---|---|
+| 1 | Find the steady flight condition (trim) | `01_trim.dyad` |
+| 2 | Linearize the aircraft about it | `02_linearize.dyad` |
+| 3 | Design an LQG regulator | `03_lqg_continuous.dyad` |
+| 4 | Run the regulator as a 100 Hz digital controller | `04_lqg_discrete.dyad` |
+| 5 | Watch both loops as 3-D animations | `05_visualize.dyad` |
+| 6 | Generate C code for the digital controller | `06_codegen.dyad` |
+| 7 | Control airspeed with gain-scheduled MPC | `07_velocity_mpc.dyad` |
+| 8 | Schedule the MPC on airspeed and altitude | `08_envelope_mpc.dyad` |
 
-Dyad sources live in `dyad/`; the compiler regenerates `generated/` from them. Never edit
-`generated/` by hand: Dyad Studio regenerates it on save.
+Each step is a Dyad *analysis*: a named, runnable experiment on a model. Steps build on each
+other, so work through them in order.
 
-| Path | Contents |
-|---|---|
-| `dyad/Tutorial/` | **Start here**: the eight-step walkthrough below |
-| `dyad/Plant/` | `F16PlantModel`, the 6-DOF plant with vector I/O |
-| `dyad/Trimming/` | The trimmed plant flown open loop, and its pitch departure |
-| `dyad/VectorBlocks/`, `dyad/Utils/` | Vector-signal blocks, mux/demux and the signal-to-pose bridge the tutorial is wired with |
-| `dyad/*.dyad` | The three custom analyses (trim export, visualization, C export), each backed by a spec in `src/` |
-| `assets/` | Parameter sets the models `apply` (the trim point from step 1, the two controllers from step 3), the step-8 trim lookup table, icons and the airframe mesh |
-| `src/` | The custom analyses' specs, and the MPC design code of steps 7 and 8 (`VelocityMPC`, `EnvelopeMPC`) |
-| `scripts/Tutorial/` | Regenerate the committed assets, animations and MPC plots from the command line |
-| `generated_c/` | The C emitted by step 6 |
-| `gui/` | Optional live tuning dashboard for the step-3 design (GLMakie) |
-| `test/` | Pins the plant to Stevens & Lewis and checks that the closed loops hold trim and track |
+## Before you start
 
-## The walkthrough
+You need:
 
-All eight steps are Dyad analyses in `dyad/Tutorial/`: run them from Dyad Studio, or call
-them by name in the REPL after `using F16ModelWorkshop, F16ModelWorkshop.Tutorial`. Steps 1
-and 3 produce the parameter-set assets that steps 2–6 apply; re-run them to change the
-flight condition or the plant. Steps 7 and 8 trim and linearize their own flight
-conditions instead.
+- Dyad Studio (the VS Code extension) and Julia 1.12, with access to the JuliaHub package
+  registries that the Dyad libraries come from.
+- About 30 minutes for the first setup: the first run downloads and compiles many packages.
+  Later runs are much faster.
+- Optional: a C compiler. Steps 7 and 8 use it to compile the MPC solvers; without one they
+  use the slower Julia solver.
 
-1. **Trim — `01_trim.dyad`.** `TrimDemo` declares thrust, elevator and the pitch
-   attitude `missing` and pins the motion derivatives to zero, so the initialization
-   solver returns the steady flight condition. `TutorialTrim` solves it;
-   `TutorialTrimExport` also writes it to `assets/trim_point.toml`,
-   `trim_reference.toml` and `trim_controls.toml`.
-2. **Linearize — `02_linearize.dyad`.** `TutorialLinearize` opens the measurement loop of
-   the design model and linearizes the bare plant from its controls to its 12 measured
-   states: poles, zeros, Bode and step responses.
-3. **LQG, continuous — `03_lqg_continuous.dyad`.** `LQGDemo` closes the plant with a
-   state-space controller through scalar analysis points. `TutorialLQG` synthesizes the
-   regulator — the weights are set per channel in that channel's own units, and the
-   docstring tabulates them — and `TutorialDiscreteLQG` is the same design
-   ZOH-discretized at 100 Hz. `scripts/Tutorial/run_lqg_continuous_export.jl` and
-   `run_lqg_discrete_export.jl` write the two results to `assets/controller.toml` and
-   `assets/discrete_controller.toml`.
-4. **LQG, sampled-data — `04_lqg_discrete.dyad`.** `DiscreteClosedLoopDemo` runs the
-   discrete controller as a clocked `DiscreteStateSpace` between a vector sampler and a
-   zero-order hold; `TutorialDiscreteClosedLoop` recovers a 10° pitch perturbation.
-5. **Visualize — `05_visualize.dyad`.** `TutorialVisualizeContinuous` and
-   `TutorialVisualizeDiscrete` render the two closed loops as animations of the airframe
-   on the same perturbation. Needs a Makie backend in the session (`using GLMakie`).
-6. **C code — `06_codegen.dyad`.** `ClockedDiscreteController` is step 4's controller
-   and its clock with whole-array `u[12]`/`y[5]` connectors. `TutorialControllerCodegen`
-   compiles it with SynchToolkit and writes standalone C to `generated_c/f16_controller/`,
-   whose step function takes `double u[12]` and fills `double y[5]` each tick.
-7. **Velocity-scheduled MPC — `07_velocity_mpc.dyad`.** `VelocityMPCDemo` closes the
-   plant with the gain-scheduled MPC components of `MPCComponents.Experimental`:
-   `LinearMPCScheduler` turns measured true airspeed into member weights,
-   `LinearMPCScheduledObserver` blends the members' Kalman filters, and
-   `LinearMPCScheduledOptimizer` solves the active members' quadratic programs and
-   blends their first moves at 20 Hz between the vector samplers and zero-order holds of
-   `dyad/VectorBlocks/`. Like step 4 it is wired with whole-array connections:
-   `VectorSelect` narrows the plant's twelve outputs to the ten regulated states, and a
-   `MatrixGain` each carries the reference map and the controller-to-plant unit
-   conversion. `TutorialVelocityMPC` is a `TransientAnalysis` over it: trimmed at
-   148 m/s with 2° of extra pitch attitude, commanded to 160 m/s over a ramp that
-   crosses the middle knot.
+## Set up
 
-   The bank is the one piece designed in Julia (`src/velocity_mpc.jl`, module
-   `VelocityMPC`): it trims the plant and evaluates its symbolic linearization at each
-   airspeed knot, in one absolute physical frame with a per-knot affine offset, and
-   returns the `MPCComponents.MPCRef` the model takes as a structural parameter.
+1. Clone this repository and open its folder in VS Code.
+2. In a terminal in that folder, install the dependencies:
 
    ```sh
-   julia --project=. scripts/Tutorial/run_velocity_mpc.jl
+   julia --project=. -e 'using Pkg; Pkg.instantiate()'
    ```
 
-   writes `results/velocity_mpc/response.png` — airspeed against its reference,
-   altitude, elevator and thrust.
-8. **Envelope-scheduled MPC — `08_envelope_mpc.dyad`.** `EnvelopeMPCDemo` schedules a
-   bank over a `velocities × altitudes` grid (3 × 3 by default) on both measured
-   airspeed and measured altitude. `LinearMPCScheduler` takes one scalar, so the second
-   axis is composed in Dyad: one scheduler per axis, and `VectorBlocks.OuterProduct`
-   multiplies their hat-function weights into the bilinear weights of the grid. The
-   observer and optimizer are step 7's. The grid is read from one lookup-table asset,
-   `assets/envelope_trim_alpha.csv` (`DyadData.DyadInterpolationTable2D`): its axes are the
-   knots, and its values are the trimmed angle of attack, which in level flight is also the
-   trimmed pitch attitude; the pitch and angle-of-attack references blend it. Edit the axes
-   and run `scripts/Tutorial/run_envelope_tables.jl` to move the grid.
-   `TutorialEnvelopeMPC` starts trimmed at 150 m/s and 3000 m and is commanded to
-   190 m/s and 4500 m, crossing a knot on each axis.
-
-   `src/envelope_mpc.jl` (module `EnvelopeMPC`) builds the bank from step 7's member
-   design, and `EnvelopeMPC.envelope()` trims and linearizes the plant at **10 000 flight
-   conditions** (100 × 100 over 140–250 m/s and 0–9000 m) in about ten seconds once compiled. The bank
-   is a coarse subset of those: the scheduled components hold one connector per member
-   and stack every member's observer matrices, so their size grows with the member count
-   and a 10 000-member bank is out of reach ([MPCComponents.jl#94](https://github.com/JuliaComputing/MPCComponents.jl/issues/94)).
+3. Check that everything works. This runs the full test suite, about 10 minutes:
 
    ```sh
-   julia --project=. scripts/Tutorial/run_envelope_mpc.jl
+   julia --project=. -e 'using Pkg; Pkg.test()'
    ```
 
-   writes `results/envelope_mpc/envelope.png` (trim and pitch divergence rate over the
-   10 000-point envelope, with the bank nodes) and `response.png`.
+   You should see `F16ModelWorkshop tests passed`. On a machine without a display, set
+   `JULIA_PKG_PRECOMPILE_AUTO=0` first: GLMakie cannot precompile there, and the tests do
+   not need it.
 
-## The aircraft
+## How to run a step
 
-The plant's coefficients are a least-squares condensation of the Stevens & Lewis
-F-16 tables, taken at the reference CG (`xcg = 0.35c̄`). That leaves it **statically
-unstable in pitch** — `Cma = +0.082/rad`, a real pole at +0.09 rad/s that doubles a
-disturbance every 7.6 s — exactly as the real airframe is, and the reason the
-regulator in steps 3 and 4 exists. `Trimming.F16OpenLoopDeparture` shows the same
-trim with the controls frozen; setting `plant.xcg = 0.30` moves the CG forward and
-the divergence goes away.
+**In Dyad Studio:** open the step's file and run its analysis (named `Tutorial…`) from the
+analysis panel. Studio shows the results and plots.
 
-Trimming at the book's nominal condition (502 ft/s, sea level) reproduces S&L
-Table 3.6-3 — α = 0.03714 rad against a published 0.03691. `scripts/fit_snl_aero.jl`
-regenerates the deck from the tables in `scripts/snl_aero_tables.jl`, and
-`test/f16_snl_validation.jl` pins both the trim and the instability.
-
-## Running
-
-```
-julia --project=. -e 'using Pkg; Pkg.instantiate()'   # first run downloads dependencies
-julia --project=. -e 'using Pkg; Pkg.test()'          # plant validation and every closed loop
-```
+**In the Julia REPL:** load the tutorial once, then call an analysis by name:
 
 ```julia
 using F16ModelWorkshop, F16ModelWorkshop.Tutorial, Plots
-plot(TutorialDiscreteClosedLoop())       # step 4: sampled-data pitch recovery
-TutorialLQG()                            # step 3: synthesize the continuous regulator
-plot(F16ModelWorkshop.Trimming.F16OpenLoopDepartureAnalysis())  # the same airframe with no regulator
+result = TutorialDiscreteClosedLoop()   # run step 4
+plot(result)                            # plot every signal
 ```
 
-`julia --project=. gui/launch_gui.jl` opens the tuning dashboard on the step-3 design.
+Never edit the `generated/` folder. Dyad Studio rebuilds it from `dyad/` every time you save.
 
-## Dependencies
+## The walkthrough
 
-- **MPCComponents** is pinned to a commit (`[sources]` in `Project.toml`). Its `main`
-  needs LinearMPC 0.11, which is only on an unregistered branch, so the pin stays until
-  that is released.
-- **DiscreteComponents** stays on 0.4 because the MPCComponents pin requires it. 0.5
-  rewrites `Sampler`/`ZeroOrderHold` in native Dyad with clock-typed connectors; once
-  it is available, `MultiSampler`/`MultiZeroOrderHold` can become `y = sample(u)` and
-  `y = hold(u)` on whole vectors instead of one scalar block per channel.
+### Step 1 — Trim
+
+**What it shows.** *Trim* is the steady flight condition: the controls and states at which
+nothing changes. `TrimDemo` leaves thrust, elevator and pitch attitude unknown and requires
+the rates of change to be zero, so the solver finds them.
+
+**Run it.** `TutorialTrim` solves the trim. `TutorialTrimExport` also saves it to
+`assets/trim_point.toml`, `trim_reference.toml` and `trim_controls.toml`, which steps 2–6
+load.
+
+**You should see** level flight at 3000 m and 152.4 m/s: angle of attack 0.059 rad (3.4°),
+thrust about 10.8 kN and elevator about −0.7°.
+
+### Step 2 — Linearize
+
+**What it shows.** Near trim, the nonlinear aircraft behaves like a linear model.
+`TutorialLinearize` computes that model from the four controls to the 12 measured states.
+
+**Run it.** `TutorialLinearize`.
+
+**You should see** poles, zeros, Bode and step responses. One pole sits in the right half
+plane at about +0.09 rad/s: the airframe is unstable in pitch (see [The aircraft](#the-aircraft)).
+
+### Step 3 — Design an LQG regulator
+
+**What it shows.** An *LQG regulator* combines an optimal state-feedback controller with a
+Kalman filter. `LQGDemo` is the aircraft wired to a state-space controller; `TutorialLQG`
+designs that controller. Each weight is set in its channel's own units, and the file's
+docstring explains every value.
+
+**Run it.** `TutorialLQG` designs the continuous regulator; `TutorialDiscreteLQG` designs the
+same regulator for a 100 Hz digital controller. To save them for steps 4–6, run:
+
+```sh
+julia --project=. scripts/Tutorial/run_lqg_continuous_export.jl
+julia --project=. scripts/Tutorial/run_lqg_discrete_export.jl
+```
+
+**You should see** the designed controller and the analysis results for the closed loop.
+
+To tune the design interactively, run `julia --project=. gui/launch_gui.jl` (see
+[gui/README.md](gui/README.md)).
+
+### Step 4 — Run it as a digital controller
+
+**What it shows.** The regulator from step 3 runs at 100 Hz: the aircraft's states are
+sampled, the controller updates once per tick, and its commands are held between ticks.
+
+**Run it.** `TutorialDiscreteClosedLoop` starts the aircraft 10° nose-up of trim.
+
+**You should see** pitch return to trim within 10 s, with altitude within 20 m and airspeed
+within 5 m/s of trim.
+
+### Step 5 — Visualize
+
+**What it shows.** The continuous loop (step 3) and the digital loop (step 4) as 3-D
+animations of the airframe, on the same 10° disturbance.
+
+**Run it.** First load a Makie backend with `using GLMakie`. Then run
+`TutorialVisualizeContinuous` and `TutorialVisualizeDiscrete`, or run
+`julia --project=. scripts/Tutorial/run_visualize.jl`.
+
+**You should see** two videos in `assets/`: `f16_continuous_closed_loop.mp4` and
+`f16_discrete_closed_loop.mp4`.
+
+### Step 6 — Generate C code
+
+**What it shows.** The digital controller from step 4, compiled to standalone C that can run
+on embedded hardware.
+
+**Run it.** `TutorialControllerCodegen`.
+
+**You should see** C sources in `generated_c/f16_controller/`. Each tick, the step function
+takes the 12 tracking errors, `double u[12]`, and returns the 5 commands, `double y[5]`.
+
+### Step 7 — Gain-scheduled MPC on airspeed
+
+**What it shows.** *Model predictive control* (MPC) plans the next few seconds of commands
+by optimization and respects limits such as maximum thrust and elevator travel. One linear
+model is only accurate near one airspeed, so the controller is a *bank*: one MPC per airspeed
+*knot* (140, 152.4 and 170 m/s). The bank blends the two controllers on either side of the
+measured airspeed. This is *gain scheduling*.
+
+**Run it.** `TutorialVelocityMPC` starts at 148 m/s and commands 160 m/s. To plot the
+response:
+
+```sh
+julia --project=. scripts/Tutorial/run_velocity_mpc.jl
+```
+
+**You should see** airspeed reach 160 m/s while altitude holds at 3000 m. The plot is
+`results/velocity_mpc/response.png`. The first run takes a few minutes while the solvers
+compile.
+
+### Step 8 — Schedule on airspeed and altitude
+
+**What it shows.** The aircraft also changes with altitude, so this bank has one MPC at each
+point of a 3 × 3 airspeed × altitude grid. The grid comes from a lookup table,
+`assets/envelope_trim_alpha.csv`: its rows are the airspeed knots, its columns the altitude
+knots, and its values the trimmed angle of attack, which sets the pitch and angle-of-attack
+references. `EnvelopeMPC.envelope()` also linearizes the aircraft at 10 000 points of the
+flight envelope, to show how it changes across it.
+
+**Run it.** `TutorialEnvelopeMPC` starts at 150 m/s and 3000 m and commands 190 m/s and
+4500 m. To plot the response and the envelope:
+
+```sh
+julia --project=. scripts/Tutorial/run_envelope_mpc.jl
+```
+
+**You should see** airspeed reach 190 m/s and altitude 4500 m. The plots are in
+`results/envelope_mpc/`.
+
+**Try it.** To move the grid, edit the table's first column (airspeeds) or header row
+(altitudes), then rebuild its values:
+
+```sh
+julia --project=. scripts/Tutorial/run_envelope_tables.jl
+```
+
+The bank stays small on purpose: the MPC components grow with the number of controllers,
+so a bank of 10 000 is not yet possible
+([MPCComponents.jl#94](https://github.com/JuliaComputing/MPCComponents.jl/issues/94)).
+
+## The aircraft
+
+The model's aerodynamic coefficients are fitted to the F-16 tables in Stevens & Lewis,
+*Aircraft Control and Simulation*, at the reference center of gravity (35 % of the mean
+chord). Like the real F-16, the model is **unstable in pitch**: a disturbance doubles about
+every 7.6 s. That is why the aircraft needs the regulator from step 3.
+
+- `Trimming.F16OpenLoopDepartureAnalysis` shows the aircraft departing with the controls
+  frozen. Set `plant.xcg = 0.30` to move the center of gravity forward, and it becomes stable.
+- At the book's reference condition (502 ft/s, sea level) the model trims at α = 0.03714 rad;
+  the book gives 0.03691 rad. `test/f16_snl_validation.jl` checks this and the instability.
+- `scripts/fit_snl_aero.jl` refits the coefficients from the tables in
+  `scripts/snl_aero_tables.jl`.
+
+## Repository layout
+
+| Path | Contents |
+|---|---|
+| `dyad/Tutorial/` | The eight steps |
+| `dyad/Plant/` | `F16PlantModel`, the aircraft |
+| `dyad/Trimming/` | The aircraft flown open loop at trim, and its pitch departure |
+| `dyad/VectorBlocks/`, `dyad/Utils/` | Vector blocks, mux/demux and the pose bridge for the animations |
+| `dyad/Tests/` | Check models for the step-7 bank, run by the tests |
+| `dyad/*.dyad`, `src/` | The custom analyses (trim export, visualization, C code) and the MPC design code of steps 7 and 8 |
+| `assets/` | The saved trim and controllers, the step-8 lookup table, icons and the airframe mesh |
+| `scripts/Tutorial/` | Command-line scripts that regenerate assets, animations and plots |
+| `generated/`, `generated_c/` | Code generated by Dyad (step-6 C code in `generated_c/`); do not edit |
+| `gui/` | Optional tuning dashboard for step 3 |
+| `test/` | Checks the aircraft against the book and every closed loop |
+
+## For maintainers
+
+- **MPCComponents** is pinned to a commit (`[sources]` in `Project.toml`). Its latest version
+  needs LinearMPC 0.11, which is not yet registered.
+- **DiscreteComponents** stays on 0.4 because that MPCComponents commit requires it. Version
+  0.5 defines its sampler and hold blocks in native Dyad; once it can be used,
+  `MultiSampler` and `MultiZeroOrderHold` can become `y = sample(u)` and `y = hold(u)` on
+  whole vectors.
+- Native two-variable scheduling is proposed in
+  [MPCComponents.jl#95](https://github.com/JuliaComputing/MPCComponents.jl/pull/95). Once it
+  is merged, step 8 can use `LinearMPCScheduler2D` instead of two schedulers and
+  `OuterProduct`.

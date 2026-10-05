@@ -5,15 +5,20 @@
 
 
 @doc Markdown.doc"""
-   VelocityMPCHoldsTrimHigh(; name, velocity, altitude, Ts, velocities, n_states, mpc_bank, trim_full, u_trim)
+   VelocityMPCHoldsTrim(; name, velocity, altitude, Ts, velocities, n_states, mpc_bank, trim_full, u_trim)
 
-`VelocityMPCHoldsTrim` at the highest knot of the default grid, 170 m/s.
+Every bank member returns its own trim command when it is already at its own trim.
+
+Measurement and reference are both the trimmed state of `velocity`; the bank's observer and
+`u_init` start at that trim. The held commands must equal
+`VelocityMPC.trim_command(velocity, altitude)` at every tick. At a knot of `velocities` only
+that knot's member is active, so the tests build one model per knot (`velocity = 140.0` etc.).
 
 ## Parameters:
 
 | Name         | Description                         | Units  |   Default value |
 | ------------ | ----------------------------------- | ------ | --------------- |
-| `velocity`         | Airspeed knot under test; both the bank's operating point and the flight condition fed in.                         | --  |   170.0 |
+| `velocity`         | Airspeed knot under test; both the bank's operating point and the flight condition fed in.                         | --  |   152.4 |
 | `altitude`         | Altitude every knot is trimmed at, m.                         | --  |   3000.0 |
 | `Ts`         | Controller sample period, s.                         | --  |   0.05 |
 | `velocities`         | Airspeed knots the bank is designed at, m/s, strictly increasing.                         | --  |   [140.0, 152.4, 170.0] |
@@ -32,12 +37,12 @@
 | `rud_cmd`         | Held rudder command, deg.                         | --  |
 | `exitflag`         | Composite solver status of the last tick, held so it can be read from the solution.                         | --  |
 """
-@component function VelocityMPCHoldsTrimHigh(; name = nothing, velocity=Float64(170.0), altitude=Float64(3000.0), Ts=0.05, velocities=[Float64(140.0), 152.4, Float64(170.0)], n_states=10, trim_full=F16ModelWorkshop.VelocityMPC.trim_states(velocity, altitude), u_trim=F16ModelWorkshop.VelocityMPC.trim_command(velocity, altitude), mpc_bank=F16ModelWorkshop.VelocityMPC.bank(velocities, altitude, velocity, Ts), kwargs...)
+@component function VelocityMPCHoldsTrim(; name = nothing, velocity=152.4, altitude=Float64(3000.0), Ts=0.05, velocities=[Float64(140.0), 152.4, Float64(170.0)], n_states=10, trim_full=F16ModelWorkshop.VelocityMPC.trim_states(velocity, altitude), u_trim=F16ModelWorkshop.VelocityMPC.trim_command(velocity, altitude), mpc_bank=F16ModelWorkshop.VelocityMPC.bank(velocities, altitude, velocity, Ts), kwargs...)
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
   
-    @named model = VelocityMPCHoldsTrimHigh()
+    @named model = VelocityMPCHoldsTrim()
   """))
 
   __overrides = __build_overrides(kwargs)
@@ -166,4 +171,4 @@
   # Return completely constructed System
   return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
-export VelocityMPCHoldsTrimHigh
+export VelocityMPCHoldsTrim

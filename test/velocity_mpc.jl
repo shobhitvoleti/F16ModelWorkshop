@@ -18,6 +18,9 @@ using SciMLBase
     @test sol[model.pick_second.x][end]≈2.0 atol=1e-6
 end
 
+# One second of a constant-signal check model: twenty ticks of the 20 Hz controller.
+check(model) = DyadInterface.run_analysis(DyadInterface.TransientAnalysisSpec(; model, stop = 1.0))
+
 # The bank is designed in Julia from the compiled plant, so the plant and its symbolic
 # linearization are checked on their own terms: every knot trims, and the Jacobians the
 # members are built from agree with the nonlinear plant they came from.
@@ -57,14 +60,10 @@ end
 # with the trimmed command already applied, it must return that command and nothing else.
 # A bank's members have no public accessor (MPCComponents.jl#48), so the property is
 # asserted on the scheduled components themselves: `VelocityMPCHoldsTrim` feeds them a
-# constant trimmed state as both measurement and reference, one knot per analysis.
+# constant trimmed state as both measurement and reference, one model per knot.
 @testset "bank members hold their own trim" begin
-    knots = (F16ModelWorkshop.Tutorial.VelocityMPCHoldsTrimLowTransient => 140.0,
-             F16ModelWorkshop.Tutorial.VelocityMPCHoldsTrimMidTransient => 152.4,
-             F16ModelWorkshop.Tutorial.VelocityMPCHoldsTrimHighTransient => 170.0)
-
-    for (analysis, velocity) in knots
-        result = analysis()
+    for velocity in VelocityMPC.KNOTS
+        result = check(F16ModelWorkshop.Tests.VelocityMPCHoldsTrim(; name = :holds, velocity))
         sol = result.sol
         model = DyadInterface.symbolic_container(result)
         held = (model.T_cmd, model.el_cmd, model.ail_cmd, model.rud_cmd)
@@ -90,15 +89,13 @@ end
 # fixed `dx` away, so every tick must return `u - K * dx`.
 @testset "unconstrained member equals LQR" begin
     Ts = 0.05
-    runs = (F16ModelWorkshop.Tutorial.VelocityMPCMemberIsLQRLowTransient => (140.0, 40),
-            F16ModelWorkshop.Tutorial.VelocityMPCMemberIsLQRMidTransient => (152.4, 40),
-            F16ModelWorkshop.Tutorial.VelocityMPCMemberIsLQRHighTransient => (170.0, 40),
-            F16ModelWorkshop.Tutorial.VelocityMPCMemberIsLQRMidShortTransient => (152.4, 5))
+    # Every knot on the default forty-step horizon, and the middle knot on five steps.
+    runs = [[(velocity, 40) for velocity in VelocityMPC.KNOTS]; (152.4, 5)]
 
     commands = Dict{Tuple{Float64,Int},Vector{Float64}}()
     worst = 0.0
-    for (analysis, (velocity, Np)) in runs
-        result = analysis()
+    for (velocity, Np) in runs
+        result = check(F16ModelWorkshop.Tests.VelocityMPCMemberIsLQR(; name = :lqr, velocity, Np))
         sol = result.sol
         model = DyadInterface.symbolic_container(result)
         @test SciMLBase.successful_retcode(sol.retcode)

@@ -1,7 +1,5 @@
 {
   "julia.NumThreads": "auto",
-  "files.autoSave": "off",
-  "workbench.secondarySideBar.defaultVisibility": "hidden",
   "julia.juliaup.server": "https://juliahub.com/juliabin",
   "julia.additionalArgs": [
     "--optimize=0"

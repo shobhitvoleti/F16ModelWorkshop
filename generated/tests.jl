@@ -20,6 +20,7 @@ include("test_internals.jl")
 @testset "`F16ModelWorkshop`" begin
 end
 include("Plant/tests.jl")
+include("Tests/tests.jl")
 include("Trimming/tests.jl")
 include("Tutorial/tests.jl")
 include("Utils/tests.jl")

@@ -19,7 +19,6 @@ end
 include("MultiSampler_test.jl")
 include("MultiZeroOrderHold_test.jl")
 include("OuterProduct_test.jl")
-include("TestSampledIO_test.jl")
 include("TestVectorSelect_test.jl")
 include("VectorAdd_test.jl")
 include("VectorConstant_test.jl")
