@@ -1,0 +1,335 @@
+"""
+Tutorial 7 — Velocity-scheduled linear MPC.
+
+A bank of constrained `LinearMPC` controllers, one per airspeed knot, flown on the
+nonlinear plant at 20 Hz. `LinearMPCScheduler` turns measured airspeed into hat-function
+member weights, `LinearMPCScheduledObserver` blends the members' Kalman filters, and
+`LinearMPCScheduledOptimizer` solves the active members' quadratic programs and blends
+their first moves.
+
+Signal flow (whole-array connections except where a channel is named):
+
+  f16plant.y_out (12) --> meas_select (3:12) --> sample (20 Hz) --> observer.y (10)
+  sample.y[5] --> scheduler.rho, clock                 airspeed: schedule and clock
+  scheduler.w (3) --> observer.w, optimizer.w
+  observer.xhat (10) --> optimizer.xhat
+  vt_cmd --> sr_vt --> ref_map.u[1]                    commanded airspeed
+  scheduler.w --> ref_map.u[2:4]                       member weights
+  ref_map (10) + ref_bias (10) --> ref_sum --> optimizer.r
+  optimizer.u (4) --> zoh --> cmd_map (5) --> f16plant.u_in
+
+Design points:
+
+- The bank (`F16ModelWorkshop.VelocityMPC.bank`) lives in one absolute frame, with a
+  per-knot offset `f_j = -A_j x_j - B_j u_j` so each member is exact at its own trim and
+  the members' weighted sum is an absolute command under shared box and rate limits.
+- The command level is penalized about each member's own trimmed command (`eu = -Q2 u_j`),
+  and each terminal weight is the Riccati cost-to-go, so every member's unconstrained
+  solution is its LQR for any horizon.
+- The three parts are instantiated separately because, at the pinned MPCComponents
+  revision, the composed `LinearMPCScheduledController` cannot take the trimmed command
+  as `u_init`.
+- `cmd_map` converts thrust from kN (controller) to N (plant), keeping the QP well scaled.
+- The reference is `ref_map * [commanded airspeed; weights] + ref_bias`: the commanded
+  airspeed, the weighted knot trims on pitch and angle of attack, and the commanded
+  altitude in `ref_bias`. All ten states are measured, so the observer's estimate is the
+  measurement.
+
+Scenario: trimmed at 148 m/s and 3000 m with 2° of extra pitch attitude, commanded to
+160 m/s over 12 s from t = 2 s, a ramp that crosses the 152.4 m/s knot.
+"""
+component VelocityMPCDemo
+  "Vector-I/O F16 plant, started at the trim of `initial_velocity` with `pitch_perturbation` added."
+  f16plant = F16ModelWorkshop.Plant.F16PlantModel(alt_init = trim_init[3], phi_init = trim_init[4], theta_init = trim_init[5] + pitch_perturbation, psi_init = trim_init[6], vt_init = trim_init[7], alpha_init = trim_init[8], beta_init = trim_init[9], P_init = trim_init[10], Q_init = trim_init[11], R_init = trim_init[12]) {^f16plant}
+  "Measured airspeed to member weights."
+  scheduler = MPCComponents.Experimental.LinearMPCScheduler(rho_grid = velocities) {^scheduler}
+  "Weight-blended state observer of the bank."
+  observer = MPCComponents.Experimental.LinearMPCScheduledObserver(mpc = mpc_bank) {^observer}
+  "Weight-blended constrained optimizer; `u_init` is the trimmed command, so the thrust rate limit does not have to walk it up from zero."
+  optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(mpc = mpc_bank, u_init = u_trim) {^optimizer}
+  "Controller sample clock, planted on the airspeed connection set."
+  clock = DiscreteComponents.PeriodicClock(dt = Ts) {^clock}
+  "The ten regulated states out of the plant's twelve outputs: everything but the horizontal position."
+  meas_select = F16ModelWorkshop.VectorBlocks.VectorSelect(n = 12, indices = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {^meas_select}
+  "Measurement clock crossing: the ten regulated states, sampled at `Ts`."
+  sample = F16ModelWorkshop.VectorBlocks.MultiSampler(n = n_states) {^sample}
+  "Commanded airspeed: a ramp across the middle knot."
+  vt_cmd = BlockComponents.Sources.Ramp(offset = initial_velocity, height = final_velocity - initial_velocity, start_time = ramp_start, duration = ramp_duration) {^vt_cmd}
+  "Clock crossing for the commanded airspeed."
+  sr_vt = DiscreteComponents.Sampler() {^sr_vt}
+  "Scheduled part of the reference: commanded airspeed onto the airspeed channel, weighted knot trims onto the pitch and angle-of-attack channels."
+  ref_map = DiscreteComponents.Examples.MatrixGain(ny = n_states, nu = n_reference_inputs, K = reference_gains) {^ref_map}
+  "Constant part of the reference: the commanded altitude, and zero on every channel regulated to zero."
+  ref_bias = F16ModelWorkshop.VectorBlocks.VectorConstant(n = n_states, k = [altitude, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]) {^ref_bias}
+  "The ten-state reference handed to the optimizer."
+  ref_sum = F16ModelWorkshop.VectorBlocks.VectorAdd(n = n_states) {^ref_sum}
+  "Command clock crossing: the four optimized commands, held between ticks."
+  zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(n = 4) {^zoh}
+  "Controller commands to plant commands: kilonewtons to newtons on thrust, degrees through unchanged, and a leading-edge flap held at zero."
+  cmd_map = DiscreteComponents.Examples.MatrixGain(ny = 5, nu = 4, K = [[newtons_per_kilonewton, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 0.0, 0.0]]) {^cmd_map}
+  "Hold for the solver status: clocked signals cannot be read back from the solution."
+  zoh_flag = DiscreteComponents.ZeroOrderHold(initial_condition = 1.0) {^zoh_flag}
+  "Airspeed knots the bank is designed at, m/s, strictly increasing."
+  structural parameter velocities::Real[3] = [140.0, 152.4, 170.0]
+  "Altitude every knot is trimmed at, m."
+  structural parameter altitude::Real = 3000.0
+  "Airspeed the loop starts trimmed at, m/s."
+  structural parameter initial_velocity::Real = 148.0
+  "Controller sample period, s."
+  structural parameter Ts::Real = 0.05
+  "Airspeed the reference ramp ends at, m/s."
+  structural parameter final_velocity::Real = 160.0
+  "Time the reference ramp begins, s."
+  structural parameter ramp_start::Real = 2.0
+  "Length of the reference ramp, s."
+  structural parameter ramp_duration::Real = 12.0
+  "Pitch attitude added to the trimmed initial state, rad (2 deg)."
+  structural parameter pitch_perturbation::Real = 0.03490658503988659
+  "Newtons of thrust per kilonewton of commanded thrust."
+  structural parameter newtons_per_kilonewton::Real = 1000.0
+  "Number of regulated states, the width of the measurement and reference vectors."
+  structural parameter n_states::Integer = 10
+  "Width of the reference map's input, the commanded airspeed plus one weight per knot (derived)."
+  final structural parameter n_reference_inputs::Integer = size(velocities, 1) + 1
+  "The bank of controllers, one per knot of `velocities`."
+  structural parameter mpc_bank::MPCComponents.MPCRef = F16ModelWorkshop.VelocityMPC.bank(velocities, altitude, initial_velocity, Ts)
+  "Trimmed states of the flight condition the loop starts from."
+  structural parameter trim_init::Real[12] = F16ModelWorkshop.VelocityMPC.trim_states(initial_velocity, altitude)
+  "Trimmed command of that flight condition, [kN, deg, deg, deg]."
+  structural parameter u_trim::Real[4] = F16ModelWorkshop.VelocityMPC.trim_command(initial_velocity, altitude)
+  "Reference map from [commanded airspeed; member weights] to the ten regulated states' references."
+  structural parameter reference_gains::Real[n_states, n_reference_inputs] = F16ModelWorkshop.VelocityMPC.reference_map(velocities, altitude)
+  "Composite solver status of the last tick, held so it can be read from the solution."
+  variable exitflag::Real
+  "Commanded airspeed on the continuous time base, so the reference can be plotted against the plant's trajectory."
+  variable vt_reference::Real
+relations
+  exitflag = zoh_flag.y
+  vt_reference = vt_cmd.y
+  # ---- Measurements: plant -> select -> sample -> observer ----
+  connect(f16plant.y_out, meas_select.u) {^id01}
+  connect(meas_select.y, sample.u) {^id02}
+  connect(sample.y, observer.y) {^id03}
+  # The airspeed sample is the measurement, the scheduling variable, and the loop's clock.
+  connect(sample.y[5], scheduler.rho, clock.y) {^id04}
+  # ---- Controller internals ----
+  connect(scheduler.w, observer.w, optimizer.w) {^id05}
+  connect(observer.xhat, optimizer.xhat) {^id06}
+  connect(optimizer.u, observer.u) {^id07}
+  # ---- References ----
+  connect(vt_cmd.y, sr_vt.u) {^id08}
+  connect(sr_vt.y, ref_map.u[1]) {^id09}
+  connect(scheduler.w[1], ref_map.u[2]) {^id10}
+  connect(scheduler.w[2], ref_map.u[3]) {^id11}
+  connect(scheduler.w[3], ref_map.u[4]) {^id12}
+  connect(ref_map.y, ref_sum.u1) {^id13}
+  connect(ref_bias.y, ref_sum.u2) {^id14}
+  connect(ref_sum.y, optimizer.r) {^id15}
+  # ---- Commands: optimizer -> holds -> plant ----
+  connect(optimizer.u, zoh.u) {^id16}
+  connect(zoh.y, cmd_map.u) {^id17}
+  connect(cmd_map.y, f16plant.u_in) {^id18}
+  connect(optimizer.exitflag, zoh_flag.u) {^id19}
+metadata {
+  "_links": {
+    "vt_cmd": {
+      "Dyad": {"placement": {"diagram": {"x1": 60, "y1": 60, "x2": 160, "y2": 160}}}
+    },
+    "sr_vt": {
+      "Dyad": {"placement": {"diagram": {"x1": 280, "y1": 60, "x2": 380, "y2": 160}}}
+    },
+    "ref_map": {
+      "Dyad": {"placement": {"diagram": {"x1": 700, "y1": 60, "x2": 800, "y2": 160}}}
+    },
+    "ref_sum": {
+      "Dyad": {"placement": {"diagram": {"x1": 900, "y1": 60, "x2": 1000, "y2": 160}}}
+    },
+    "ref_bias": {
+      "Dyad": {"placement": {"diagram": {"x1": 700, "y1": 240, "x2": 800, "y2": 340}}}
+    },
+    "zoh_flag": {
+      "Dyad": {"placement": {"diagram": {"x1": 1320, "y1": 220, "x2": 1420, "y2": 320}}}
+    },
+    "scheduler": {
+      "Dyad": {"placement": {"diagram": {"x1": 280, "y1": 430, "x2": 380, "y2": 530}}}
+    },
+    "optimizer": {
+      "Dyad": {"placement": {"diagram": {"x1": 1100, "y1": 430, "x2": 1200, "y2": 530}}}
+    },
+    "zoh": {
+      "Dyad": {"placement": {"diagram": {"x1": 1320, "y1": 430, "x2": 1420, "y2": 530}}}
+    },
+    "cmd_map": {
+      "Dyad": {"placement": {"diagram": {"x1": 1520, "y1": 430, "x2": 1620, "y2": 530}}}
+    },
+    "f16plant": {
+      "Dyad": {"placement": {"diagram": {"x1": 1720, "y1": 430, "x2": 1820, "y2": 530}}}
+    },
+    "observer": {
+      "Dyad": {"placement": {"diagram": {"x1": 700, "y1": 560, "x2": 800, "y2": 660}}}
+    },
+    "meas_select": {
+      "Dyad": {"placement": {"diagram": {"x1": 180, "y1": 900, "x2": 280, "y2": 1000}}}
+    },
+    "sample": {
+      "Dyad": {"placement": {"diagram": {"x1": 400, "y1": 900, "x2": 500, "y2": 1000}}}
+    },
+    "clock": {
+      "Dyad": {"placement": {"diagram": {"x1": 620, "y1": 1080, "x2": 720, "y2": 1180}}}
+    },
+    "id01": {
+      "Dyad": {
+        "edges": [
+          {
+            "S": 1,
+            "M": [
+              {"x": 1880, "y": 480},
+              {"x": 1880, "y": 1230},
+              {"x": 130, "y": 1230},
+              {"x": 130, "y": 950}
+            ],
+            "E": 2
+          }
+        ]
+      }
+    },
+    "id02": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
+    "id03": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 590, "y": 950}, {"x": 590, "y": 647.5}], "E": 2}]
+      }
+    },
+    "id04": {
+      "Dyad": {
+        "edges": [
+          {
+            "S": 1,
+            "M": [
+              {"x": 545, "y": 950},
+              {"x": 545, "y": 820},
+              {"x": 215, "y": 820},
+              {"x": 215, "y": 480}
+            ],
+            "E": 2
+          },
+          {"S": 1, "M": [{"x": 560, "y": 950}, {"x": 560, "y": 1130}], "E": 3}
+        ]
+      }
+    },
+    "id05": {
+      "Dyad": {
+        "edges": [
+          {"S": 1, "M": [{"x": 530, "y": 480}, {"x": 530, "y": 572.5}], "E": 2},
+          {"S": 1, "M": [{"x": 1060, "y": 480}, {"x": 1060, "y": 471.5}], "E": 3}
+        ]
+      }
+    },
+    "id06": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 870, "y": 585}, {"x": 870, "y": 488.5}], "E": 2}]
+      }
+    },
+    "id07": {
+      "Dyad": {
+        "edges": [
+          {
+            "S": 1,
+            "M": [
+              {"x": 1250, "y": 505},
+              {"x": 1250, "y": 760},
+              {"x": 640, "y": 760},
+              {"x": 640, "y": 597.5}
+            ],
+            "E": 2
+          }
+        ]
+      }
+    },
+    "id08": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
+    "id09": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
+    "id10": {
+      "Dyad": {
+        "edges": [
+          {
+            "S": 1,
+            "M": [
+              {"x": 420, "y": 480},
+              {"x": 420, "y": 180},
+              {"x": 655, "y": 180},
+              {"x": 655, "y": 110}
+            ],
+            "E": 2
+          }
+        ]
+      }
+    },
+    "id11": {
+      "Dyad": {
+        "edges": [
+          {
+            "S": 1,
+            "M": [
+              {"x": 440, "y": 480},
+              {"x": 440, "y": 197},
+              {"x": 670, "y": 197},
+              {"x": 670, "y": 110}
+            ],
+            "E": 2
+          }
+        ]
+      }
+    },
+    "id12": {
+      "Dyad": {
+        "edges": [
+          {
+            "S": 1,
+            "M": [
+              {"x": 460, "y": 480},
+              {"x": 460, "y": 214},
+              {"x": 685, "y": 214},
+              {"x": 685, "y": 110}
+            ],
+            "E": 2
+          }
+        ]
+      }
+    },
+    "id13": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 855, "y": 110}, {"x": 855, "y": 83}], "E": 2}]
+      }
+    },
+    "id14": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 870, "y": 290}, {"x": 870, "y": 136}], "E": 2}]
+      }
+    },
+    "id15": {
+      "Dyad": {
+        "edges": [
+          {"S": 1, "M": [{"x": 1045, "y": 110}, {"x": 1045, "y": 438.5}], "E": 2}
+        ]
+      }
+    },
+    "id16": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 1270, "y": 505}, {"x": 1270, "y": 480}], "E": 2}]
+      }
+    },
+    "id17": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
+    "id18": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
+    "id19": {
+      "Dyad": {
+        "edges": [{"S": 1, "M": [{"x": 1260, "y": 455}, {"x": 1260, "y": 270}], "E": 2}]
+      }
+    }
+  }
+}
+end
+
+analysis TutorialVelocityMPC
+  extends TransientAnalysis(stop = 25.0)
+  model = VelocityMPCDemo()
+relations
+end

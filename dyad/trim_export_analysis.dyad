@@ -1,0 +1,13 @@
+"""
+Trim a model and write its operating point as the package's trim assets.
+
+Writes `trim_point.toml`, `trim_reference.toml` and `trim_controls.toml`, which steps 2–6
+apply. The model must be shaped like `Tutorial.TrimDemo`: an `f16plant` and five `*_cmd`
+Constant blocks. Backed by `TrimExportAnalysisSpec` in src/trim_export_analysis.jl.
+"""
+partial analysis TrimExportAnalysis
+  extends Analysis
+  model::Dyad.EmptyComponent = Dyad.EmptyComponent()
+  "Directory the three trim assets are written to, relative to the project root."
+  parameter export_dir::String = "assets"
+end

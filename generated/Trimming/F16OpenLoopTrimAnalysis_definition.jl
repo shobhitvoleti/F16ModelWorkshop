@@ -5,7 +5,7 @@
 
 
 using DyadInterface
-using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel
+using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel, SpecializationLevel
 using ModelingToolkit: SymbolicT, toggle_namespacing
 using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
 @kwdef mutable struct F16OpenLoopTrimAnalysisSpec <: AbstractTransientAnalysisSpec
@@ -22,11 +22,15 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
   var"optimize"::OptimizationLevel.Type = OptimizationLevel.Aggressive()
   var"progress"::Bool = true
   var"respecialize"::Bool = false
+  var"specialization"::SpecializationLevel.Type = SpecializationLevel.Despecialize()
   var"verbose"::DEVerbosity.Type = DEVerbosity.Standard()
   var"log_file"::String = ""
-  # Open-loop trim scenario using F16PlantModel with vector I/O.
-  # Signal flow: Constants → Mux5 → F16PlantModel → Demux12
-  # Demux outputs: [npos, epos, alt, phi, theta, psi, vt, alpha, beta, P, Q, R]
+  # The trimmed plant flown open loop: the 3000 m / 152.4 m/s trim controls held constant.
+  # 
+  # Started at the trim it stays close to it over the 10 s horizon: the trim is an equilibrium.
+  # `F16OpenLoopDeparture` shows that it is an unstable one.
+  # 
+  # Signal flow: Constants -> Mux5 -> F16PlantModel
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Trimming.F16OpenLoopTrim(; name=:F16OpenLoopTrim)
 end
 
@@ -35,7 +39,7 @@ function DyadInterface.run_analysis(spec::F16OpenLoopTrimAnalysisSpec)
   no_namespace_model = toggle_namespacing(spec.model, false)
   
   base_spec = TransientAnalysisSpec(;
-    name=:TransientAnalysis, overrides, alg=spec.alg, start=spec.start, stop=spec.stop, abstol=spec.abstol, reltol=spec.reltol, saveat=spec.saveat, dtmax=spec.dtmax, tstops=spec.tstops, automatic_discontinuity_detection=spec.automatic_discontinuity_detection, optimize=spec.optimize, progress=spec.progress, respecialize=spec.respecialize, verbose=spec.verbose, log_file=spec.log_file, model=spec.model
+    name=:TransientAnalysis, overrides, alg=spec.alg, start=spec.start, stop=spec.stop, abstol=spec.abstol, reltol=spec.reltol, saveat=spec.saveat, dtmax=spec.dtmax, tstops=spec.tstops, automatic_discontinuity_detection=spec.automatic_discontinuity_detection, optimize=spec.optimize, progress=spec.progress, respecialize=spec.respecialize, specialization=spec.specialization, verbose=spec.verbose, log_file=spec.log_file, model=spec.model
   )
   run_analysis(base_spec)
 end

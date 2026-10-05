@@ -1,0 +1,76 @@
+"""
+Vector channel selector: routes chosen channels of an `n`-vector onto an `m`-vector.
+
+`y[j] = u[indices[j]]`, so the block covers slices, reorderings and repetitions alike.
+It carries no state and imposes no clock, so it works on continuous and clocked signals.
+Steps 7 and 8 use it to narrow the plant's 12 outputs to the 10 regulated states.
+"""
+component VectorSelect
+  "Input connectors."
+  u = [RealInput() for i in 1:n] {^u}
+  "Output connectors."
+  y = [RealOutput() for j in 1:m] {^y}
+  "Width of the input vector."
+  structural parameter n::Integer = 1
+  "Input channels routed to the output, in output order."
+  structural parameter indices::Integer[:] = [1]
+  "Width of the output vector (derived)."
+  final structural parameter m::Integer = size(indices, 1)
+relations
+  for j in 1:m
+    y[j] = u[indices[j]]
+  end
+metadata {
+  "_links": {
+    "u": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 0, "y1": 450, "x2": 100, "y2": 550, "rot": 0}
+        },
+        "tags": []
+      }
+    },
+    "y": {
+      "Dyad": {
+        "placement": {
+          "diagram": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 550, "rot": 0}
+        },
+        "tags": []
+      }
+    }
+  }
+}
+end
+
+"""
+Minimal validation of the vector channel selector.
+
+A four-channel `VectorConstant` carrying `[1, 2, 3, 4]` feeds a `VectorSelect` that
+picks channels 4 and 2, in that order. Each selected channel drives an `Integrator`,
+which both consumes the signal continuously and gives the model a real ODE state (an
+empty `u0` crashes the auto-dt initializer).
+
+Expected: `retcode == Success`, and at t = 1 s the integrals are `pick_first.x == 4`
+and `pick_second.x == 2` — the selection is applied, and in the order `indices` gives
+rather than in ascending channel order.
+"""
+test component TestVectorSelect
+  "Four numbered channels."
+  src = VectorConstant(n = 4, k = [1.0, 2.0, 3.0, 4.0])
+  "Picks channel 4 onto output 1 and channel 2 onto output 2."
+  pick = VectorSelect(n = 4, indices = [4, 2])
+  "Running integral of the first selected channel."
+  pick_first = BlockComponents.Continuous.Integrator()
+  "Running integral of the second selected channel."
+  pick_second = BlockComponents.Continuous.Integrator()
+relations
+  connect(src.y, pick.u)
+  connect(pick.y[1], pick_first.u)
+  connect(pick.y[2], pick_second.u)
+end
+
+analysis TestVectorSelectTransient
+  extends TransientAnalysis(stop = 1.0)
+  model = TestVectorSelect()
+relations
+end

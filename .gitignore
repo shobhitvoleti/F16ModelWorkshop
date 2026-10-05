@@ -1,10 +1,13 @@
-/docs/build/
 *.jl.*.cov
 *.jl.cov
 *.jl.mem
 /Manifest*.toml
-/docs/Manifest*.toml
-/agent_resources/
-/animations/
+/.claude/
+/.dev/
 /.migration-backups/
+/agent_resources/
+/assets/f16_continuous_closed_loop.mp4
+/assets/f16_discrete_closed_loop.mp4
 .DS_Store
+
+/results/

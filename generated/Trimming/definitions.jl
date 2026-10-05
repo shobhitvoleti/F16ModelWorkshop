@@ -6,7 +6,6 @@
 
 using ModelingToolkit
 import Markdown
-import Moshi
 using ModelingToolkit: t_nounits as t
 using OrdinaryDiffEqDefault
 using RuntimeGeneratedFunctions
@@ -21,11 +20,8 @@ import DiscreteComponents
 import DyadControlSystems
 import DyadData
 import DyadInterface
-import ElectricalComponents
+import MPCComponents
 import MultibodyComponents
-import RotationalComponents
-import ThermalComponents
-import TranslationalComponents
 @doc Markdown.doc"""
 This connector represents an electrical pin with voltage and current as the potential and flow variables, respectively.
 """
@@ -204,11 +200,7 @@ component.
 end
 
 
+include("F16OpenLoopDepartureAnalysis_definition.jl")
+include("F16OpenLoopDeparture_definition.jl")
 include("F16OpenLoopTrimAnalysis_definition.jl")
 include("F16OpenLoopTrim_definition.jl")
-include("F16TrimAnalysis_definition.jl")
-include("F16Trim_definition.jl")
-include("F16TrimmedPlantLinkedAnalysis_definition.jl")
-include("F16TrimmedPlantLinked_definition.jl")
-include("F16VizTrimAnalysis_definition.jl")
-include("F16VizTrim_definition.jl")

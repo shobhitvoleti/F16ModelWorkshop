@@ -4,21 +4,10 @@
 ### Instead, update the Dyad source code and regenerate this file
 
 
-import Moshi as __Ext__Moshi
-
 @doc Markdown.doc"""
    VectorConstant(; name, n, k)
 
-Vector constant source: emits a fixed `n`-vector on its output.
-
-Vector analogue of `BlockComponents.Sources.Constant`, templated like
-`MatrixGain` (structural dimension, array output via comprehension). Lets a
-constant reference/offset vector be connected whole to a vector input port
-instead of instantiating `n` scalar `Constant` blocks and wiring them per
-channel.
-
-Connectors:
-- `y :: RealOutput[n]` — constant output vector, `y = k`.
+Vector constant source, `y = k`: the `n`-wide analogue of `BlockComponents.Sources.Constant`.
 
 ## Parameters:
 

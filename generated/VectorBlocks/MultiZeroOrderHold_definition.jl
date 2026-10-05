@@ -4,27 +4,13 @@
 ### Instead, update the Dyad source code and regenerate this file
 
 
-import Moshi as __Ext__Moshi
-
 @doc Markdown.doc"""
    MultiZeroOrderHold(; name, n)
 
-Vector zero-order-hold block: clocked vector input -> continuous vector output.
+Vector zero-order hold: clocked `n`-vector in, continuous `n`-vector out.
 
-Dimension-preserving clock-crossing block, templated like
-`DiscreteComponents.Examples.MatrixGain` (structural dimension parameter,
-array I/O via comprehension). Wraps `n` independent scalar
-`DiscreteComponents.ZeroOrderHold` blocks, one per channel, so an `n`-wide
-clocked signal is held into an `n`-wide continuous signal.
-
-Clock-agnostic: the input clock of each channel is inferred from what the
-corresponding `u[i]` is connected to (typically a clocked block output such as
-`DiscreteStateSpace.y`). Like `MultiSampler`, a hold is dimension-preserving, so
-there is a single channel-count `n`.
-
-Connectors:
-- `u :: RealInput[n]`  (clocked)    — input signal.
-- `y :: RealOutput[n]` (continuous) — held output signal.
+One `DiscreteComponents.ZeroOrderHold` per channel; each channel's clock is inferred
+from the clocked signal driving its `u[i]`.
 
 ## Parameters:
 

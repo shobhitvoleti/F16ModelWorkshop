@@ -9,8 +9,10 @@ if isfile(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Utils", 
 end
 
 
-include("Demux12_experiment.jl")
 include("Demux3_experiment.jl")
 include("Demux4x3_experiment.jl")
+include("Demux5_experiment.jl")
+include("Mux3_experiment.jl")
+include("Mux4x3_experiment.jl")
 include("Mux5_experiment.jl")
 include("SignalPoseSource_experiment.jl")

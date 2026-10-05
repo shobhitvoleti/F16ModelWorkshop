@@ -1,0 +1,48 @@
+"""
+Open-loop pitch departure from trim.
+
+Identical to `F16OpenLoopTrim` except that `theta_init` is nudged 1 degree above the
+trim attitude and the horizon is long enough for the consequence to be unmistakable.
+
+At the reference CG the F-16 is statically unstable in pitch (Cma = +0.082/rad), which
+puts a real pole at roughly +0.09 rad/s — a perturbation doubles about every 7.6 s and
+never comes back. Where `F16OpenLoopTrim` shows that the trim point is an equilibrium,
+this shows that it is an unstable one, which is the reason the aircraft needs the
+regulator designed in tutorial steps 3 and 4.
+
+Set `plant.xcg = 0.30` to move the CG forward of the aerodynamic reference and watch
+the same perturbation decay instead.
+
+Signal flow: Constants -> Mux5 -> F16PlantModel
+"""
+test component F16OpenLoopDeparture
+  # ---- Trim control inputs, held fixed: no pilot, no controller ----
+  T_cmd   = BlockComponents.Sources.Constant(k = 10794.89)
+  el_cmd  = BlockComponents.Sources.Constant(k = -0.6949)
+  ail_cmd = BlockComponents.Sources.Constant(k = 0.0)
+  rud_cmd = BlockComponents.Sources.Constant(k = 0.0)
+  lef_cmd = BlockComponents.Sources.Constant(k = 0.0)
+  # ---- Signal routing ----
+  mux = F16ModelWorkshop.Utils.Mux5()
+  # ---- Plant, started 1 degree nose-up of the trim attitude ----
+  plant = F16ModelWorkshop.Plant.F16PlantModel(
+    alt_init = 3000.0, vt_init = 152.4,
+    alpha_init = 0.059129, theta_init = 0.076582,
+    beta_init = 0.0, phi_init = 0.0, psi_init = 0.0,
+    P_init = 0.0, Q_init = 0.0, R_init = 0.0
+  )
+relations
+  connect(T_cmd.y,   mux.u1)
+  connect(el_cmd.y,  mux.u2)
+  connect(ail_cmd.y, mux.u3)
+  connect(rud_cmd.y, mux.u4)
+  connect(lef_cmd.y, mux.u5)
+  connect(mux.y, plant.u_in)
+end
+
+analysis F16OpenLoopDepartureAnalysis
+  # 40 s: long enough that pitch has tripled and 22 m/s of airspeed is gone, short
+  # enough that alpha stays inside the range the coefficient deck was fitted over.
+  extends TransientAnalysis(stop = 40.0)
+  model = F16OpenLoopDeparture()
+end

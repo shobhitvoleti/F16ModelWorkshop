@@ -1,0 +1,266 @@
+# Checks on the bank of tutorial step 7 (`Tutorial.VelocityMPCDemo`), run by
+# test/velocity_mpc.jl. Each drives the scheduled MPC components with constant signals in place
+# of the plant, because a bank's members have no public accessor (MPCComponents.jl#48).
+
+"""
+Every bank member returns its own trim command when it is already at its own trim.
+
+Measurement and reference are both the trimmed state of `velocity`; the bank's observer and
+`u_init` start at that trim. The held commands must equal
+`VelocityMPC.trim_command(velocity, altitude)` at every tick. At a knot of `velocities` only
+that knot's member is active, so the tests build one model per knot (`velocity = 140.0` etc.).
+"""
+test component VelocityMPCHoldsTrim
+  "Airspeed knot under test; both the bank's operating point and the flight condition fed in."
+  structural parameter velocity::Real = 152.4
+  "Altitude every knot is trimmed at, m."
+  structural parameter altitude::Real = 3000.0
+  "Controller sample period, s."
+  structural parameter Ts::Real = 0.05
+  "Airspeed knots the bank is designed at, m/s, strictly increasing."
+  structural parameter velocities::Real[3] = [140.0, 152.4, 170.0]
+  "Number of regulated states, the width of the measurement and reference vectors."
+  structural parameter n_states::Integer = 10
+  "The bank of controllers, started at the trim of `velocity` so the observer needs no transient."
+  structural parameter mpc_bank::MPCComponents.MPCRef = F16ModelWorkshop.VelocityMPC.bank(velocities, altitude, velocity, Ts)
+  "Trimmed states of the flight condition under test, all twelve of them."
+  structural parameter trim_full::Real[12] = F16ModelWorkshop.VelocityMPC.trim_states(velocity, altitude)
+  "Trimmed command of that flight condition, [kN, deg, deg, deg]: both `u_init` and the expected output."
+  structural parameter u_trim::Real[4] = F16ModelWorkshop.VelocityMPC.trim_command(velocity, altitude)
+  "The trimmed state, held constant in place of a plant."
+  state_src = F16ModelWorkshop.VectorBlocks.VectorConstant(n = 12, k = trim_full) {^state_src}
+  "The ten regulated states out of the twelve: everything but the horizontal position."
+  state_select = F16ModelWorkshop.VectorBlocks.VectorSelect(n = 12, indices = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {^state_select}
+  "Measurement clock crossing: the constant state, sampled at `Ts`."
+  meas_sample = F16ModelWorkshop.VectorBlocks.MultiSampler(n = n_states) {^meas_sample}
+  "Reference clock crossing: the same constant state, so the setpoint is where the aircraft already is."
+  ref_sample = F16ModelWorkshop.VectorBlocks.MultiSampler(n = n_states) {^ref_sample}
+  "Controller sample clock, planted on the airspeed channel."
+  clock = DiscreteComponents.PeriodicClock(dt = Ts) {^clock}
+  "Measured airspeed to member weights; at a knot one weight is 1 and the rest are 0."
+  scheduler = MPCComponents.Experimental.LinearMPCScheduler(rho_grid = velocities) {^scheduler}
+  "Weight-blended state observer of the bank."
+  observer = MPCComponents.Experimental.LinearMPCScheduledObserver(mpc = mpc_bank) {^observer}
+  "Weight-blended constrained optimizer; `u_init` is the trimmed command, the command the test expects back."
+  optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(mpc = mpc_bank, u_init = u_trim) {^optimizer}
+  "Command clock crossing, so the solved commands can be read from the solution."
+  zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(n = 4) {^zoh}
+  "Hold for the solver status: clocked signals cannot be read back from the solution."
+  zoh_flag = DiscreteComponents.ZeroOrderHold(initial_condition = 1.0) {^zoh_flag}
+  """
+  Continuous consumer of the held thrust: provides a real ODE state so the otherwise
+   purely-clocked model is not state-empty (an empty u0 crashes the auto-dt initializer).
+  """
+  intg = BlockComponents.Continuous.Integrator() {^intg}
+  "Held thrust command, kN."
+  variable T_cmd::Real
+  "Held elevator command, deg."
+  variable el_cmd::Real
+  "Held aileron command, deg."
+  variable ail_cmd::Real
+  "Held rudder command, deg."
+  variable rud_cmd::Real
+  "Composite solver status of the last tick, held so it can be read from the solution."
+  variable exitflag::Real
+relations
+  T_cmd = zoh.y[1]
+  el_cmd = zoh.y[2]
+  ail_cmd = zoh.y[3]
+  rud_cmd = zoh.y[4]
+  exitflag = zoh_flag.y
+  # ---- Constant state: measurement and reference are the same trimmed vector ----
+  connect(state_src.y, state_select.u) {^id01}
+  connect(state_select.y, meas_sample.u, ref_sample.u) {^id02}
+  connect(meas_sample.y, observer.y) {^id03}
+  # The airspeed sample is the measurement, the scheduling variable, and the loop's clock.
+  connect(meas_sample.y[5], scheduler.rho, clock.y) {^id04}
+  connect(ref_sample.y, optimizer.r) {^id05}
+  # ---- Controller internals ----
+  connect(scheduler.w, observer.w, optimizer.w) {^id06}
+  connect(observer.xhat, optimizer.xhat) {^id07}
+  connect(optimizer.u, observer.u) {^id08}
+  # ---- Commands: optimizer -> holds ----
+  connect(optimizer.u, zoh.u) {^id09}
+  connect(optimizer.exitflag, zoh_flag.u) {^id10}
+  connect(zoh.y[1], intg.u) {^id11}
+metadata {
+  "_links": {
+    "state_src": {
+      "Dyad": {"placement": {"diagram": {"x1": 60, "y1": 400, "x2": 160, "y2": 500}}}
+    },
+    "state_select": {
+      "Dyad": {"placement": {"diagram": {"x1": 260, "y1": 400, "x2": 360, "y2": 500}}}
+    },
+    "meas_sample": {
+      "Dyad": {"placement": {"diagram": {"x1": 460, "y1": 400, "x2": 560, "y2": 500}}}
+    },
+    "ref_sample": {
+      "Dyad": {"placement": {"diagram": {"x1": 460, "y1": 620, "x2": 560, "y2": 720}}}
+    },
+    "clock": {
+      "Dyad": {"placement": {"diagram": {"x1": 460, "y1": 180, "x2": 560, "y2": 280}}}
+    },
+    "scheduler": {
+      "Dyad": {"placement": {"diagram": {"x1": 680, "y1": 180, "x2": 780, "y2": 280}}}
+    },
+    "observer": {
+      "Dyad": {"placement": {"diagram": {"x1": 680, "y1": 400, "x2": 780, "y2": 500}}}
+    },
+    "optimizer": {
+      "Dyad": {"placement": {"diagram": {"x1": 900, "y1": 400, "x2": 1000, "y2": 500}}}
+    },
+    "zoh": {
+      "Dyad": {"placement": {"diagram": {"x1": 1120, "y1": 400, "x2": 1220, "y2": 500}}}
+    },
+    "zoh_flag": {
+      "Dyad": {"placement": {"diagram": {"x1": 1120, "y1": 620, "x2": 1220, "y2": 720}}}
+    },
+    "intg": {
+      "Dyad": {"placement": {"diagram": {"x1": 1340, "y1": 400, "x2": 1440, "y2": 500}}}
+    }
+  }
+}
+end
+
+"""
+Every bank member's unconstrained optimum is the discrete LQR of its own stage cost.
+
+The reference is the trimmed state of `velocity` and the measurement is that state plus `dx`.
+Each member's terminal weight is the Riccati cost-to-go of its stage cost, so for any horizon
+`Np` it must return `u_trim - K*dx`, with `K` from `VelocityMPC.member_design`. `dx` keeps
+that command inside the box and slew limits. The reference airspeed schedules the bank, so at
+a knot only that knot's member is active.
+"""
+test component VelocityMPCMemberIsLQR
+  "Airspeed knot under test; both the bank's operating point and the flight condition fed in."
+  structural parameter velocity::Real = 152.4
+  "Altitude every knot is trimmed at, m."
+  structural parameter altitude::Real = 3000.0
+  "Controller sample period, s."
+  structural parameter Ts::Real = 0.05
+  "Airspeed knots the bank is designed at, m/s, strictly increasing."
+  structural parameter velocities::Real[3] = [140.0, 152.4, 170.0]
+  "Number of regulated states, the width of the measurement and reference vectors."
+  structural parameter n_states::Integer = 10
+  "Prediction and control horizon of every member, in samples."
+  structural parameter Np::Integer = 40
+  """
+  Constant offset added to the measured state: 0.006 of the Bryson scales
+   `F16ModelWorkshop.VelocityMPC.STATE_SCALES`. At that size the LQR move `K*dx` stays
+   under a quarter of every per-tick slew limit at all three knots and leaves the command
+   far inside its box, so the optimum is interior and the quadratic program is solving the
+   unconstrained problem.
+  """
+  structural parameter dx::Real[10] = [0.6, 0.0006, 0.0006, 0.0006, 0.06, 0.0006, 0.0006, 0.0012, 0.0012, 0.0012]
+  "The bank of controllers, started at the trim of `velocity` so the observer needs no transient."
+  structural parameter mpc_bank::MPCComponents.MPCRef = F16ModelWorkshop.VelocityMPC.bank(velocities, altitude, velocity, Ts, Np = Np)
+  "Trimmed states of the flight condition under test, all twelve of them."
+  structural parameter trim_full::Real[12] = F16ModelWorkshop.VelocityMPC.trim_states(velocity, altitude)
+  "Trimmed command of that flight condition, [kN, deg, deg, deg]: `u_init`, and the command the expected output is measured from."
+  structural parameter u_trim::Real[4] = F16ModelWorkshop.VelocityMPC.trim_command(velocity, altitude)
+  "The trimmed state, held constant in place of a plant."
+  state_src = F16ModelWorkshop.VectorBlocks.VectorConstant(n = 12, k = trim_full) {^state_src}
+  "The ten regulated states out of the twelve: everything but the horizontal position."
+  state_select = F16ModelWorkshop.VectorBlocks.VectorSelect(n = 12, indices = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {^state_select}
+  "The constant state offset the measurement carries."
+  perturbation = F16ModelWorkshop.VectorBlocks.VectorConstant(n = n_states, k = dx) {^perturbation}
+  "The measured state: the trim plus the offset."
+  meas_sum = F16ModelWorkshop.VectorBlocks.VectorAdd(n = n_states) {^meas_sum}
+  "Measurement clock crossing: the perturbed state, sampled at `Ts`."
+  meas_sample = F16ModelWorkshop.VectorBlocks.MultiSampler(n = n_states) {^meas_sample}
+  "Reference clock crossing: the unperturbed trimmed state, so the state error is `dx`."
+  ref_sample = F16ModelWorkshop.VectorBlocks.MultiSampler(n = n_states) {^ref_sample}
+  "Controller sample clock, planted on the reference airspeed channel."
+  clock = DiscreteComponents.PeriodicClock(dt = Ts) {^clock}
+  "Reference airspeed to member weights; at a knot one weight is 1 and the rest are 0."
+  scheduler = MPCComponents.Experimental.LinearMPCScheduler(rho_grid = velocities) {^scheduler}
+  "Weight-blended state observer of the bank."
+  observer = MPCComponents.Experimental.LinearMPCScheduledObserver(mpc = mpc_bank) {^observer}
+  "Weight-blended constrained optimizer; `u_init` is the trimmed command, so the first tick's slew limit is centered on it."
+  optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(mpc = mpc_bank, u_init = u_trim) {^optimizer}
+  "Command clock crossing, so the solved commands can be read from the solution."
+  zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(n = 4) {^zoh}
+  "Hold for the solver status: clocked signals cannot be read back from the solution."
+  zoh_flag = DiscreteComponents.ZeroOrderHold(initial_condition = 1.0) {^zoh_flag}
+  """
+  Continuous consumer of the held thrust: provides a real ODE state so the otherwise
+   purely-clocked model is not state-empty (an empty u0 crashes the auto-dt initializer).
+  """
+  intg = BlockComponents.Continuous.Integrator() {^intg}
+  "Held thrust command, kN."
+  variable T_cmd::Real
+  "Held elevator command, deg."
+  variable el_cmd::Real
+  "Held aileron command, deg."
+  variable ail_cmd::Real
+  "Held rudder command, deg."
+  variable rud_cmd::Real
+  "Composite solver status of the last tick, held so it can be read from the solution."
+  variable exitflag::Real
+relations
+  T_cmd = zoh.y[1]
+  el_cmd = zoh.y[2]
+  ail_cmd = zoh.y[3]
+  rud_cmd = zoh.y[4]
+  exitflag = zoh_flag.y
+  # ---- Constant state: the reference is the trim, the measurement is the trim plus `dx` ----
+  connect(state_src.y, state_select.u) {^id01}
+  connect(state_select.y, meas_sum.u1, ref_sample.u) {^id02}
+  connect(perturbation.y, meas_sum.u2) {^id03}
+  connect(meas_sum.y, meas_sample.u) {^id04}
+  connect(meas_sample.y, observer.y) {^id05}
+  # The reference airspeed is the scheduling variable and the loop's clock.
+  connect(ref_sample.y[5], scheduler.rho, clock.y) {^id06}
+  connect(ref_sample.y, optimizer.r) {^id07}
+  # ---- Controller internals ----
+  connect(scheduler.w, observer.w, optimizer.w) {^id08}
+  connect(observer.xhat, optimizer.xhat) {^id09}
+  connect(optimizer.u, observer.u) {^id10}
+  # ---- Commands: optimizer -> holds ----
+  connect(optimizer.u, zoh.u) {^id11}
+  connect(optimizer.exitflag, zoh_flag.u) {^id12}
+  connect(zoh.y[1], intg.u) {^id13}
+metadata {
+  "_links": {
+    "state_src": {
+      "Dyad": {"placement": {"diagram": {"x1": 60, "y1": 400, "x2": 160, "y2": 500}}}
+    },
+    "state_select": {
+      "Dyad": {"placement": {"diagram": {"x1": 260, "y1": 400, "x2": 360, "y2": 500}}}
+    },
+    "perturbation": {
+      "Dyad": {"placement": {"diagram": {"x1": 260, "y1": 180, "x2": 360, "y2": 280}}}
+    },
+    "meas_sum": {
+      "Dyad": {"placement": {"diagram": {"x1": 460, "y1": 300, "x2": 560, "y2": 400}}}
+    },
+    "meas_sample": {
+      "Dyad": {"placement": {"diagram": {"x1": 660, "y1": 300, "x2": 760, "y2": 400}}}
+    },
+    "ref_sample": {
+      "Dyad": {"placement": {"diagram": {"x1": 660, "y1": 620, "x2": 760, "y2": 720}}}
+    },
+    "clock": {
+      "Dyad": {"placement": {"diagram": {"x1": 660, "y1": 860, "x2": 760, "y2": 960}}}
+    },
+    "scheduler": {
+      "Dyad": {"placement": {"diagram": {"x1": 880, "y1": 860, "x2": 980, "y2": 960}}}
+    },
+    "observer": {
+      "Dyad": {"placement": {"diagram": {"x1": 880, "y1": 300, "x2": 980, "y2": 400}}}
+    },
+    "optimizer": {
+      "Dyad": {"placement": {"diagram": {"x1": 1100, "y1": 400, "x2": 1200, "y2": 500}}}
+    },
+    "zoh": {
+      "Dyad": {"placement": {"diagram": {"x1": 1320, "y1": 400, "x2": 1420, "y2": 500}}}
+    },
+    "zoh_flag": {
+      "Dyad": {"placement": {"diagram": {"x1": 1320, "y1": 620, "x2": 1420, "y2": 720}}}
+    },
+    "intg": {
+      "Dyad": {"placement": {"diagram": {"x1": 1540, "y1": 400, "x2": 1640, "y2": 500}}}
+    }
+  }
+}
+end

@@ -1,0 +1,28 @@
+"""
+Tutorial 6 — standalone C for the discrete LQG controller.
+
+`ClockedDiscreteController` is step 4's controller on its own: the clocked
+`DiscreteStateSpace` and its 100 Hz clock, with the 12 tracking errors in and the 5
+absolute commands out as whole-array connectors. `TutorialControllerCodegen` compiles it
+with `SynchToolkit.stkcompile` and writes the C to `generated_c/f16_controller/`: once
+per tick, `top_*_step_c` takes `double u[12]` and fills `double y[5]`.
+"""
+component ClockedDiscreteController
+  "Tracking error: the 12 state references minus their measurements."
+  u = [RealInput() for i in 1:12] {^u}
+  "Absolute control commands [T, el, ail, rud, lef]."
+  y = [RealOutput() for i in 1:5] {^y}
+  "Discrete LQG controller designed by `TutorialDiscreteLQG`, trim folded into its output offset."
+  controller = DiscreteComponents.DiscreteStateSpace(nx = 12, nu = 12, ny = 5, apply "dyad://F16ModelWorkshop/discrete_controller.toml") {^controller}
+  "Controller clock, planted on one input; the block clock carries it to the rest."
+  clock = DiscreteComponents.PeriodicClock(dt = ControllerTs) {^clock}
+relations
+  connect(u, controller.u)
+  connect(clock.y, controller.u[1])
+  connect(controller.y, y)
+end
+
+analysis TutorialControllerCodegen
+  extends F16ModelWorkshop.ControllerCodegenAnalysis(export_dir = "generated_c/f16_controller")
+  model = ClockedDiscreteController()
+end

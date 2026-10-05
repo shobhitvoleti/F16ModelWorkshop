@@ -4,28 +4,14 @@
 ### Instead, update the Dyad source code and regenerate this file
 
 
-import Moshi as __Ext__Moshi
-
 @doc Markdown.doc"""
    MultiSampler(; name, n)
 
-Vector sample block: continuous vector input -> clocked vector output.
+Vector sampler: continuous `n`-vector in, clocked `n`-vector out.
 
-Dimension-preserving clock-crossing block, templated like
-`DiscreteComponents.Examples.MatrixGain` (structural dimension parameter,
-array I/O via comprehension). Wraps `n` independent scalar
-`DiscreteComponents.Sampler` blocks, one per channel, so an `n`-wide
-continuous signal is sampled into an `n`-wide clocked signal.
-
-Clock-agnostic: the output clock of each channel is inferred from what the
-corresponding `y[i]` is connected to (place a `PeriodicClock` on the clocked
-side of the crossing, or feed a clocked block such as `DiscreteStateSpace`
-downstream). Unlike `MatrixGain`, a sampler is not a linear map, so there is a
-single channel-count `n` rather than separate `ny`/`nu`.
-
-Connectors:
-- `u :: RealInput[n]`  (continuous) — input signal.
-- `y :: RealOutput[n]` (clocked)    — sampled output signal.
+One `DiscreteComponents.Sampler` per channel. Each channel's clock is inferred from what
+its `y[i]` connects to: a `PeriodicClock`, or a clocked block such as
+`DiscreteStateSpace` whose block clock unifies all of them.
 
 ## Parameters:
 
