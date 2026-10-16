@@ -7,7 +7,7 @@
 @doc Markdown.doc"""
    VelocityMPCDemo(; name, velocities, altitude, initial_velocity, Ts, final_velocity, ramp_start, ramp_duration, pitch_perturbation, newtons_per_kilonewton, n_states, mpc_bank, trim_init, u_trim, reference_gains)
 
-Tutorial 7 — Velocity-scheduled linear MPC.
+Tutorial 8 — Velocity-scheduled linear MPC.
 
 A bank of constrained `LinearMPC` controllers, one per airspeed knot, flown on the
 nonlinear plant at 20 Hz. `LinearMPCScheduler` turns measured airspeed into hat-function
