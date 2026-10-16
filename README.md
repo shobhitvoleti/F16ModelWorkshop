@@ -220,12 +220,27 @@ every 7.6 s. That is why the aircraft needs the regulator from step 3.
 
 ## For maintainers
 
-- **MPCComponents** is pinned to a commit (`[sources]` in `Project.toml`). Its latest version
-  needs LinearMPC 0.11, which is not yet registered.
-- **DiscreteComponents** stays on 0.4 because that MPCComponents commit requires it. Version
-  0.5 defines its sampler and hold blocks in native Dyad; once it can be used,
+Several dependencies are pinned to commits (`[sources]` in `Project.toml`), because the
+versions the workshop needs are not registered yet. `test/lqg_design.jl` reruns the step-2
+linearization and the step-3 LQG designs against the controllers in `assets/`, so a change
+to any of these pins that alters the designs fails the tests.
+
+- **MPCComponents** 0.2 and its **LinearMPCRuntime** are pinned to a commit of `main`. They
+  need **LinearMPC** 0.11 and **DAQPBase** 0.6, which are pinned to the
+  [baggepinnen/LinearMPC.jl](https://github.com/baggepinnen/LinearMPC.jl) and
+  [baggepinnen/daqp](https://github.com/baggepinnen/daqp) branches MPCComponents is tested
+  with, together with **DAQP_jll**.
+- **DiscreteComponents** is pinned to a commit of `main` for `DiscretePIDScheduled`
+  ([DiscreteComponents#148](https://github.com/JuliaComputing/DiscreteComponents/pull/148)),
+  which no release has yet. 0.5 defines its sampler and hold blocks in native Dyad, so
   `MultiSampler` and `MultiZeroOrderHold` can become `y = sample(u)` and `y = hold(u)` on
   whole vectors.
+- **DyadControlSystems** and **DAQP** are forks whose only change is a compat bound:
+  [`rv/linearmpc-0.11`](https://github.com/JuliaComputing/DyadControlSystems.jl/tree/rv/linearmpc-0.11)
+  allows LinearMPC 0.11, and
+  [`shobhitvoleti/DAQP.jl` `daqpbase-0.6`](https://github.com/shobhitvoleti/DAQP.jl/tree/daqpbase-0.6)
+  allows DAQPBase 0.6. Without them DyadControlSystems, which steps 2 and 3 use, cannot be
+  installed next to LinearMPC 0.11. Drop each fork once its upstream releases the bound.
 - Native two-variable scheduling is proposed in
   [MPCComponents.jl#95](https://github.com/JuliaComputing/MPCComponents.jl/pull/95). Once it
   is merged, step 9 can use `LinearMPCScheduler2D` instead of two schedulers and

@@ -84,7 +84,7 @@ ramps that cross a knot on each axis.
 | `vt_reference`         | Commanded airspeed on the continuous time base, for plotting.                         | --  |
 | `alt_reference`         | Commanded altitude on the continuous time base, for plotting.                         | --  |
 """
-@component function EnvelopeMPCDemo(; name = nothing, trim_table=DyadData.DyadInterpolationTable2D("dyad://F16ModelWorkshop/envelope_trim_alpha.csv"; axis1_name="vt", axis2_name="alt", data_name="alpha"), initial_velocity=Float64(150.0), initial_altitude=Float64(3000.0), final_velocity=Float64(190.0), final_altitude=Float64(4500.0), ramp_start=Float64(2.0), vt_ramp_duration=Float64(20.0), alt_ramp_duration=Float64(60.0), Ts=0.05, backend=MPCComponents.MPCBackend.Auto(), n_states=10, velocities=trim_table["vt"], altitudes=trim_table["alt"], reference_gains=F16ModelWorkshop.EnvelopeMPC.reference_map(trim_table), trim_init=F16ModelWorkshop.VelocityMPC.trim_states(initial_velocity, initial_altitude), u_trim=F16ModelWorkshop.VelocityMPC.trim_command(initial_velocity, initial_altitude), mpc_bank=F16ModelWorkshop.EnvelopeMPC.bank(velocities, altitudes, initial_velocity, initial_altitude, Ts), kwargs...)
+@component function EnvelopeMPCDemo(; name = nothing, trim_table=DyadData.DyadInterpolationTable2D("dyad://F16ModelWorkshop/envelope_trim_alpha.csv"; axis1_name="vt", axis2_name="alt", data_name="alpha"), initial_velocity=Float64(150.0), initial_altitude=Float64(3000.0), final_velocity=Float64(190.0), final_altitude=Float64(4500.0), ramp_start=Float64(2.0), vt_ramp_duration=Float64(20.0), alt_ramp_duration=Float64(60.0), Ts=0.05, backend=MPCComponents.Backend.Auto(), n_states=10, velocities=trim_table["vt"], altitudes=trim_table["alt"], reference_gains=F16ModelWorkshop.EnvelopeMPC.reference_map(trim_table), trim_init=F16ModelWorkshop.VelocityMPC.trim_states(initial_velocity, initial_altitude), u_trim=F16ModelWorkshop.VelocityMPC.trim_command(initial_velocity, initial_altitude), mpc_bank=F16ModelWorkshop.EnvelopeMPC.bank(velocities, altitudes, initial_velocity, initial_altitude, Ts), kwargs...)
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -161,7 +161,7 @@ ramps that cross a knot on each axis.
   push!(__systems, @named observer = MPCComponents.Experimental.LinearMPCScheduledObserver(; mpc=mpc_bank, observer_overrides...))
   # Subcomponent optimizer of type MPCComponents.Experimental.LinearMPCScheduledOptimizer
   optimizer_overrides = __pop_subcomponent_overrides!(__overrides, "optimizer")
-  push!(__systems, @named optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(; mpc=mpc_bank, u_init=u_trim, backend=backend, optimizer_overrides...))
+  push!(__systems, @named optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(; mpc=mpc_bank, u0=u_trim, backend=backend, optimizer_overrides...))
   # Subcomponent clock of type DiscreteComponents.PeriodicClock
   clock_overrides = __pop_subcomponent_overrides!(__overrides, "clock")
   push!(__systems, @named clock = DiscreteComponents.PeriodicClock(; dt=Ts, clock_overrides...))

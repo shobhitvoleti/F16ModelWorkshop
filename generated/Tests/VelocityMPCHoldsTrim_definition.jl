@@ -10,7 +10,7 @@
 Every bank member returns its own trim command when it is already at its own trim.
 
 Measurement and reference are both the trimmed state of `velocity`; the bank's observer and
-`u_init` start at that trim. The held commands must equal
+`u0` start at that trim. The held commands must equal
 `VelocityMPC.trim_command(velocity, altitude)` at every tick. At a knot of `velocities` only
 that knot's member is active, so the tests build one model per knot (`velocity = 140.0` etc.).
 
@@ -25,7 +25,7 @@ that knot's member is active, so the tests build one model per knot (`velocity =
 | `n_states`         | Number of regulated states, the width of the measurement and reference vectors.                         | --  |   10 |
 | `mpc_bank`         | The bank of controllers, started at the trim of `velocity` so the observer needs no transient.                         | --  |   F16ModelWor...locity, Ts) |
 | `trim_full`         | Trimmed states of the flight condition under test, all twelve of them.                         | --  |   F16ModelWor..., altitude) |
-| `u_trim`         | Trimmed command of that flight condition, [kN, deg, deg, deg]: both `u_init` and the expected output.                         | --  |   F16ModelWor..., altitude) |
+| `u_trim`         | Trimmed command of that flight condition, [kN, deg, deg, deg]: both `u0` and the expected output.                         | --  |   F16ModelWor..., altitude) |
 
 ## Variables
 
@@ -124,7 +124,7 @@ that knot's member is active, so the tests build one model per knot (`velocity =
   push!(__systems, @named observer = MPCComponents.Experimental.LinearMPCScheduledObserver(; mpc=mpc_bank, observer_overrides...))
   # Subcomponent optimizer of type MPCComponents.Experimental.LinearMPCScheduledOptimizer
   optimizer_overrides = __pop_subcomponent_overrides!(__overrides, "optimizer")
-  push!(__systems, @named optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(; mpc=mpc_bank, u_init=u_trim, optimizer_overrides...))
+  push!(__systems, @named optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(; mpc=mpc_bank, u0=u_trim, optimizer_overrides...))
   # Subcomponent zoh of type F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold
   zoh_overrides = __pop_subcomponent_overrides!(__overrides, "zoh")
   push!(__systems, @named zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(; n=4, zoh_overrides...))
