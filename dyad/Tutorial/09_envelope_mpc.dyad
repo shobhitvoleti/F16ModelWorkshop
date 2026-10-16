@@ -54,7 +54,7 @@ component EnvelopeMPCDemo
   "Weight-blended state observer of the bank."
   observer = MPCComponents.Experimental.LinearMPCScheduledObserver(mpc = mpc_bank) {^observer}
   "Weight-blended constrained optimizer, started from the trimmed command."
-  optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(mpc = mpc_bank, u_init = u_trim, backend = backend) {^optimizer}
+  optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(mpc = mpc_bank, u0 = u_trim, backend = backend) {^optimizer}
   "Controller sample clock, planted on the airspeed connection set."
   clock = DiscreteComponents.PeriodicClock(dt = Ts) {^clock}
   "The ten regulated states out of the plant's twelve outputs."
@@ -100,7 +100,7 @@ component EnvelopeMPCDemo
   "Controller sample period, s."
   structural parameter Ts::Real = 0.05
   "QP solver backend: Auto compiles one C library per member when a C compiler is available."
-  structural parameter backend::MPCComponents.MPCBackend = MPCComponents.MPCBackend.Auto()
+  structural parameter backend::MPCComponents.Backend = MPCComponents.Backend.Auto()
   "Number of regulated states."
   structural parameter n_states::Integer = 10
   "Number of airspeed knots (derived)."

@@ -6,7 +6,7 @@
 Every bank member returns its own trim command when it is already at its own trim.
 
 Measurement and reference are both the trimmed state of `velocity`; the bank's observer and
-`u_init` start at that trim. The held commands must equal
+`u0` start at that trim. The held commands must equal
 `VelocityMPC.trim_command(velocity, altitude)` at every tick. At a knot of `velocities` only
 that knot's member is active, so the tests build one model per knot (`velocity = 140.0` etc.).
 """
@@ -25,7 +25,7 @@ test component VelocityMPCHoldsTrim
   structural parameter mpc_bank::MPCComponents.MPCRef = F16ModelWorkshop.VelocityMPC.bank(velocities, altitude, velocity, Ts)
   "Trimmed states of the flight condition under test, all twelve of them."
   structural parameter trim_full::Real[12] = F16ModelWorkshop.VelocityMPC.trim_states(velocity, altitude)
-  "Trimmed command of that flight condition, [kN, deg, deg, deg]: both `u_init` and the expected output."
+  "Trimmed command of that flight condition, [kN, deg, deg, deg]: both `u0` and the expected output."
   structural parameter u_trim::Real[4] = F16ModelWorkshop.VelocityMPC.trim_command(velocity, altitude)
   "The trimmed state, held constant in place of a plant."
   state_src = F16ModelWorkshop.VectorBlocks.VectorConstant(n = 12, k = trim_full) {^state_src}
@@ -41,8 +41,8 @@ test component VelocityMPCHoldsTrim
   scheduler = MPCComponents.Experimental.LinearMPCScheduler(rho_grid = velocities) {^scheduler}
   "Weight-blended state observer of the bank."
   observer = MPCComponents.Experimental.LinearMPCScheduledObserver(mpc = mpc_bank) {^observer}
-  "Weight-blended constrained optimizer; `u_init` is the trimmed command, the command the test expects back."
-  optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(mpc = mpc_bank, u_init = u_trim) {^optimizer}
+  "Weight-blended constrained optimizer; `u0` is the trimmed command, the command the test expects back."
+  optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(mpc = mpc_bank, u0 = u_trim) {^optimizer}
   "Command clock crossing, so the solved commands can be read from the solution."
   zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(n = 4) {^zoh}
   "Hold for the solver status: clocked signals cannot be read back from the solution."
@@ -156,7 +156,7 @@ test component VelocityMPCMemberIsLQR
   structural parameter mpc_bank::MPCComponents.MPCRef = F16ModelWorkshop.VelocityMPC.bank(velocities, altitude, velocity, Ts, Np = Np)
   "Trimmed states of the flight condition under test, all twelve of them."
   structural parameter trim_full::Real[12] = F16ModelWorkshop.VelocityMPC.trim_states(velocity, altitude)
-  "Trimmed command of that flight condition, [kN, deg, deg, deg]: `u_init`, and the command the expected output is measured from."
+  "Trimmed command of that flight condition, [kN, deg, deg, deg]: `u0`, and the command the expected output is measured from."
   structural parameter u_trim::Real[4] = F16ModelWorkshop.VelocityMPC.trim_command(velocity, altitude)
   "The trimmed state, held constant in place of a plant."
   state_src = F16ModelWorkshop.VectorBlocks.VectorConstant(n = 12, k = trim_full) {^state_src}
@@ -176,8 +176,8 @@ test component VelocityMPCMemberIsLQR
   scheduler = MPCComponents.Experimental.LinearMPCScheduler(rho_grid = velocities) {^scheduler}
   "Weight-blended state observer of the bank."
   observer = MPCComponents.Experimental.LinearMPCScheduledObserver(mpc = mpc_bank) {^observer}
-  "Weight-blended constrained optimizer; `u_init` is the trimmed command, so the first tick's slew limit is centered on it."
-  optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(mpc = mpc_bank, u_init = u_trim) {^optimizer}
+  "Weight-blended constrained optimizer; `u0` is the trimmed command, so the first tick's slew limit is centered on it."
+  optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(mpc = mpc_bank, u0 = u_trim) {^optimizer}
   "Command clock crossing, so the solved commands can be read from the solution."
   zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(n = 4) {^zoh}
   "Hold for the solver status: clocked signals cannot be read back from the solution."

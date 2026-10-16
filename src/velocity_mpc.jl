@@ -225,7 +225,7 @@ trim_states(velocity=INITIAL_VELOCITY, altitude=ALTITUDE; xcg=XCG) =
     trim_command(velocity=INITIAL_VELOCITY, altitude=ALTITUDE; xcg=XCG) -> Vector{Float64}
 
 The trimmed command `[thrust (kN), elevator, aileron, rudder (deg)]` of the same flight
-condition, in the controller's units. `LinearMPCScheduledOptimizer.u_init` takes this as
+condition, in the controller's units. `LinearMPCScheduledOptimizer.u0` takes this as
 the command assumed applied before the first tick, so the rate limits do not have to
 walk the thrust up from zero.
 """

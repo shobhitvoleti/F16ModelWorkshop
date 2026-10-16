@@ -28,7 +28,7 @@ a knot only that knot's member is active.
 | `dx`         | Constant offset added to the measured state: 0.006 of the Bryson scales `F16ModelWorkshop.VelocityMPC.STATE_SCALES`. At that size the LQR move `K*dx` stays under a quarter of every per-tick slew limit at all three knots and leaves the command far inside its box, so the optimum is interior and the quadratic program is solving the unconstrained problem.                         | --  |   [0.6, 0.000...12, 0.0012] |
 | `mpc_bank`         | The bank of controllers, started at the trim of `velocity` so the observer needs no transient.                         | --  |   F16ModelWor... Ts; Np=Np) |
 | `trim_full`         | Trimmed states of the flight condition under test, all twelve of them.                         | --  |   F16ModelWor..., altitude) |
-| `u_trim`         | Trimmed command of that flight condition, [kN, deg, deg, deg]: `u_init`, and the command the expected output is measured from.                         | --  |   F16ModelWor..., altitude) |
+| `u_trim`         | Trimmed command of that flight condition, [kN, deg, deg, deg]: `u0`, and the command the expected output is measured from.                         | --  |   F16ModelWor..., altitude) |
 
 ## Variables
 
@@ -133,7 +133,7 @@ a knot only that knot's member is active.
   push!(__systems, @named observer = MPCComponents.Experimental.LinearMPCScheduledObserver(; mpc=mpc_bank, observer_overrides...))
   # Subcomponent optimizer of type MPCComponents.Experimental.LinearMPCScheduledOptimizer
   optimizer_overrides = __pop_subcomponent_overrides!(__overrides, "optimizer")
-  push!(__systems, @named optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(; mpc=mpc_bank, u_init=u_trim, optimizer_overrides...))
+  push!(__systems, @named optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(; mpc=mpc_bank, u0=u_trim, optimizer_overrides...))
   # Subcomponent zoh of type F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold
   zoh_overrides = __pop_subcomponent_overrides!(__overrides, "zoh")
   push!(__systems, @named zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(; n=4, zoh_overrides...))

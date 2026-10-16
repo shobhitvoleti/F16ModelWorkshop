@@ -52,9 +52,8 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
   # - The command level is penalized about each member's own trimmed command (`eu = -Q2 u_j`),
   #   and each terminal weight is the Riccati cost-to-go, so every member's unconstrained
   #   solution is its LQR for any horizon.
-  # - The three parts are instantiated separately because, at the pinned MPCComponents
-  #   revision, the composed `LinearMPCScheduledController` cannot take the trimmed command
-  #   as `u_init`.
+  # - The scheduler, observer and optimizer are instantiated separately, so the diagram shows
+  #   how the bank is scheduled and blended.
   # - `cmd_map` converts thrust from kN (controller) to N (plant), keeping the QP well scaled.
   # - The reference is `ref_map * [commanded airspeed; weights] + ref_bias`: the commanded
   #   airspeed, the weighted knot trims on pitch and angle of attack, and the commanded

@@ -26,9 +26,8 @@ Design points:
 - The command level is penalized about each member's own trimmed command (`eu = -Q2 u_j`),
   and each terminal weight is the Riccati cost-to-go, so every member's unconstrained
   solution is its LQR for any horizon.
-- The three parts are instantiated separately because, at the pinned MPCComponents
-  revision, the composed `LinearMPCScheduledController` cannot take the trimmed command
-  as `u_init`.
+- The scheduler, observer and optimizer are instantiated separately, so the diagram shows
+  how the bank is scheduled and blended.
 - `cmd_map` converts thrust from kN (controller) to N (plant), keeping the QP well scaled.
 - The reference is `ref_map * [commanded airspeed; weights] + ref_bias`: the commanded
   airspeed, the weighted knot trims on pitch and angle of attack, and the commanded
@@ -45,8 +44,8 @@ component VelocityMPCDemo
   scheduler = MPCComponents.Experimental.LinearMPCScheduler(rho_grid = velocities) {^scheduler}
   "Weight-blended state observer of the bank."
   observer = MPCComponents.Experimental.LinearMPCScheduledObserver(mpc = mpc_bank) {^observer}
-  "Weight-blended constrained optimizer; `u_init` is the trimmed command, so the thrust rate limit does not have to walk it up from zero."
-  optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(mpc = mpc_bank, u_init = u_trim) {^optimizer}
+  "Weight-blended constrained optimizer; `u0` is the trimmed command, so the thrust rate limit does not have to walk it up from zero."
+  optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(mpc = mpc_bank, u0 = u_trim) {^optimizer}
   "Controller sample clock, planted on the airspeed connection set."
   clock = DiscreteComponents.PeriodicClock(dt = Ts) {^clock}
   "The ten regulated states out of the plant's twelve outputs: everything but the horizontal position."

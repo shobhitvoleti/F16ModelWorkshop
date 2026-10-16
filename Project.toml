@@ -7,6 +7,9 @@ authors = ["Rajeev Voleti <rajeev.voleti@juliahub.com>"]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
 BlockComponents = "1ef5d832-be8e-447f-9f2c-8b5d17d15fd3"
 ControlSystemsBase = "aaaaaaaa-a6ca-5380-bf3e-84a91bcd477e"
+DAQP = "c47d62df-3981-49c8-9651-128b1cd08617"
+DAQPBase = "833476c3-a8c0-4073-9b64-6473509843fe"
+DAQP_jll = "5c51c916-43bf-57fe-9d62-13064ebbf40d"
 DiscreteComponents = "b5590941-51af-4a5a-9bca-5ae7cd448b75"
 DyadControlSystems = "6f9e59d0-2838-4fee-9bce-c163a6c9592b"
 DyadData = "cab12561-e36c-4498-ae70-c9a5e79fef2a"
@@ -14,6 +17,8 @@ DyadInterface = "99806f68-afab-45ca-9d8c-ceff6bc61f54"
 GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+LinearMPC = "82e1c212-e1a2-49d2-b26a-a31d6968e3bd"
+LinearMPCRuntime = "0085e18e-2d59-4925-839b-c77c912f127e"
 MPCComponents = "aba2bcdf-b216-4bf2-af71-aceb9999ebd9"
 Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 ModelingToolkit = "961ee093-0014-501f-94e3-6117800e7a78"
@@ -32,7 +37,14 @@ acados_jll = "49ddb18e-ca18-5f65-a4dd-7588daaac186"
 tera_renderer_jll = "73a839a6-9370-58f6-a727-029f0c62a9a5"
 
 [sources]
-MPCComponents = {rev = "debf6a090c78b8775cdab288c6217eed5409e1c7", url = "https://github.com/JuliaComputing/MPCComponents.jl.git"}
+DAQP = {rev = "46db3dff83458198c2f1dc8bbe70ffbb9f78bc44", url = "https://github.com/shobhitvoleti/DAQP.jl.git"}
+DAQPBase = {rev = "4311713d2a0dfc9d162db27eb3848f5f7c36c27f", subdir = "interfaces/daqp-julia", url = "https://github.com/baggepinnen/daqp.git"}
+DAQP_jll = {rev = "f5896ebcb983d9c7da2a976dadb3ce1e183f274b", url = "https://github.com/baggepinnen/DAQP_jll.jl.git"}
+DiscreteComponents = {rev = "dc5082077aba6ccf14991bdaa4d69832e9a0081d", url = "https://github.com/JuliaComputing/DiscreteComponents.git"}
+DyadControlSystems = {rev = "4a03b9f903788ad8ba860e7242678655dc9ea520", url = "https://github.com/JuliaComputing/DyadControlSystems.jl.git"}
+LinearMPC = {rev = "c4da20940f9ca95c487837c49b5b747089c50093", url = "https://github.com/baggepinnen/LinearMPC.jl.git"}
+LinearMPCRuntime = {rev = "a67ac6860788284a2b3b54175aa5b646839ccd53", subdir = "lib/LinearMPCRuntime", url = "https://github.com/JuliaComputing/MPCComponents.jl.git"}
+MPCComponents = {rev = "a67ac6860788284a2b3b54175aa5b646839ccd53", url = "https://github.com/JuliaComputing/MPCComponents.jl.git"}
 MultibodyComponents = {rev = "581ec74a96589ad07e97e6f3b27c9de66b3bc137", url = "https://github.com/JuliaComputing/MultibodyComponents.jl.git"}
 acados_jll = {rev = "60ec8c4d84544a9e2dd458dddc6da68e46315464", url = "https://github.com/baggepinnen/acados_jll.jl.git"}
 tera_renderer_jll = {rev = "caa4ecdb9cdaddcc87e839fbf10e7607504e4b24", url = "https://github.com/baggepinnen/tera_renderer_jll.jl.git"}
@@ -40,14 +52,19 @@ tera_renderer_jll = {rev = "caa4ecdb9cdaddcc87e839fbf10e7607504e4b24", url = "ht
 [compat]
 ADTypes = "1"
 BlockComponents = "=4.6.0"
-DiscreteComponents = "0.4"
-DyadControlSystems = "2.4"
+DAQP = "0.9.3"
+DAQPBase = "0.6"
+DAQP_jll = "0.10.6"
+DiscreteComponents = "0.5"
+DyadControlSystems = "2.5"
 DyadData = "2.0.1"
 DyadInterface = "7.3"
 GLMakie = "0.13.8"
 GeometryBasics = "0.5.10"
 LinearAlgebra = "1"
-MPCComponents = "0.1"
+LinearMPC = "0.11"
+LinearMPCRuntime = "0.1"
+MPCComponents = "0.2"
 Markdown = "1"
 ModelingToolkit = "11.39"
 MultibodyComponents = "0.2"
