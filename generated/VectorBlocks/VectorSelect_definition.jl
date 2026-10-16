@@ -11,7 +11,7 @@ Vector channel selector: routes chosen channels of an `n`-vector onto an `m`-vec
 
 `y[j] = u[indices[j]]`, so the block covers slices, reorderings and repetitions alike.
 It carries no state and imposes no clock, so it works on continuous and clocked signals.
-Steps 8 and 9 use it to narrow the plant's 12 outputs to the 10 regulated states.
+Steps 7–9 use it to narrow the plant's 12 outputs to the states they measure.
 
 ## Parameters:
 

@@ -16,12 +16,15 @@ end
 
 
 @testset "`F16ModelWorkshop.Tutorial`" begin
+include("AutopilotGainSchedule_test.jl")
 include("ClockedDiscreteController_test.jl")
 include("ContinuousClosedLoopDemo_test.jl")
 include("ContinuousClosedLoopVizDemo_test.jl")
 include("DiscreteClosedLoopDemo_test.jl")
 include("DiscreteClosedLoopVizDemo_test.jl")
+include("DynamicPressure_test.jl")
 include("EnvelopeMPCDemo_test.jl")
+include("GainScheduledPIDDemo_test.jl")
 include("LQGDemo_test.jl")
 include("TrimDemo_test.jl")
 include("VelocityMPCDemo_test.jl")

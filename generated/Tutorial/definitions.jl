@@ -200,18 +200,22 @@ component.
 end
 
 
+include("AutopilotGainSchedule_definition.jl")
 include("ClockedDiscreteController_definition.jl")
 include("ContinuousClosedLoopDemo_definition.jl")
 include("ContinuousClosedLoopVizDemo_definition.jl")
 include("DiscreteClosedLoopDemo_definition.jl")
 include("DiscreteClosedLoopVizDemo_definition.jl")
+include("DynamicPressure_definition.jl")
 include("EnvelopeMPCDemo_definition.jl")
+include("GainScheduledPIDDemo_definition.jl")
 include("LQGDemo_definition.jl")
 include("TrimDemo_definition.jl")
 include("TutorialControllerCodegen_definition.jl")
 include("TutorialDiscreteClosedLoop_definition.jl")
 include("TutorialDiscreteLQG_definition.jl")
 include("TutorialEnvelopeMPC_definition.jl")
+include("TutorialGainScheduledPID_definition.jl")
 include("TutorialLQG_definition.jl")
 include("TutorialLinearize_definition.jl")
 include("TutorialTrimExport_definition.jl")

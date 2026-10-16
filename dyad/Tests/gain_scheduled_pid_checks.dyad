@@ -1,0 +1,110 @@
+# Checks on tutorial step 7 (`Tutorial.GainScheduledPIDDemo`), run by
+# test/gain_scheduled_pid.jl. Controller outputs are clocked, so each check holds them with
+# a zero-order hold and a continuous integrator gives the model a state to solve.
+
+"""
+`DiscreteComponents.DiscretePIDScheduled` with constant gain inputs is `DiscreteComponents.DiscretePIDStandard`.
+
+Both controllers see the same sampled reference and measurement, two sines, and the same
+gains, the scheduled one as input signals and the standard one as parameters. The output
+limit is reached by both sines' peaks, so the anti-windup tracking is exercised too. The
+held outputs must agree at every tick.
+"""
+test component PIDScheduledMatchesStandard
+  "Controller sample period, s."
+  structural parameter Ts::Real = 0.05
+  "Proportional gain."
+  parameter K::Real = 2.0
+  "Integral time, s."
+  parameter Ti::Real = 1.5
+  "Derivative time, s."
+  parameter Td::Real = 0.4
+  "Output limit either side of zero."
+  parameter y_limit::Real = 1.5
+  "Reference signal."
+  ref = BlockComponents.Sources.Sine(amplitude = 1.0, frequency = 0.2) {^ref}
+  "Measurement signal."
+  meas = BlockComponents.Sources.Sine(amplitude = 0.5, frequency = 0.45, phase = 1.0) {^meas}
+  "The gains as constant signals."
+  gain_src = F16ModelWorkshop.VectorBlocks.VectorConstant(n = 3, k = [K, Ti, Td]) {^gain_src}
+  "Clock crossing for the gains."
+  gain_sample = F16ModelWorkshop.VectorBlocks.MultiSampler(n = 3) {^gain_sample}
+  "Clock crossing for the reference."
+  ref_sample = DiscreteComponents.Sampler() {^ref_sample}
+  "Clock crossing for the measurement."
+  meas_sample = DiscreteComponents.Sampler() {^meas_sample}
+  "Controller sample clock."
+  clock = DiscreteComponents.PeriodicClock(dt = Ts) {^clock}
+  "The library controller with the gains as parameters."
+  standard = DiscreteComponents.DiscretePIDStandard(final K = K, final Ti = Ti, final Td = Td, final y_max = y_limit, final y_min = -y_limit) {^standard}
+  "The scheduled controller with the gains as inputs."
+  scheduled = DiscreteComponents.DiscretePIDScheduled(final y_max = y_limit, final y_min = -y_limit) {^scheduled}
+  "Holds both outputs so they can be read from the solution."
+  zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(n = 2) {^zoh}
+  "Continuous consumer of a held output, so the model has a state."
+  intg = BlockComponents.Continuous.Integrator() {^intg}
+  "Held output of `standard`."
+  variable y_standard::Real
+  "Held output of `scheduled`."
+  variable y_scheduled::Real
+relations
+  y_standard = zoh.y[1]
+  y_scheduled = zoh.y[2]
+  connect(ref.y, ref_sample.u) {^id01}
+  connect(meas.y, meas_sample.u) {^id02}
+  connect(ref_sample.y, standard.u_s, scheduled.u_s, clock.y) {^id03}
+  connect(meas_sample.y, standard.u_m, scheduled.u_m) {^id04}
+  connect(gain_src.y, gain_sample.u) {^id05}
+  connect(gain_sample.y[1], scheduled.K) {^id06}
+  connect(gain_sample.y[2], scheduled.Ti) {^id07}
+  connect(gain_sample.y[3], scheduled.Td) {^id08}
+  connect(standard.y, zoh.u[1]) {^id09}
+  connect(scheduled.y, zoh.u[2]) {^id10}
+  connect(zoh.y[1], intg.u) {^id11}
+end
+
+"""
+`Tutorial.AutopilotGainSchedule` interpolates its gain table linearly in dynamic pressure.
+
+The schedule is fed a constant altitude and airspeed. Its held outputs must equal the
+columns of `ScheduledPID.gain_table` weighted by the hat functions of the dynamic pressure
+over `ScheduledPID.knot_pressures`, and the end column outside the knots.
+"""
+test component GainScheduleInterpolates
+  "Airspeed fed to the schedule, m/s."
+  structural parameter velocity::Real = 160.0
+  "Altitude fed to the schedule, m."
+  structural parameter altitude::Real = 3000.0
+  "Controller sample period, s."
+  structural parameter Ts::Real = 0.05
+  "The flight condition as constant signals, [altitude, airspeed]."
+  condition = F16ModelWorkshop.VectorBlocks.VectorConstant(n = 2, k = [altitude, velocity]) {^condition}
+  "Clock crossing for the flight condition."
+  sample = F16ModelWorkshop.VectorBlocks.MultiSampler(n = 2) {^sample}
+  "Controller sample clock."
+  clock = DiscreteComponents.PeriodicClock(dt = Ts) {^clock}
+  "The schedule under test, at its default design points."
+  schedule = F16ModelWorkshop.Tutorial.AutopilotGainSchedule() {^schedule}
+  "Holds the ten scheduled signals so they can be read from the solution."
+  zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(n = 10) {^zoh}
+  "Continuous consumer of a held signal, so the model has a state."
+  intg = BlockComponents.Continuous.Integrator() {^intg}
+  "The held scheduled signals, in the order of `ScheduledPID.SCHEDULE_ROWS`."
+  variable scheduled::Real[10]
+relations
+  scheduled = zoh.y
+  connect(condition.y, sample.u) {^id01}
+  connect(sample.y[1], schedule.h) {^id02}
+  connect(sample.y[2], schedule.V, clock.y) {^id03}
+  connect(schedule.K_pitch, zoh.u[1]) {^id04}
+  connect(schedule.Td_pitch, zoh.u[2]) {^id05}
+  connect(schedule.K_alt, zoh.u[3]) {^id06}
+  connect(schedule.Ti_alt, zoh.u[4]) {^id07}
+  connect(schedule.Td_alt, zoh.u[5]) {^id08}
+  connect(schedule.K_speed, zoh.u[6]) {^id09}
+  connect(schedule.Ti_speed, zoh.u[7]) {^id10}
+  connect(schedule.theta_trim, zoh.u[8]) {^id11}
+  connect(schedule.el_trim, zoh.u[9]) {^id12}
+  connect(schedule.T_trim, zoh.u[10]) {^id13}
+  connect(zoh.y[1], intg.u) {^id14}
+end

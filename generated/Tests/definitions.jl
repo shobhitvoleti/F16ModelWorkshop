@@ -200,5 +200,7 @@ component.
 end
 
 
+include("GainScheduleInterpolates_definition.jl")
+include("PIDScheduledMatchesStandard_definition.jl")
 include("VelocityMPCHoldsTrim_definition.jl")
 include("VelocityMPCMemberIsLQR_definition.jl")

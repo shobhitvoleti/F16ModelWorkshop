@@ -9,5 +9,7 @@ if isfile(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Tests", 
 end
 
 
+include("GainScheduleInterpolates_experiment.jl")
+include("PIDScheduledMatchesStandard_experiment.jl")
 include("VelocityMPCHoldsTrim_experiment.jl")
 include("VelocityMPCMemberIsLQR_experiment.jl")

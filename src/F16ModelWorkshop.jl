@@ -48,6 +48,7 @@ include("controller_codegen_analysis.jl")
 include("../generated/module.jl")
 include("velocity_mpc.jl")
 include("envelope_mpc.jl")
-export VelocityMPC, EnvelopeMPC
+include("scheduled_pid.jl")
+export VelocityMPC, EnvelopeMPC, ScheduledPID
 
 end
