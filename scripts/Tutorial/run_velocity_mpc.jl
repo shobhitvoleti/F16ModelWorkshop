@@ -1,4 +1,4 @@
-# Tutorial step 7: fly the velocity-scheduled MPC loop and plot the response into
+# Tutorial step 8: fly the velocity-scheduled MPC loop and plot the response into
 # results/velocity_mpc/response.png.
 #
 #   julia --project=. scripts/Tutorial/run_velocity_mpc.jl

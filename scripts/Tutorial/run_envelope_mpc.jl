@@ -1,4 +1,4 @@
-# Tutorial step 8: linearize the envelope at 10 000 flight conditions, fly the altitude-
+# Tutorial step 9: linearize the envelope at 10 000 flight conditions, fly the altitude-
 # and velocity-scheduled MPC loop, and plot both into results/envelope_mpc/.
 #
 #   julia --project=. scripts/Tutorial/run_envelope_mpc.jl

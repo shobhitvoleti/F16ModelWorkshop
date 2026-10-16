@@ -25,9 +25,9 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
   var"specialization"::SpecializationLevel.Type = SpecializationLevel.Despecialize()
   var"verbose"::DEVerbosity.Type = DEVerbosity.Standard()
   var"log_file"::String = ""
-  # Tutorial 8 — Altitude- and velocity-scheduled linear MPC.
+  # Tutorial 9 — Altitude- and velocity-scheduled linear MPC.
   # 
-  # Step 7 scheduled its bank on airspeed alone, at one altitude. Here the bank covers a
+  # Step 8 scheduled its bank on airspeed alone, at one altitude. Here the bank covers a
   # rectangle of the flight envelope: one constrained `LinearMPC` member at every node of a
   # `velocities × altitudes` grid, scheduled on both measured airspeed and measured altitude.
   # 
@@ -36,7 +36,7 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
   # hat-function weights over that axis's knots, and `VectorBlocks.OuterProduct` multiplies
   # the two weight vectors into the bilinear weights of the grid — at most four nonzero, one
   # at a node. The observer and the optimizer only ever see a weight per member, so they are
-  # the same components as in step 7.
+  # the same components as in step 8.
   # 
   # Signal flow (whole-array connections except where a channel is named):
   # 
@@ -55,7 +55,7 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
   # of attack at each node is its value. In level flight that is also the trimmed pitch
   # attitude. `EnvelopeMPC.write_trim_table()` regenerates it; editing its axes moves the grid.
   # 
-  # The bank (`F16ModelWorkshop.EnvelopeMPC.bank`) is step 7's member design at each node: the
+  # The bank (`F16ModelWorkshop.EnvelopeMPC.bank`) is step 8's member design at each node: the
   # same absolute frame, cost, limits and per-member affine offset, flattened airspeed-fastest
   # in the order `OuterProduct` emits its weights. `ref_map` puts the two commands on their own
   # channels and the tabulated trims, weighted, on pitch and angle of attack, so those

@@ -25,7 +25,7 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
   var"specialization"::SpecializationLevel.Type = SpecializationLevel.Despecialize()
   var"verbose"::DEVerbosity.Type = DEVerbosity.Standard()
   var"log_file"::String = ""
-  # Tutorial 7 — Velocity-scheduled linear MPC.
+  # Tutorial 8 — Velocity-scheduled linear MPC.
   # 
   # A bank of constrained `LinearMPC` controllers, one per airspeed knot, flown on the
   # nonlinear plant at 20 Hz. `LinearMPCScheduler` turns measured airspeed into hat-function

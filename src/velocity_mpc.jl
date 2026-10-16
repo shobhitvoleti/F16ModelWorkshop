@@ -1,7 +1,7 @@
 """
-Design-time support for the velocity-scheduled MPC of tutorial step 7: the plant's
+Design-time support for the velocity-scheduled MPC of tutorial step 8: the plant's
 symbolic linearization, straight-and-level trim at an airspeed, and the bank of
-`LinearMPC` controllers that `dyad/Tutorial/07_velocity_mpc.dyad` hands to
+`LinearMPC` controllers that `dyad/Tutorial/08_velocity_mpc.dyad` hands to
 `MPCComponents.Experimental`. The loop itself is Dyad; this module only supplies the
 numbers a Dyad structural parameter cannot compute on its own.
 
@@ -326,7 +326,7 @@ end
                rate, measurement_noise=1e-6) -> MPCComponents.MPCRef
 
 A bank of constrained `LinearMPC` members, member `j` the `member_design` at the flight
-condition `conditions[j] = (velocity, altitude)` and filed under `knots[j]`. Steps 7 and 8
+condition `conditions[j] = (velocity, altitude)` and filed under `knots[j]`. Steps 8 and 9
 both build their banks here; they differ only in the conditions and in how the members
 are scheduled.
 

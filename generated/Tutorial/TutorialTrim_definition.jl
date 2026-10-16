@@ -40,7 +40,7 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
   # `TutorialTrimExport` does the same solve and writes it as the package's trim assets —
   # `assets/trim_point.toml`, `trim_reference.toml`, `trim_controls.toml` — which steps 2–6
   # load with `apply "dyad://F16ModelWorkshop/..."`. Re-run it after changing the flight
-  # condition or the plant. Steps 7 and 8 trim their own flight conditions in Julia. It extends `TrimExportAnalysis`
+  # condition or the plant. Steps 8 and 9 trim their own flight conditions in Julia. It extends `TrimExportAnalysis`
   # (dyad/trim_export_analysis.dyad, backed by src/trim_export_analysis.jl).
   # 
   # Signal flow: Constants -> Mux5 -> F16PlantModel

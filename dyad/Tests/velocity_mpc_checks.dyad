@@ -1,4 +1,4 @@
-# Checks on the bank of tutorial step 7 (`Tutorial.VelocityMPCDemo`), run by
+# Checks on the bank of tutorial step 8 (`Tutorial.VelocityMPCDemo`), run by
 # test/velocity_mpc.jl. Each drives the scheduled MPC components with constant signals in place
 # of the plant, because a bank's members have no public accessor (MPCComponents.jl#48).
 

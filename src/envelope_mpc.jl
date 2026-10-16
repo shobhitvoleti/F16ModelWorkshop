@@ -1,10 +1,10 @@
 """
-Design-time support for the altitude- and velocity-scheduled MPC of tutorial step 8.
+Design-time support for the altitude- and velocity-scheduled MPC of tutorial step 9.
 
 The flight envelope is a rectangle in true airspeed and altitude. `envelope` trims and
 linearizes the plant on a dense grid of it (100 × 100 = 10 000 flight conditions by
 default); `bank` builds one constrained `LinearMPC` member at each node of a coarser
-tensor grid, which `dyad/Tutorial/08_envelope_mpc.dyad` schedules on both measured
+tensor grid, which `dyad/Tutorial/09_envelope_mpc.dyad` schedules on both measured
 airspeed and measured altitude.
 
 The bank's grid lives in one asset table, `assets/envelope_trim_alpha.csv`: the trimmed
