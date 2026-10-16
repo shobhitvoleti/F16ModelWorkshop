@@ -1,0 +1,287 @@
+"""
+Dynamic pressure from altitude and true airspeed.
+
+``q̄ = \tfrac{1}{2} ρ(h) V^2`` with the density of `F16PlantModel`'s troposphere model,
+``ρ = 1.225 (1 - 0.0065 h / 288.15)^{4.256}``. It is what an air-data computer hands a
+gain schedule: every aerodynamic force and moment of the plant is proportional to it.
+"""
+component DynamicPressure
+  "Altitude, m"
+  h = RealInput() {^h}
+  "True airspeed, m/s"
+  V = RealInput() {^V}
+  "Dynamic pressure, Pa"
+  qbar = RealOutput() {^qbar}
+relations
+  qbar = 0.5 * 1.225 * (1 - 0.0065 * h / 288.15) ^ 4.256 * V ^ 2
+metadata {
+  "Dyad": {"icons": {"default": "dyad://Dyad/Default.svg"}},
+  "_links": {
+    "h": {"Dyad": {"placement": {"icon": {"x1": -50, "y1": 200, "x2": 50, "y2": 300}}}},
+    "V": {"Dyad": {"placement": {"icon": {"x1": -50, "y1": 700, "x2": 50, "y2": 800}}}},
+    "qbar": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 450, "x2": 1050, "y2": 550}}}}
+  }
+}
+end
+
+"""
+Gain schedule of the step-7 autopilot, with dynamic pressure as the scheduling variable.
+
+The schedule is the gain-scheduling procedure of Stevens & Lewis, *Aircraft Control and
+Simulation*. The loops are designed at a few straight-and-level design points, one per
+airspeed of `velocities` at `altitude`, by `F16ModelWorkshop.ScheduledPID.loop_design`; the
+gains of every design point are tabulated, one column of `gains` per point; and the
+schedule interpolates the table linearly in the dynamic pressure ``q̄`` computed from the
+sampled altitude and airspeed. Below the first and above the last design point it holds
+the end columns.
+
+``q̄`` is the scheduling variable because the effectiveness of every aerodynamic control
+is proportional to it. From the first design point to the last, ``q̄`` grows by 47 % and the
+pitch gain falls by 26 %, which keeps the pitch loop's crossover frequency and phase
+margin.
+
+The outputs are the standard-form gains of the three PID controllers of
+`GainScheduledPIDDemo` and the trimmed pitch attitude, elevator and thrust they add as
+feed-forward, in the order of `ScheduledPID.SCHEDULE_ROWS`. The controllers contain no
+scheduling logic; they only receive these signals.
+"""
+component AutopilotGainSchedule@[input clk extends Discrete]
+  "Sampled altitude, m"
+  h = RealInput@[clk]() {^h}
+  "Sampled true airspeed, m/s"
+  V = RealInput@[clk]() {^V}
+  "Pitch-attitude gain, deg of elevator per rad (negative: the elevator pitches nose down)"
+  K_pitch = RealOutput@[clk]() {^K_pitch}
+  "Pitch-attitude derivative time (pitch-rate damping), s"
+  Td_pitch = RealOutput@[clk]() {^Td_pitch}
+  "Altitude gain, rad of pitch attitude per m"
+  K_alt = RealOutput@[clk]() {^K_alt}
+  "Altitude integral time, s"
+  Ti_alt = RealOutput@[clk]() {^Ti_alt}
+  "Altitude derivative time (climb-rate damping), s"
+  Td_alt = RealOutput@[clk]() {^Td_alt}
+  "Airspeed gain, kN of thrust per m/s"
+  K_speed = RealOutput@[clk]() {^K_speed}
+  "Airspeed integral time, s"
+  Ti_speed = RealOutput@[clk]() {^Ti_speed}
+  "Trimmed pitch attitude, rad"
+  theta_trim = RealOutput@[clk]() {^theta_trim}
+  "Trimmed elevator, deg"
+  el_trim = RealOutput@[clk]() {^el_trim}
+  "Trimmed thrust, kN"
+  T_trim = RealOutput@[clk]() {^T_trim}
+  "Dynamic pressure of the sampled flight condition"
+  pressure = F16ModelWorkshop.Tutorial.DynamicPressure() {^pressure}
+  "Dynamic pressure to interpolation weights, one per design point, summing to one"
+  scheduler = MPCComponents.Experimental.LinearMPCScheduler@[clk = clk](rho_grid = qbar_knots) {^scheduler}
+  "The gain table: the weighted sum of its columns is the interpolated gains and trims"
+  table = DiscreteComponents.Examples.MatrixGain(ny = n_rows, nu = n_points, K = gains) {^table}
+  "Airspeeds of the design points, m/s, strictly increasing"
+  structural parameter velocities::Real[:] = [140.0, 152.4, 170.0]
+  "Altitude of the design points, m"
+  structural parameter altitude::Real = 3000.0
+  "Number of design points (derived)"
+  final structural parameter n_points::Integer = size(velocities, 1)
+  "Number of scheduled signals, the rows of `gains`"
+  final structural parameter n_rows::Integer = 10
+  "Dynamic pressure of each design point, Pa: the knots of the interpolation (derived)"
+  final structural parameter qbar_knots::Real[n_points] = F16ModelWorkshop.ScheduledPID.knot_pressures(velocities, altitude)
+  "The designed gains and trims, one column per design point (derived)"
+  final structural parameter gains::Real[n_rows, n_points] = F16ModelWorkshop.ScheduledPID.gain_table(velocities, altitude)
+relations
+  connect(h, pressure.h) {^c1}
+  connect(V, pressure.V) {^c2}
+  connect(pressure.qbar, scheduler.rho) {^c3}
+  connect(scheduler.w, table.u) {^c4}
+  connect(table.y[1], K_pitch) {^c5}
+  connect(table.y[2], Td_pitch) {^c6}
+  connect(table.y[3], K_alt) {^c7}
+  connect(table.y[4], Ti_alt) {^c8}
+  connect(table.y[5], Td_alt) {^c9}
+  connect(table.y[6], K_speed) {^c10}
+  connect(table.y[7], Ti_speed) {^c11}
+  connect(table.y[8], theta_trim) {^c12}
+  connect(table.y[9], el_trim) {^c13}
+  connect(table.y[10], T_trim) {^c14}
+metadata {
+  "Dyad": {"icons": {"default": "dyad://Dyad/Default.svg"}},
+  "_links": {
+    "h": {"Dyad": {"placement": {"icon": {"x1": -50, "y1": 200, "x2": 50, "y2": 300}, "diagram": {"x1": -50, "y1": 200, "x2": 50, "y2": 300}}}},
+    "V": {"Dyad": {"placement": {"icon": {"x1": -50, "y1": 700, "x2": 50, "y2": 800}, "diagram": {"x1": -50, "y1": 700, "x2": 50, "y2": 800}}}},
+    "K_pitch": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 0, "x2": 1050, "y2": 100}, "diagram": {"x1": 950, "y1": 0, "x2": 1050, "y2": 100}}}},
+    "Td_pitch": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 100, "x2": 1050, "y2": 200}, "diagram": {"x1": 950, "y1": 100, "x2": 1050, "y2": 200}}}},
+    "K_alt": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 200, "x2": 1050, "y2": 300}, "diagram": {"x1": 950, "y1": 200, "x2": 1050, "y2": 300}}}},
+    "Ti_alt": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 300, "x2": 1050, "y2": 400}, "diagram": {"x1": 950, "y1": 300, "x2": 1050, "y2": 400}}}},
+    "Td_alt": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 400, "x2": 1050, "y2": 500}, "diagram": {"x1": 950, "y1": 400, "x2": 1050, "y2": 500}}}},
+    "K_speed": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 500, "x2": 1050, "y2": 600}, "diagram": {"x1": 950, "y1": 500, "x2": 1050, "y2": 600}}}},
+    "Ti_speed": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 600, "x2": 1050, "y2": 700}, "diagram": {"x1": 950, "y1": 600, "x2": 1050, "y2": 700}}}},
+    "theta_trim": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 700, "x2": 1050, "y2": 800}, "diagram": {"x1": 950, "y1": 700, "x2": 1050, "y2": 800}}}},
+    "el_trim": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 800, "x2": 1050, "y2": 900}, "diagram": {"x1": 950, "y1": 800, "x2": 1050, "y2": 900}}}},
+    "T_trim": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 900, "x2": 1050, "y2": 1000}, "diagram": {"x1": 950, "y1": 900, "x2": 1050, "y2": 1000}}}},
+    "pressure": {"Dyad": {"placement": {"diagram": {"x1": 150, "y1": 400, "x2": 300, "y2": 550}}}},
+    "scheduler": {"Dyad": {"placement": {"diagram": {"x1": 400, "y1": 400, "x2": 550, "y2": 550}}}},
+    "table": {"Dyad": {"placement": {"diagram": {"x1": 650, "y1": 400, "x2": 800, "y2": 550}}}}
+  }
+}
+end
+
+"""
+Tutorial 7 — Gain-scheduled PID autopilot.
+
+The classical longitudinal autopilot of Stevens & Lewis, *Aircraft Control and
+Simulation*, flown on the nonlinear plant at 20 Hz and gain-scheduled on dynamic pressure.
+Three `DiscreteComponents.DiscretePIDScheduled` controllers take their gains as
+input signals; `AutopilotGainSchedule` computes those signals and is the only component
+that knows about the flight condition.
+
+Signal flow:
+
+  f16plant.y_out (12) --> meas_select ([3, 5, 7]) --> sample (20 Hz)
+  sample.y[1] altitude --> schedule.h, altitude_hold.u_m
+  sample.y[2] pitch    --> pitch.u_m
+  sample.y[3] airspeed --> schedule.V, autothrottle.u_m, clock
+  alt_cmd --> sr_alt --> altitude_hold.u_s;  altitude_hold.y --> pitch.u_s   (pitch command)
+  vt_cmd  --> sr_vt  --> autothrottle.u_s
+  schedule --> every K, Ti, Td and u_ff input
+  [autothrottle.y; pitch.y] --> zoh --> cmd_map (5) --> f16plant.u_in
+
+The loops, inner first, as in the book's altitude-hold autopilot with an autothrottle:
+
+- `pitch` — pitch-attitude hold: elevator from pitch attitude, a PD whose derivative acts
+  on the measurement only (`wd = 0`), which is pitch-rate damping. The airframe is
+  unstable in pitch; this loop stabilizes it.
+- `altitude_hold` — pitch-attitude command from altitude, a PID whose derivative is
+  climb-rate damping.
+- `autothrottle` — thrust from airspeed, a PI. Half the reference enters the
+  proportional path (`wp = 0.5`): with all of it, the slow zero of the integral makes the
+  airspeed overshoot the end of the ramp and creep back over tens of seconds.
+
+Each loop adds the scheduled trim of its command (pitch attitude, elevator, thrust) as
+feed-forward, so the feedback only corrects the departure from trim, and starts with
+`InitialOutput` at the trim of the initial flight condition, so nothing jumps at t = 0.
+
+Design (`F16ModelWorkshop.ScheduledPID`): at each design point the plant is linearized,
+and each loop is designed in turn on the plant with the inner loops closed, for a fixed
+gain-crossover frequency and phase margin (pitch 2 rad/s and 60°, altitude 0.3 rad/s and
+60°, airspeed 0.5 rad/s and 70°). The design points are the airspeed knots of step 8, so
+the two controllers can be compared on the same manoeuvre.
+
+Scenario: as in step 8, trimmed at 148 m/s and 3000 m with 2° of extra pitch attitude, and
+commanded to 160 m/s over 12 s from t = 2 s, a ramp that crosses the 152.4 m/s design
+point. Aileron and rudder stay at their trim of zero: the manoeuvre is symmetric and the
+lateral modes are stable.
+"""
+component GainScheduledPIDDemo
+  "Vector-I/O F16 plant, started at the trim of `initial_velocity` with `pitch_perturbation` added."
+  f16plant = F16ModelWorkshop.Plant.F16PlantModel(alt_init = trim_init[3], phi_init = trim_init[4], theta_init = trim_init[5] + pitch_perturbation, psi_init = trim_init[6], vt_init = trim_init[7], alpha_init = trim_init[8], beta_init = trim_init[9], P_init = trim_init[10], Q_init = trim_init[11], R_init = trim_init[12]) {^f16plant}
+  "The three measured states out of the plant's twelve outputs: altitude, pitch attitude, airspeed."
+  meas_select = F16ModelWorkshop.VectorBlocks.VectorSelect(n = 12, indices = [3, 5, 7]) {^meas_select}
+  "Measurement clock crossing, sampled at `Ts`."
+  sample = F16ModelWorkshop.VectorBlocks.MultiSampler(n = 3) {^sample}
+  "Controller sample clock, planted on the airspeed connection set."
+  clock = DiscreteComponents.PeriodicClock(dt = Ts) {^clock}
+  "Altitude and airspeed to the scheduled gains and trims."
+  schedule = F16ModelWorkshop.Tutorial.AutopilotGainSchedule(velocities = velocities, altitude = altitude) {^schedule}
+  "Pitch-attitude hold: elevator (deg) from pitch attitude, with pitch-rate damping."
+  pitch = DiscreteComponents.DiscretePIDScheduled(with_I = false, with_D = true, with_ff = true, wd = 0, final y_max = elevator_limit, final y_min = -elevator_limit, initialization = DiscreteComponents.InitialCondition.InitialOutput(y0 = u_trim[2])) {^pitch}
+  "Altitude hold: pitch-attitude command (rad) from altitude, with climb-rate damping."
+  altitude_hold = DiscreteComponents.DiscretePIDScheduled(with_I = true, with_D = true, with_ff = true, wd = 0, final y_max = pitch_limit, final y_min = -pitch_limit, initialization = DiscreteComponents.InitialCondition.InitialOutput(y0 = trim_init[5])) {^altitude_hold}
+  "Autothrottle: thrust (kN) from airspeed."
+  autothrottle = DiscreteComponents.DiscretePIDScheduled(with_I = true, with_D = false, with_ff = true, wp = 0.5, final y_max = thrust_max, final y_min = 0, initialization = DiscreteComponents.InitialCondition.InitialOutput(y0 = u_trim[1])) {^autothrottle}
+  "Commanded airspeed: a ramp across the middle design point."
+  vt_cmd = BlockComponents.Sources.Ramp(offset = initial_velocity, height = final_velocity - initial_velocity, start_time = ramp_start, duration = ramp_duration) {^vt_cmd}
+  "Clock crossing for the commanded airspeed."
+  sr_vt = DiscreteComponents.Sampler() {^sr_vt}
+  "Commanded altitude."
+  alt_cmd = BlockComponents.Sources.Constant(k = altitude) {^alt_cmd}
+  "Clock crossing for the commanded altitude."
+  sr_alt = DiscreteComponents.Sampler() {^sr_alt}
+  "Command clock crossing: thrust and elevator, held between ticks."
+  zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(n = 2) {^zoh}
+  "Controller commands to plant commands: kilonewtons to newtons on thrust, elevator in degrees, aileron, rudder and leading-edge flap at zero."
+  cmd_map = DiscreteComponents.Examples.MatrixGain(ny = 5, nu = 2, K = [[newtons_per_kilonewton, 0.0], [0.0, 1.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]) {^cmd_map}
+  "Airspeeds of the design points, m/s, strictly increasing."
+  structural parameter velocities::Real[3] = [140.0, 152.4, 170.0]
+  "Altitude of the design points and the commanded altitude, m."
+  structural parameter altitude::Real = 3000.0
+  "Airspeed the loop starts trimmed at, m/s."
+  structural parameter initial_velocity::Real = 148.0
+  "Controller sample period, s."
+  structural parameter Ts::Real = 0.05
+  "Airspeed the reference ramp ends at, m/s."
+  structural parameter final_velocity::Real = 160.0
+  "Time the reference ramp begins, s."
+  structural parameter ramp_start::Real = 2.0
+  "Length of the reference ramp, s."
+  structural parameter ramp_duration::Real = 12.0
+  "Pitch attitude added to the trimmed initial state, rad (2 deg)."
+  structural parameter pitch_perturbation::Real = 0.03490658503988659
+  "Newtons of thrust per kilonewton of commanded thrust."
+  structural parameter newtons_per_kilonewton::Real = 1000.0
+  "Elevator travel either side of zero, deg."
+  parameter elevator_limit::Real = 25.0
+  "Largest commanded pitch attitude either side of zero, rad (15 deg)."
+  parameter pitch_limit::Real = 0.2617993877991494
+  "Largest commanded thrust, kN."
+  parameter thrust_max::Real = 50.0
+  "Trimmed states of the flight condition the loop starts from."
+  structural parameter trim_init::Real[12] = F16ModelWorkshop.VelocityMPC.trim_states(initial_velocity, altitude)
+  "Trimmed command of that flight condition, [kN, deg, deg, deg]."
+  structural parameter u_trim::Real[4] = F16ModelWorkshop.VelocityMPC.trim_command(initial_velocity, altitude)
+  "Commanded airspeed on the continuous time base, so the reference can be plotted against the plant's trajectory."
+  variable vt_reference::Real
+relations
+  vt_reference = vt_cmd.y
+  # ---- Measurements: plant -> select -> sample ----
+  connect(f16plant.y_out, meas_select.u) {^id01}
+  connect(meas_select.y, sample.u) {^id02}
+  connect(sample.y[1], schedule.h, altitude_hold.u_m) {^id03}
+  connect(sample.y[2], pitch.u_m) {^id04}
+  # The airspeed sample is a measurement, a scheduling variable, and the loop's clock.
+  connect(sample.y[3], schedule.V, autothrottle.u_m, clock.y) {^id05}
+  # ---- Schedule -> controller gains and feed-forward ----
+  connect(schedule.K_pitch, pitch.K) {^id06}
+  connect(schedule.Td_pitch, pitch.Td) {^id07}
+  connect(schedule.el_trim, pitch.u_ff) {^id08}
+  connect(schedule.K_alt, altitude_hold.K) {^id09}
+  connect(schedule.Ti_alt, altitude_hold.Ti) {^id10}
+  connect(schedule.Td_alt, altitude_hold.Td) {^id11}
+  connect(schedule.theta_trim, altitude_hold.u_ff) {^id12}
+  connect(schedule.K_speed, autothrottle.K) {^id13}
+  connect(schedule.Ti_speed, autothrottle.Ti) {^id14}
+  connect(schedule.T_trim, autothrottle.u_ff) {^id15}
+  # ---- References: altitude -> pitch command -> elevator; airspeed -> thrust ----
+  connect(alt_cmd.y, sr_alt.u) {^id16}
+  connect(sr_alt.y, altitude_hold.u_s) {^id17}
+  connect(altitude_hold.y, pitch.u_s) {^id18}
+  connect(vt_cmd.y, sr_vt.u) {^id19}
+  connect(sr_vt.y, autothrottle.u_s) {^id20}
+  # ---- Commands: controllers -> hold -> plant ----
+  connect(autothrottle.y, zoh.u[1]) {^id21}
+  connect(pitch.y, zoh.u[2]) {^id22}
+  connect(zoh.y, cmd_map.u) {^id23}
+  connect(cmd_map.y, f16plant.u_in) {^id24}
+metadata {
+  "_links": {
+    "alt_cmd": {"Dyad": {"placement": {"diagram": {"x1": 60, "y1": 60, "x2": 160, "y2": 160}}}},
+    "sr_alt": {"Dyad": {"placement": {"diagram": {"x1": 260, "y1": 60, "x2": 360, "y2": 160}}}},
+    "vt_cmd": {"Dyad": {"placement": {"diagram": {"x1": 60, "y1": 760, "x2": 160, "y2": 860}}}},
+    "sr_vt": {"Dyad": {"placement": {"diagram": {"x1": 260, "y1": 760, "x2": 360, "y2": 860}}}},
+    "schedule": {"Dyad": {"placement": {"diagram": {"x1": 460, "y1": 300, "x2": 660, "y2": 600}}}},
+    "altitude_hold": {"Dyad": {"placement": {"diagram": {"x1": 800, "y1": 60, "x2": 900, "y2": 160}}}},
+    "pitch": {"Dyad": {"placement": {"diagram": {"x1": 1040, "y1": 60, "x2": 1140, "y2": 160}}}},
+    "autothrottle": {"Dyad": {"placement": {"diagram": {"x1": 1040, "y1": 760, "x2": 1140, "y2": 860}}}},
+    "zoh": {"Dyad": {"placement": {"diagram": {"x1": 1280, "y1": 400, "x2": 1380, "y2": 500}}}},
+    "cmd_map": {"Dyad": {"placement": {"diagram": {"x1": 1480, "y1": 400, "x2": 1580, "y2": 500}}}},
+    "f16plant": {"Dyad": {"placement": {"diagram": {"x1": 1680, "y1": 400, "x2": 1780, "y2": 500}}}},
+    "meas_select": {"Dyad": {"placement": {"diagram": {"x1": 1680, "y1": 1000, "x2": 1780, "y2": 1100}}}},
+    "sample": {"Dyad": {"placement": {"diagram": {"x1": 1480, "y1": 1000, "x2": 1580, "y2": 1100}}}},
+    "clock": {"Dyad": {"placement": {"diagram": {"x1": 1280, "y1": 1000, "x2": 1380, "y2": 1100}}}}
+  }
+}
+end
+
+analysis TutorialGainScheduledPID
+  extends TransientAnalysis(stop = 25.0)
+  model = GainScheduledPIDDemo()
+end

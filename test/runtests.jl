@@ -77,5 +77,6 @@ end
 end
 
 include("lqg_design.jl")
+include("gain_scheduled_pid.jl")
 include("velocity_mpc.jl")
 include("envelope_mpc.jl")

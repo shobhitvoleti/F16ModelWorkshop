@@ -9,12 +9,15 @@ if isfile(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Tutorial
 end
 
 
+include("AutopilotGainSchedule_experiment.jl")
 include("ClockedDiscreteController_experiment.jl")
 include("ContinuousClosedLoopDemo_experiment.jl")
 include("ContinuousClosedLoopVizDemo_experiment.jl")
 include("DiscreteClosedLoopDemo_experiment.jl")
 include("DiscreteClosedLoopVizDemo_experiment.jl")
+include("DynamicPressure_experiment.jl")
 include("EnvelopeMPCDemo_experiment.jl")
+include("GainScheduledPIDDemo_experiment.jl")
 include("LQGDemo_experiment.jl")
 include("TrimDemo_experiment.jl")
 include("VelocityMPCDemo_experiment.jl")
