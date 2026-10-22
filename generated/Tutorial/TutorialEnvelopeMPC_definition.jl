@@ -7,24 +7,17 @@
 using DyadInterface
 using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel, SpecializationLevel
 using ModelingToolkit: SymbolicT, toggle_namespacing
-using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
-@kwdef mutable struct TutorialEnvelopeMPCSpec <: AbstractTransientAnalysisSpec
+using F16ModelWorkshop: AbstractFlightAnalysisSpec, FlightAnalysisSpec
+@kwdef mutable struct TutorialEnvelopeMPCSpec <: AbstractFlightAnalysisSpec
   name::Symbol = :TutorialEnvelopeMPC
-  var"alg"::ODEAlg.Type = ODEAlg.Auto()
-  var"start"::Float64 = 0
+  # End time of the simulation, s.
   var"stop"::Float64 = 80.0
+  # Panels of the `FlightResponse` figure, each `Title: signal, signal, ...`.
+  var"panels"::Array{String, 1} = ["Airspeed (m/s): f16plant.vt, vt_reference", "Altitude (m): f16plant.alt, alt_reference", "Airspeed weights of the bank (140, 175, 210 m/s): sched_vt.w[1], sched_vt.w[2], sched_vt.w[3]", "Altitude weights of the bank (1000, 4000, 7000 m): sched_alt.w[1], sched_alt.w[2], sched_alt.w[3]", "Elevator (deg): f16plant.el", "Thrust (N): f16plant.T"]
+  # Absolute tolerance of the ODE solver.
   var"abstol"::Float64 = 0.000001
+  # Relative tolerance of the ODE solver.
   var"reltol"::Float64 = 0.000001
-  var"saveat"::Float64 = 0
-  var"dtmax"::Float64 = 0
-  var"tstops"::Array{Float64, 1} = []
-  var"automatic_discontinuity_detection"::Bool = false
-  var"optimize"::OptimizationLevel.Type = OptimizationLevel.Aggressive()
-  var"progress"::Bool = true
-  var"respecialize"::Bool = false
-  var"specialization"::SpecializationLevel.Type = SpecializationLevel.Despecialize()
-  var"verbose"::DEVerbosity.Type = DEVerbosity.Standard()
-  var"log_file"::String = ""
   # Tutorial 9 — Altitude- and velocity-scheduled linear MPC.
   # 
   # Step 8 scheduled its bank on airspeed alone, at one altitude. Here the bank covers a
@@ -74,8 +67,8 @@ function DyadInterface.run_analysis(spec::TutorialEnvelopeMPCSpec)
   overrides = Dict{SymbolicT, SymbolicT}()
   no_namespace_model = toggle_namespacing(spec.model, false)
   
-  base_spec = TransientAnalysisSpec(;
-    name=:TransientAnalysis, overrides, alg=spec.alg, start=spec.start, stop=spec.stop, abstol=spec.abstol, reltol=spec.reltol, saveat=spec.saveat, dtmax=spec.dtmax, tstops=spec.tstops, automatic_discontinuity_detection=spec.automatic_discontinuity_detection, optimize=spec.optimize, progress=spec.progress, respecialize=spec.respecialize, specialization=spec.specialization, verbose=spec.verbose, log_file=spec.log_file, model=spec.model
+  base_spec = FlightAnalysisSpec(;
+    name=:FlightAnalysis, overrides, stop=spec.stop, panels=spec.panels, abstol=spec.abstol, reltol=spec.reltol, model=spec.model
   )
   run_analysis(base_spec)
 end

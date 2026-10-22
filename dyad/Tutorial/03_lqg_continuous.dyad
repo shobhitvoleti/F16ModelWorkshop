@@ -451,3 +451,26 @@ analysis TutorialDiscreteLQG
   model = LQGDemo()
 relations
 end
+
+"""
+Tutorial 3c — save the continuous LQG controller for step 5.
+
+Runs `TutorialLQG` and writes its controller to `assets/controller.toml`, which
+`ContinuousClosedLoopDemo` applies. Run it after changing the design.
+"""
+analysis TutorialLQGExport
+  extends F16ModelWorkshop.ControllerExportAnalysis(design = "TutorialLQG", file = "assets/controller.toml", add_trim = false)
+  model = LQGDemo()
+end
+
+"""
+Tutorial 3d — save the 100 Hz LQG controller for steps 4–6.
+
+Runs `TutorialDiscreteLQG` and writes its controller, with the trim controls as its
+output offset, to `assets/discrete_controller.toml`, which steps 4–6 apply. Run it after
+changing the design.
+"""
+analysis TutorialDiscreteLQGExport
+  extends F16ModelWorkshop.ControllerExportAnalysis(design = "TutorialDiscreteLQG", file = "assets/discrete_controller.toml", add_trim = true)
+  model = LQGDemo()
+end

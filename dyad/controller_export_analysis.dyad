@@ -1,0 +1,20 @@
+"""
+Run an LQG design analysis and write its controller as a parameter-set asset.
+
+`design` names a `DyadControlSystems.LQGAnalysis` in `F16ModelWorkshop.Tutorial`, such as
+`TutorialLQG`. Its feedback controller `Cfb` is written to `file` as the matrices `A`,
+`B`, `C`, `D` that a state-space block applies; with `add_trim`, the trim controls of
+`trim_controls.toml` are added as the output offset `y0`, so the block's output is the
+absolute command. The design's own plots follow the download. Backed by
+`ControllerExportAnalysisSpec` in src/controller_export_analysis.jl.
+"""
+partial analysis ControllerExportAnalysis
+  extends Analysis
+  model::Dyad.EmptyComponent = Dyad.EmptyComponent()
+  "Name of the LQG design analysis in `F16ModelWorkshop.Tutorial`."
+  parameter design::String = "TutorialLQG"
+  "Asset the controller is written to, relative to the project root."
+  parameter file::String = "assets/controller.toml"
+  "Whether to add the trim controls as the controller's output offset `y0`."
+  parameter add_trim::Boolean = false
+end

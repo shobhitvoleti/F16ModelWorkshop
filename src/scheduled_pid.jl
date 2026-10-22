@@ -25,7 +25,7 @@ import ControlSystemsBase as CS
 using ..VelocityMPC: VelocityMPC, dynamics, linear_model, trim_command, trim_states
 
 export closed_loop, discrete_controller, dynamic_pressure, gain_table, knot_pressures, loop_design,
-    longitudinal_model
+    loop_transfers, longitudinal_model
 
 "Longitudinal states within `VelocityMPC.STATE_NAMES`: altitude, pitch, airspeed, angle of attack, pitch rate."
 const LONGITUDINAL = [3, 5, 7, 8, 11]
@@ -158,12 +158,37 @@ function loop_design(velocity, altitude = VelocityMPC.ALTITUDE)
     # Both elevator loops closed: el = -Cθ (Ch h + θ). Input T, outputs [h, θ, V].
     from_thrust = CS.feedback(P, elevator_law(Cθ, Ch))[:, 1]
     speed = crossover_gains(from_thrust[3, 1], SPEED_LOOP...; integral = true, derivative = false)
-    loops = (pitch = P[2, 2] * Cθ, altitude = from_pitch_command[1, 1] * Ch,
-        speed = from_thrust[3, 1] * controller(speed))
     x = trim_states(velocity, altitude)
     u = trim_command(velocity, altitude)
-    return (; velocity = Float64(velocity), altitude = Float64(altitude), pitch, altitude_hold = alt,
-        speed, model = P, loops, theta_trim = x[VelocityMPC.PITCH], el_trim = u[2], T_trim = u[1])
+    design = (; velocity = Float64(velocity), altitude = Float64(altitude), pitch, altitude_hold = alt,
+        speed, model = P, theta_trim = x[VelocityMPC.PITCH], el_trim = u[2], T_trim = u[1])
+    return (; design..., loops = loop_transfers(P, gain_column(design)))
+end
+
+# A design's gains and trims in the order of `SCHEDULE_ROWS`.
+gain_column(d) = [d.pitch.K, d.pitch.Td, d.altitude_hold.K, d.altitude_hold.Ti, d.altitude_hold.Td,
+    d.speed.K, d.speed.Ti, d.theta_trim, d.el_trim, d.T_trim]
+
+"""
+    loop_transfers(model, column) -> NamedTuple
+
+The continuous loop transfer functions `pitch`, `altitude` and `speed` of the autopilot
+with the gains of `column` (in the order of `SCHEDULE_ROWS`) on `model` (a
+`longitudinal_model`). Each is broken at its controller's output with the inner loops
+closed, and includes the derivative filter. The column need not come from the same flight
+condition: with another design point's gains, the loops show what the schedule corrects.
+"""
+function loop_transfers(model, column)
+    length(column) == length(SCHEDULE_ROWS) ||
+        throw(DimensionMismatch("a gain column has $(length(SCHEDULE_ROWS)) entries"))
+    c = Dict(zip(SCHEDULE_ROWS, column))
+    Cθ = controller((K = c[:K_pitch], Ti = Inf, Td = c[:Td_pitch]))
+    Ch = controller((K = c[:K_alt], Ti = c[:Ti_alt], Td = c[:Td_alt]))
+    Cv = controller((K = c[:K_speed], Ti = c[:Ti_speed], Td = 0.0))
+    from_pitch_command = CS.feedback(model[:, 2] * Cθ, CS.ss([0.0 1.0 0.0]))
+    from_thrust = CS.feedback(model, elevator_law(Cθ, Ch))[:, 1]
+    return (pitch = model[2, 2] * Cθ, altitude = from_pitch_command[1, 1] * Ch,
+        speed = from_thrust[3, 1] * Cv)
 end
 
 # The elevator's feedback law on the outputs [h, θ, V], el = -Cθ (Ch h + θ), as a 2 x 3
@@ -218,12 +243,7 @@ interpolates its columns linearly in dynamic pressure between `knot_pressures`.
 """
 function gain_table(velocities = VelocityMPC.KNOTS, altitude = VelocityMPC.ALTITUDE)
     grid = VelocityMPC.check_grid(velocities)
-    columns = map(grid) do v
-        d = loop_design(v, altitude)
-        [d.pitch.K, d.pitch.Td, d.altitude_hold.K, d.altitude_hold.Ti, d.altitude_hold.Td,
-            d.speed.K, d.speed.Ti, d.theta_trim, d.el_trim, d.T_trim]
-    end
-    return reduce(hcat, columns)
+    return reduce(hcat, [gain_column(loop_design(v, altitude)) for v in grid])
 end
 
 end

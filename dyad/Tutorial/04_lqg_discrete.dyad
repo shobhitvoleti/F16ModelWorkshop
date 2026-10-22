@@ -122,8 +122,14 @@ metadata {
 }
 end
 
+"""
+Tutorial 4 — fly the 100 Hz regulator.
+
+Starts 10° nose-up of trim. `FlightResponse` shows pitch back at trim within 10 s while
+altitude and airspeed barely move, and the elevator as the held value of each tick.
+"""
 analysis TutorialDiscreteClosedLoop
-  extends TransientAnalysis(stop = 10.0)
+  extends F16ModelWorkshop.FlightAnalysis(stop = 10.0, panels = ["Pitch attitude (rad), started 10 deg nose-up: f16plant.theta", "Altitude (m): f16plant.alt", "Airspeed (m/s): f16plant.vt", "Elevator (deg), one value per 100 Hz tick: f16plant.el", "Thrust (N): f16plant.T"])
   model = DiscreteClosedLoopDemo()
 relations
 end

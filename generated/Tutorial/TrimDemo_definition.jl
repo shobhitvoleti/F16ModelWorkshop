@@ -18,7 +18,7 @@ the initialization solver satisfy the equilibrium constraints.
   - Constraints: `initial der(...) = 0` on the states that must be steady.
   - `guess`es seed Newton; they do not bias the converged trim.
 
-`TutorialTrim` (a zero-duration TransientAnalysis) solves the operating point.
+`TutorialTrim` solves the operating point and shows it as the table `TrimTable`.
 `TutorialTrimExport` does the same solve and writes it as the package's trim assets —
 `assets/trim_point.toml`, `trim_reference.toml`, `trim_controls.toml` — which steps 2–6
 load with `apply "dyad://F16ModelWorkshop/..."`. Re-run it after changing the flight

@@ -22,7 +22,7 @@ using SciMLBase
 end
 
 # The committed trim table is the grid the model reads. Regenerating it must reproduce it
-# exactly, so a plant change without a re-run of run_envelope_tables.jl fails here. The
+# exactly, so a plant change without a re-run of TutorialEnvelopeTable fails here. The
 # table also serves as the pitch reference, which holds because level trim has theta = alpha.
 @testset "trim table matches the plant" begin
     table = EnvelopeMPC.trim_table()

@@ -20,23 +20,20 @@ abstract type AbstractVisualizeAnalysisSpec <: AbstractAnalysisSpec end
 end
 
 # `MultibodyComponents.render` lives in that package's `Render` extension, which loads
-# only once a Makie backend is present. Without one the function exists but has no
-# methods, so check for the extension and say what to load rather than surfacing a
-# MethodError.
-function _assert_render_backend()
-    if Base.get_extension(MultibodyComponents, :Render) === nothing
-        error("""
-              MultibodyComponents' `Render` extension is not loaded, so this analysis \
-              cannot write its animation. Load a Makie backend first:
+# only once a Makie backend is present. Studio runs analyses in a session where nothing
+# has loaded one, so load GLMakie, a dependency of this package, when it is missing.
+const _GLMAKIE = Base.PkgId(Base.UUID("e9467ef8-e4e7-5192-8a1a-b1aee30e663a"), "GLMakie")
 
-                  using GLMakie
-              """)
-    end
+function _ensure_render_backend()
+    Base.get_extension(MultibodyComponents, :Render) === nothing || return nothing
+    Base.require(_GLMAKIE)
+    Base.get_extension(MultibodyComponents, :Render) === nothing &&
+        error("loading GLMakie did not load MultibodyComponents' `Render` extension")
     return nothing
 end
 
 function DyadInterface.run_analysis(spec::VisualizeAnalysisSpec)
-    _assert_render_backend()
+    _ensure_render_backend()
     res = DyadInterface.run_analysis(DyadInterface.TransientAnalysisSpec(;
         name = :TransientAnalysis, model = spec.model, stop = spec.stop,
         overrides = spec.overrides))
@@ -44,8 +41,9 @@ function DyadInterface.run_analysis(spec::VisualizeAnalysisSpec)
     mkpath(dirname(path))
     # `display = false`: this analysis exists to write a file. Letting the renderer
     # open its window segfaults outright in a session with no window server, and
-    # would steal focus in one that has it.
-    MultibodyComponents.render(res;
+    # would steal focus in one that has it. `invokelatest`, because the extension's
+    # methods may have been defined after this function was compiled.
+    Base.invokelatest(MultibodyComponents.render, res;
         filename = path,
         nominal_length = spec.nominal_length,
         x = spec.camera[1], y = spec.camera[2], z = spec.camera[3],
@@ -53,7 +51,39 @@ function DyadInterface.run_analysis(spec::VisualizeAnalysisSpec)
         show_axis = spec.show_axis,
         display = false)
     @info "Animation written to $path"
-    return res
+    return VisualizeAnalysisSolution(spec, res, res.sol, path)
 end
 
-export AbstractVisualizeAnalysisSpec, VisualizeAnalysisSpec
+"""
+    VisualizeAnalysisSolution
+
+The transient solution (`inner`, and its ODE solution as `sol`) and the `file` its
+animation was written to.
+"""
+struct VisualizeAnalysisSolution{S, O} <: AbstractAnalysisSolution
+    spec::VisualizeAnalysisSpec
+    inner::S
+    sol::O
+    file::String
+end
+
+Base.nameof(sol::VisualizeAnalysisSolution) = sol.spec.name
+DyadInterface.symbolic_container(sol::VisualizeAnalysisSolution) = symbolic_container(sol.inner)
+
+function DyadInterface.AnalysisSolutionMetadata(sol::VisualizeAnalysisSolution)
+    inner_md = AnalysisSolutionMetadata(sol.inner)
+    arts = ArtifactMetadata[ArtifactMetadata(:Animation, ArtifactType.Download, basename(sol.file),
+        "The 3-D animation of the flight, written to $(sol.file).")]
+    append!(arts, transient_artifacts(inner_md))
+    return AnalysisSolutionMetadata(arts, inner_md.symbol_groups)
+end
+
+function DyadInterface.artifacts(sol::VisualizeAnalysisSolution, name::Symbol)
+    name === :Animation && return sol.file
+    return artifacts(sol.inner, name)
+end
+
+DyadInterface.customizable_visualization(sol::VisualizeAnalysisSolution, vizspec) =
+    customizable_visualization(sol.inner, vizspec)
+
+export AbstractVisualizeAnalysisSpec, VisualizeAnalysisSpec, VisualizeAnalysisSolution

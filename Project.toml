@@ -10,6 +10,7 @@ ControlSystemsBase = "aaaaaaaa-a6ca-5380-bf3e-84a91bcd477e"
 DAQP = "c47d62df-3981-49c8-9651-128b1cd08617"
 DAQPBase = "833476c3-a8c0-4073-9b64-6473509843fe"
 DAQP_jll = "5c51c916-43bf-57fe-9d62-13064ebbf40d"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DiscreteComponents = "b5590941-51af-4a5a-9bca-5ae7cd448b75"
 DyadControlSystems = "6f9e59d0-2838-4fee-9bce-c163a6c9592b"
 DyadData = "cab12561-e36c-4498-ae70-c9a5e79fef2a"
@@ -55,6 +56,7 @@ BlockComponents = "=4.6.0"
 DAQP = "0.9.3"
 DAQPBase = "0.6"
 DAQP_jll = "0.10.6"
+DataFrames = "1"
 DiscreteComponents = "0.5"
 DyadControlSystems = "2.5"
 DyadData = "2.0.1"
@@ -82,9 +84,8 @@ kernel = "3.4.0"
 
 [extras]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
-DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["CSV", "DataFrames", "Printf", "Test"]
+test = ["CSV", "Printf", "Test"]

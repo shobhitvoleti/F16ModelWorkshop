@@ -7,24 +7,11 @@
 using DyadInterface
 using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel, SpecializationLevel
 using ModelingToolkit: SymbolicT, toggle_namespacing
-using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
-@kwdef mutable struct TutorialTrimSpec <: AbstractTransientAnalysisSpec
+using F16ModelWorkshop: AbstractTrimExportAnalysisSpec, TrimExportAnalysisSpec
+@kwdef mutable struct TutorialTrimSpec <: AbstractTrimExportAnalysisSpec
   name::Symbol = :TutorialTrim
-  var"alg"::ODEAlg.Type = ODEAlg.Auto()
-  var"start"::Float64 = 0
-  var"stop"::Float64 = 0.0
-  var"abstol"::Float64 = 0.000001
-  var"reltol"::Float64 = 0.000001
-  var"saveat"::Float64 = 0
-  var"dtmax"::Float64 = 0
-  var"tstops"::Array{Float64, 1} = []
-  var"automatic_discontinuity_detection"::Bool = false
-  var"optimize"::OptimizationLevel.Type = OptimizationLevel.Aggressive()
-  var"progress"::Bool = true
-  var"respecialize"::Bool = false
-  var"specialization"::SpecializationLevel.Type = SpecializationLevel.Despecialize()
-  var"verbose"::DEVerbosity.Type = DEVerbosity.Standard()
-  var"log_file"::String = ""
+  # Directory the three trim assets are written to, relative to the project root; empty to trim without writing them.
+  var"export_dir"::String = ""
   # Tutorial 1 — Trimming.
   # 
   # Trim is the steady flight condition: the control inputs and states that hold every
@@ -36,7 +23,7 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
   #   - Constraints: `initial der(...) = 0` on the states that must be steady.
   #   - `guess`es seed Newton; they do not bias the converged trim.
   # 
-  # `TutorialTrim` (a zero-duration TransientAnalysis) solves the operating point.
+  # `TutorialTrim` solves the operating point and shows it as the table `TrimTable`.
   # `TutorialTrimExport` does the same solve and writes it as the package's trim assets —
   # `assets/trim_point.toml`, `trim_reference.toml`, `trim_controls.toml` — which steps 2–6
   # load with `apply "dyad://F16ModelWorkshop/..."`. Re-run it after changing the flight
@@ -51,8 +38,8 @@ function DyadInterface.run_analysis(spec::TutorialTrimSpec)
   overrides = Dict{SymbolicT, SymbolicT}()
   no_namespace_model = toggle_namespacing(spec.model, false)
   
-  base_spec = TransientAnalysisSpec(;
-    name=:TransientAnalysis, overrides, alg=spec.alg, start=spec.start, stop=spec.stop, abstol=spec.abstol, reltol=spec.reltol, saveat=spec.saveat, dtmax=spec.dtmax, tstops=spec.tstops, automatic_discontinuity_detection=spec.automatic_discontinuity_detection, optimize=spec.optimize, progress=spec.progress, respecialize=spec.respecialize, specialization=spec.specialization, verbose=spec.verbose, log_file=spec.log_file, model=spec.model
+  base_spec = TrimExportAnalysisSpec(;
+    name=:TrimExportAnalysis, overrides, export_dir=spec.export_dir, model=spec.model
   )
   run_analysis(base_spec)
 end

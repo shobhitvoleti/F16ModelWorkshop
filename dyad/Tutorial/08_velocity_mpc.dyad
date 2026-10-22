@@ -327,8 +327,15 @@ metadata {
 }
 end
 
+"""
+Tutorial 8 — fly the velocity-scheduled MPC bank.
+
+Step 7's manoeuvre, 148 to 160 m/s at 3000 m. `FlightResponse` shows the airspeed
+tracking the ramp and, below it, the weights with which the bank blends its three members
+as the airspeed crosses 152.4 m/s, and the solver status of every tick.
+"""
 analysis TutorialVelocityMPC
-  extends TransientAnalysis(stop = 25.0)
+  extends F16ModelWorkshop.FlightAnalysis(stop = 25.0, panels = ["Airspeed (m/s): f16plant.vt, vt_reference", "Altitude (m): f16plant.alt", "Weight of each bank member (140, 152.4, 170 m/s): scheduler.w[1], scheduler.w[2], scheduler.w[3]", "Elevator (deg): f16plant.el", "Thrust (N): f16plant.T", "Solver status, 1 when every member solved: exitflag"])
   model = VelocityMPCDemo()
 relations
 end

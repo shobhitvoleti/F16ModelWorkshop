@@ -51,36 +51,18 @@ relations
   connect(ctrl.y, f16plant.u_in) {^id6}
 metadata {
   "_links": {
-    "f16plant": {
-      "Dyad": {"placement": {"diagram": {"x1": 280, "y1": 146, "x2": 380, "y2": 246}}}
-    },
-    "controller": {
-      "Dyad": {"placement": {"diagram": {"x1": 360, "y1": 370, "x2": 260, "y2": 470}}}
-    },
-    "ref": {
-      "Dyad": {"placement": {"diagram": {"x1": 390, "y1": 70, "x2": 490, "y2": 170}}}
-    },
-    "err": {
-      "Dyad": {"placement": {"diagram": {"x1": 520, "y1": 120, "x2": 620, "y2": 220}}}
-    },
-    "trim": {
-      "Dyad": {"placement": {"diagram": {"x1": 210, "y1": 530, "x2": 110, "y2": 630}}}
-    },
-    "ctrl": {
-      "Dyad": {"placement": {"diagram": {"x1": 210, "y1": 370, "x2": 110, "y2": 470}}}
-    },
-    "id1": {
-      "Dyad": {"edges": [{"S": 1, "M": [{"x": 510, "y": 120}, {"x": 510, "y": 143}], "E": 2}]}
-    },
-    "id2": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
-    "id3": {
-      "Dyad": {"edges": [{"S": 1, "M": [{"x": 630, "y": 170}, {"x": 630, "y": 420}], "E": 2}]}
-    },
-    "id4": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
-    "id5": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
-    "id6": {
-      "Dyad": {"edges": [{"S": 1, "M": [{"x": 80, "y": 420}, {"x": 80, "y": 196}], "E": 2}]}
-    }
+    "f16plant": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 850, "y1": 150, "x2": 950, "y2": 250, "rot": 0}}}},
+    "controller": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 450, "y1": 150, "x2": 550, "y2": 250, "rot": 0}}}},
+    "ref": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 50, "y1": 70, "x2": 150, "y2": 170, "rot": 0}}}},
+    "err": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 250, "y1": 150, "x2": 350, "y2": 250, "rot": 0}}}},
+    "trim": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 450, "y1": 290, "x2": 550, "y2": 390, "rot": 0}}}},
+    "ctrl": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 650, "y1": 150, "x2": 750, "y2": 250, "rot": 0}}}},
+    "id1": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 200, "y": 120}, {"x": 200, "y": 173}], "E": 2}], "renderStyle": "standard"}},
+    "id2": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1000, "y": 200}, {"x": 1000, "y": 450}, {"x": 220, "y": 450}, {"x": 220, "y": 226}], "E": 2}], "renderStyle": "standard"}},
+    "id3": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id4": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 600, "y": 200}, {"x": 600, "y": 173}], "E": 2}], "renderStyle": "standard"}},
+    "id5": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 620, "y": 340}, {"x": 620, "y": 226}], "E": 2}], "renderStyle": "standard"}},
+    "id6": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}}
   }
 }
 end
@@ -109,34 +91,18 @@ relations
   connect(pose.frame_a, viz.frame_a) {^id14}
 metadata {
   "_links": {
-    "demux": {
-      "Dyad": {"placement": {"diagram": {"x1": 600, "y1": 450, "x2": 700, "y2": 550}}}
-    },
-    "demux_pos": {
-      "Dyad": {"placement": {"diagram": {"x1": 600, "y1": 10, "x2": 700, "y2": 110}}}
-    },
-    "pose_mux": {
-      "Dyad": {"placement": {"diagram": {"x1": 670, "y1": 120, "x2": 770, "y2": 220}}}
-    },
-    "pose": {
-      "Dyad": {"placement": {"diagram": {"x1": 740, "y1": 120, "x2": 840, "y2": 220}}}
-    },
-    "viz": {
-      "Dyad": {"placement": {"diagram": {"x1": 890, "y1": 120, "x2": 990, "y2": 220}}}
-    },
-    "id7": {
-      "Dyad": {"edges": [{"S": 1, "M": [{"x": 460, "y": 500}, {"x": 460, "y": 196}], "E": 2}]}
-    },
-    "id8": {
-      "Dyad": {"edges": [{"S": 1, "M": [{"x": 710, "y": 462.5}, {"x": 710, "y": 60}], "E": 2}]}
-    },
+    "demux": {"Dyad": {"placement": {"diagram": {"x1": 1170, "y1": 450, "x2": 1270, "y2": 550}}}},
+    "demux_pos": {"Dyad": {"placement": {"diagram": {"x1": 1170, "y1": 10, "x2": 1270, "y2": 110}}}},
+    "pose_mux": {"Dyad": {"placement": {"diagram": {"x1": 1240, "y1": 120, "x2": 1340, "y2": 220}}}},
+    "pose": {"Dyad": {"placement": {"diagram": {"x1": 1310, "y1": 120, "x2": 1410, "y2": 220}}}},
+    "viz": {"Dyad": {"placement": {"diagram": {"x1": 1460, "y1": 120, "x2": 1560, "y2": 220}}}},
+    "id7": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1030, "y": 500}, {"x": 1030, "y": 196}], "E": 2}]}},
+    "id8": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1280, "y": 462.5}, {"x": 1280, "y": 60}], "E": 2}]}},
     "id9": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
     "id10": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
     "id11": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
     "id12": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
-    "id13": {
-      "Dyad": {"edges": [{"S": 1, "M": [{"x": 730, "y": 487.5}, {"x": 730, "y": 198}], "E": 2}]}
-    },
+    "id13": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1300, "y": 487.5}, {"x": 1300, "y": 198}], "E": 2}]}},
     "id14": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}}
   }
 }
@@ -202,7 +168,7 @@ end
 """
 Renders the continuously-controlled pitch recovery to `assets/f16_continuous_closed_loop.mp4`.
 
-Needs a Makie backend in the session (`using GLMakie`).
+Loads GLMakie to render, so it needs a display.
 """
 analysis TutorialVisualizeContinuous
   extends F16ModelWorkshop.VisualizeAnalysis(stop = 10.0, filename = "assets/f16_continuous_closed_loop.mp4")
@@ -213,7 +179,7 @@ end
 """
 Renders the 100 Hz sampled-data pitch recovery to `assets/f16_discrete_closed_loop.mp4`.
 
-Needs a Makie backend in the session (`using GLMakie`).
+Loads GLMakie to render, so it needs a display.
 """
 analysis TutorialVisualizeDiscrete
   extends F16ModelWorkshop.VisualizeAnalysis(stop = 10.0, filename = "assets/f16_discrete_closed_loop.mp4")

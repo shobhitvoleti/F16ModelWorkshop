@@ -89,38 +89,52 @@ component AutopilotGainSchedule@[input clk extends Discrete]
   "The designed gains and trims, one column per design point (derived)"
   final structural parameter gains::Real[n_rows, n_points] = F16ModelWorkshop.ScheduledPID.gain_table(velocities, altitude)
 relations
-  connect(h, pressure.h) {^c1}
-  connect(V, pressure.V) {^c2}
-  connect(pressure.qbar, scheduler.rho) {^c3}
-  connect(scheduler.w, table.u) {^c4}
-  connect(table.y[1], K_pitch) {^c5}
-  connect(table.y[2], Td_pitch) {^c6}
-  connect(table.y[3], K_alt) {^c7}
-  connect(table.y[4], Ti_alt) {^c8}
-  connect(table.y[5], Td_alt) {^c9}
-  connect(table.y[6], K_speed) {^c10}
-  connect(table.y[7], Ti_speed) {^c11}
-  connect(table.y[8], theta_trim) {^c12}
-  connect(table.y[9], el_trim) {^c13}
-  connect(table.y[10], T_trim) {^c14}
+  connect(h, pressure.h) {^id1}
+  connect(V, pressure.V) {^id2}
+  connect(pressure.qbar, scheduler.rho) {^id3}
+  connect(scheduler.w, table.u) {^id4}
+  connect(table.y[1], K_pitch) {^id5}
+  connect(table.y[2], Td_pitch) {^id6}
+  connect(table.y[3], K_alt) {^id7}
+  connect(table.y[4], Ti_alt) {^id8}
+  connect(table.y[5], Td_alt) {^id9}
+  connect(table.y[6], K_speed) {^id10}
+  connect(table.y[7], Ti_speed) {^id11}
+  connect(table.y[8], theta_trim) {^id12}
+  connect(table.y[9], el_trim) {^id13}
+  connect(table.y[10], T_trim) {^id14}
 metadata {
   "Dyad": {"icons": {"default": "dyad://Dyad/Default.svg"}},
   "_links": {
     "h": {"Dyad": {"placement": {"icon": {"x1": -50, "y1": 200, "x2": 50, "y2": 300}, "diagram": {"x1": -50, "y1": 200, "x2": 50, "y2": 300}}}},
     "V": {"Dyad": {"placement": {"icon": {"x1": -50, "y1": 700, "x2": 50, "y2": 800}, "diagram": {"x1": -50, "y1": 700, "x2": 50, "y2": 800}}}},
-    "K_pitch": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 0, "x2": 1050, "y2": 100}, "diagram": {"x1": 950, "y1": 0, "x2": 1050, "y2": 100}}}},
-    "Td_pitch": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 100, "x2": 1050, "y2": 200}, "diagram": {"x1": 950, "y1": 100, "x2": 1050, "y2": 200}}}},
-    "K_alt": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 200, "x2": 1050, "y2": 300}, "diagram": {"x1": 950, "y1": 200, "x2": 1050, "y2": 300}}}},
-    "Ti_alt": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 300, "x2": 1050, "y2": 400}, "diagram": {"x1": 950, "y1": 300, "x2": 1050, "y2": 400}}}},
-    "Td_alt": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 400, "x2": 1050, "y2": 500}, "diagram": {"x1": 950, "y1": 400, "x2": 1050, "y2": 500}}}},
-    "K_speed": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 500, "x2": 1050, "y2": 600}, "diagram": {"x1": 950, "y1": 500, "x2": 1050, "y2": 600}}}},
-    "Ti_speed": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 600, "x2": 1050, "y2": 700}, "diagram": {"x1": 950, "y1": 600, "x2": 1050, "y2": 700}}}},
-    "theta_trim": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 700, "x2": 1050, "y2": 800}, "diagram": {"x1": 950, "y1": 700, "x2": 1050, "y2": 800}}}},
-    "el_trim": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 800, "x2": 1050, "y2": 900}, "diagram": {"x1": 950, "y1": 800, "x2": 1050, "y2": 900}}}},
+    "K_pitch": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 100, "x2": 1050, "y2": 200}, "diagram": {"x1": 950, "y1": 100, "x2": 1050, "y2": 200}}}},
+    "Td_pitch": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 0, "x2": 1050, "y2": 100}, "diagram": {"x1": 950, "y1": 0, "x2": 1050, "y2": 100}}}},
+    "K_alt": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 500, "x2": 1050, "y2": 600}, "diagram": {"x1": 950, "y1": 500, "x2": 1050, "y2": 600}}}},
+    "Ti_alt": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 400, "x2": 1050, "y2": 500}, "diagram": {"x1": 950, "y1": 400, "x2": 1050, "y2": 500}}}},
+    "Td_alt": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 300, "x2": 1050, "y2": 400}, "diagram": {"x1": 950, "y1": 300, "x2": 1050, "y2": 400}}}},
+    "K_speed": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 800, "x2": 1050, "y2": 900}, "diagram": {"x1": 950, "y1": 800, "x2": 1050, "y2": 900}}}},
+    "Ti_speed": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 700, "x2": 1050, "y2": 800}, "diagram": {"x1": 950, "y1": 700, "x2": 1050, "y2": 800}}}},
+    "theta_trim": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 600, "x2": 1050, "y2": 700}, "diagram": {"x1": 950, "y1": 600, "x2": 1050, "y2": 700}}}},
+    "el_trim": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 200, "x2": 1050, "y2": 300}, "diagram": {"x1": 950, "y1": 200, "x2": 1050, "y2": 300}}}},
     "T_trim": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 900, "x2": 1050, "y2": 1000}, "diagram": {"x1": 950, "y1": 900, "x2": 1050, "y2": 1000}}}},
-    "pressure": {"Dyad": {"placement": {"diagram": {"x1": 150, "y1": 400, "x2": 300, "y2": 550}}}},
-    "scheduler": {"Dyad": {"placement": {"diagram": {"x1": 400, "y1": 400, "x2": 550, "y2": 550}}}},
-    "table": {"Dyad": {"placement": {"diagram": {"x1": 650, "y1": 400, "x2": 800, "y2": 550}}}}
+    "pressure": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 170, "y1": 420, "x2": 330, "y2": 580, "rot": 0}}}},
+    "scheduler": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 420, "y1": 440, "x2": 540, "y2": 560, "rot": 0}}}},
+    "table": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 640, "y1": 440, "x2": 760, "y2": 560, "rot": 0}}}},
+    "id1": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 100, "y": 250}, {"x": 100, "y": 460}], "E": 2}], "renderStyle": "standard"}},
+    "id2": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 100, "y": 750}, {"x": 100, "y": 540}], "E": 2}], "renderStyle": "standard"}},
+    "id3": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id4": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id5": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 870, "y": 500}, {"x": 870, "y": 150}], "E": 2}], "renderStyle": "standard"}},
+    "id6": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 870, "y": 500}, {"x": 870, "y": 50}], "E": 2}], "renderStyle": "standard"}},
+    "id7": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 870, "y": 500}, {"x": 870, "y": 550}], "E": 2}], "renderStyle": "standard"}},
+    "id8": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 870, "y": 500}, {"x": 870, "y": 450}], "E": 2}], "renderStyle": "standard"}},
+    "id9": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 870, "y": 500}, {"x": 870, "y": 350}], "E": 2}], "renderStyle": "standard"}},
+    "id10": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 870, "y": 500}, {"x": 870, "y": 850}], "E": 2}], "renderStyle": "standard"}},
+    "id11": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 870, "y": 500}, {"x": 870, "y": 750}], "E": 2}], "renderStyle": "standard"}},
+    "id12": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 870, "y": 500}, {"x": 870, "y": 650}], "E": 2}], "renderStyle": "standard"}},
+    "id13": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 870, "y": 500}, {"x": 870, "y": 250}], "E": 2}], "renderStyle": "standard"}},
+    "id14": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 870, "y": 500}, {"x": 870, "y": 950}], "E": 2}], "renderStyle": "standard"}}
   }
 }
 end
@@ -233,17 +247,17 @@ component GainScheduledPIDDemo
 relations
   vt_reference = vt_cmd.y
   # ---- Measurements: plant -> select -> sample ----
-  connect(f16plant.y_out, meas_select.u) {^id01}
-  connect(meas_select.y, sample.u) {^id02}
-  connect(sample.y[1], schedule.h, altitude_hold.u_m) {^id03}
-  connect(sample.y[2], pitch.u_m) {^id04}
+  connect(f16plant.y_out, meas_select.u) {^id1}
+  connect(meas_select.y, sample.u) {^id2}
+  connect(sample.y[1], schedule.h, altitude_hold.u_m) {^id3}
+  connect(sample.y[2], pitch.u_m) {^id4}
   # The airspeed sample is a measurement, a scheduling variable, and the loop's clock.
-  connect(sample.y[3], schedule.V, autothrottle.u_m, clock.y) {^id05}
+  connect(sample.y[3], schedule.V, autothrottle.u_m, clock.y) {^id5}
   # ---- Schedule -> controller gains and feed-forward ----
-  connect(schedule.K_pitch, pitch.K) {^id06}
-  connect(schedule.Td_pitch, pitch.Td) {^id07}
-  connect(schedule.el_trim, pitch.u_ff) {^id08}
-  connect(schedule.K_alt, altitude_hold.K) {^id09}
+  connect(schedule.K_pitch, pitch.K) {^id6}
+  connect(schedule.Td_pitch, pitch.Td) {^id7}
+  connect(schedule.el_trim, pitch.u_ff) {^id8}
+  connect(schedule.K_alt, altitude_hold.K) {^id9}
   connect(schedule.Ti_alt, altitude_hold.Ti) {^id10}
   connect(schedule.Td_alt, altitude_hold.Td) {^id11}
   connect(schedule.theta_trim, altitude_hold.u_ff) {^id12}
@@ -263,25 +277,69 @@ relations
   connect(cmd_map.y, f16plant.u_in) {^id24}
 metadata {
   "_links": {
-    "alt_cmd": {"Dyad": {"placement": {"diagram": {"x1": 60, "y1": 60, "x2": 160, "y2": 160}}}},
-    "sr_alt": {"Dyad": {"placement": {"diagram": {"x1": 260, "y1": 60, "x2": 360, "y2": 160}}}},
-    "vt_cmd": {"Dyad": {"placement": {"diagram": {"x1": 60, "y1": 760, "x2": 160, "y2": 860}}}},
-    "sr_vt": {"Dyad": {"placement": {"diagram": {"x1": 260, "y1": 760, "x2": 360, "y2": 860}}}},
-    "schedule": {"Dyad": {"placement": {"diagram": {"x1": 460, "y1": 300, "x2": 660, "y2": 600}}}},
-    "altitude_hold": {"Dyad": {"placement": {"diagram": {"x1": 800, "y1": 60, "x2": 900, "y2": 160}}}},
-    "pitch": {"Dyad": {"placement": {"diagram": {"x1": 1040, "y1": 60, "x2": 1140, "y2": 160}}}},
-    "autothrottle": {"Dyad": {"placement": {"diagram": {"x1": 1040, "y1": 760, "x2": 1140, "y2": 860}}}},
-    "zoh": {"Dyad": {"placement": {"diagram": {"x1": 1280, "y1": 400, "x2": 1380, "y2": 500}}}},
-    "cmd_map": {"Dyad": {"placement": {"diagram": {"x1": 1480, "y1": 400, "x2": 1580, "y2": 500}}}},
-    "f16plant": {"Dyad": {"placement": {"diagram": {"x1": 1680, "y1": 400, "x2": 1780, "y2": 500}}}},
-    "meas_select": {"Dyad": {"placement": {"diagram": {"x1": 1680, "y1": 1000, "x2": 1780, "y2": 1100}}}},
-    "sample": {"Dyad": {"placement": {"diagram": {"x1": 1480, "y1": 1000, "x2": 1580, "y2": 1100}}}},
-    "clock": {"Dyad": {"placement": {"diagram": {"x1": 1280, "y1": 1000, "x2": 1380, "y2": 1100}}}}
+    "f16plant": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2400, "y1": 1050, "x2": 2500, "y2": 1150, "rot": 0}}}},
+    "meas_select": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2150, "y1": 1650, "x2": 2250, "y2": 1750, "rot": 180}}}},
+    "sample": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1900, "y1": 1650, "x2": 2000, "y2": 1750, "rot": 180}}}},
+    "clock": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1050, "y1": 1800, "x2": 1150, "y2": 1900, "rot": 0}}}},
+    "schedule": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 350, "y1": 80, "x2": 550, "y2": 880, "rot": 0}}}},
+    "pitch": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1730, "y1": 1030, "x2": 1870, "y2": 1170, "rot": 0}}}},
+    "altitude_hold": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1330, "y1": 1030, "x2": 1470, "y2": 1170, "rot": 0}}}},
+    "autothrottle": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 730, "y1": 1030, "x2": 870, "y2": 1170, "rot": 0}}}},
+    "vt_cmd": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 370, "y1": 1011, "x2": 470, "y2": 1111, "rot": 0}}}},
+    "sr_vt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 550, "y1": 1011, "x2": 650, "y2": 1111, "rot": 0}}}},
+    "alt_cmd": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 930, "y1": 1011, "x2": 1030, "y2": 1111, "rot": 0}}}},
+    "sr_alt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1130, "y1": 1011, "x2": 1230, "y2": 1111, "rot": 0}}}},
+    "zoh": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2000, "y1": 1050, "x2": 2100, "y2": 1150, "rot": 0}}}},
+    "cmd_map": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2200, "y1": 1050, "x2": 2300, "y2": 1150, "rot": 0}}}},
+    "id1": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2600, "y": 1100}, {"x": 2600, "y": 1700}], "E": 2}], "renderStyle": "standard"}},
+    "id2": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id3": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1905, "y": 1800}], "E": -1}, {"S": -1, "M": [{"x": 200, "y": 1800}, {"x": 200, "y": 280}], "E": 2}, {"S": -1, "M": [{"x": 1273, "y": 1133.6}], "E": 3}], "junctions": [{"x": 1273, "y": 1800}], "renderStyle": "standard"}},
+    "id4": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1673, "y": 1700}, {"x": 1673, "y": 1133.6}], "E": 2}], "renderStyle": "standard"}},
+    "id5": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1905, "y": 1750}], "E": -1}, {"S": -1, "M": [], "E": -2}, {"S": -1, "M": [{"x": 1000, "y": 1850}], "E": 4}, {"S": -2, "M": [{"x": 250, "y": 1750}, {"x": 250, "y": 680}], "E": 2}, {"S": -2, "M": [{"x": 673, "y": 1133.6}], "E": 3}], "junctions": [{"x": 1000, "y": 1750}, {"x": 673, "y": 1750}], "renderStyle": "standard"}},
+    "id6": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1765, "y": 200}], "E": 2}], "renderStyle": "standard"}},
+    "id7": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1835, "y": 120}], "E": 2}], "renderStyle": "standard"}},
+    "id8": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1698, "y": 280}, {"x": 1698, "y": 1097.2}], "E": 2}], "renderStyle": "standard"}},
+    "id9": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1365, "y": 520}], "E": 2}], "renderStyle": "standard"}},
+    "id10": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1400, "y": 440}], "E": 2}], "renderStyle": "standard"}},
+    "id11": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1435, "y": 360}], "E": 2}], "renderStyle": "standard"}},
+    "id12": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1298, "y": 600}, {"x": 1298, "y": 1097.2}], "E": 2}], "renderStyle": "standard"}},
+    "id13": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 765, "y": 760}], "E": 2}], "renderStyle": "standard"}},
+    "id14": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 800, "y": 680}], "E": 2}], "renderStyle": "standard"}},
+    "id15": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 698, "y": 840}, {"x": 698, "y": 1097.2}], "E": 2}], "renderStyle": "standard"}},
+    "id16": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id17": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id18": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1600, "y": 1100}, {"x": 1600, "y": 1060.8}], "E": 2}], "renderStyle": "standard"}},
+    "id19": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id20": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id21": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 930, "y": 1100}, {"x": 930, "y": 1260}, {"x": 1960, "y": 1260}, {"x": 1960, "y": 1100}], "E": 2}], "renderStyle": "standard"}},
+    "id22": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id23": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id24": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}}
   }
 }
 end
 
+"""
+Tutorial 7a — design the gain schedule.
+
+The loops are designed at the three design points of `AutopilotGainSchedule`. Open
+`LoopShapes`: with each design point's own gains the pitch loop crosses 0 dB at the same
+frequency everywhere; with the 152.4 m/s gains held fixed, the crossover moves with the
+dynamic pressure. That difference is what the schedule is for.
+"""
+analysis TutorialGainScheduleDesign
+  extends F16ModelWorkshop.GainScheduleAnalysis(velocities = [140.0, 152.4, 170.0], altitude = 3000.0, fixed_point = 2)
+  model = AutopilotGainSchedule()
+end
+
+"""
+Tutorial 7b — fly the scheduled autopilot.
+
+The step-8 manoeuvre, 148 to 160 m/s at 3000 m. `FlightResponse` shows the dynamic
+pressure crossing the middle design point, the weights of the design points handing over
+there, and the scheduled pitch gain following.
+"""
 analysis TutorialGainScheduledPID
-  extends TransientAnalysis(stop = 25.0)
+  extends F16ModelWorkshop.FlightAnalysis(stop = 25.0, panels = ["Airspeed (m/s): f16plant.vt, vt_reference", "Altitude (m): f16plant.alt", "Dynamic pressure, the scheduling variable (Pa): f16plant.qbar", "Weight of each design point (140, 152.4, 170 m/s): schedule.scheduler.w[1], schedule.scheduler.w[2], schedule.scheduler.w[3]", "Scheduled pitch gain (deg of elevator per rad): schedule.K_pitch", "Elevator (deg): f16plant.el", "Thrust (N): f16plant.T"])
   model = GainScheduledPIDDemo()
 end

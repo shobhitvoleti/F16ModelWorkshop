@@ -10,7 +10,7 @@ using ModelingToolkit: SymbolicT, toggle_namespacing
 using F16ModelWorkshop: AbstractTrimExportAnalysisSpec, TrimExportAnalysisSpec
 @kwdef mutable struct TutorialTrimExportSpec <: AbstractTrimExportAnalysisSpec
   name::Symbol = :TutorialTrimExport
-  # Directory the three trim assets are written to, relative to the project root.
+  # Directory the three trim assets are written to, relative to the project root; empty to trim without writing them.
   var"export_dir"::String = "assets"
   # Tutorial 1 — Trimming.
   # 
@@ -23,7 +23,7 @@ using F16ModelWorkshop: AbstractTrimExportAnalysisSpec, TrimExportAnalysisSpec
   #   - Constraints: `initial der(...) = 0` on the states that must be steady.
   #   - `guess`es seed Newton; they do not bias the converged trim.
   # 
-  # `TutorialTrim` (a zero-duration TransientAnalysis) solves the operating point.
+  # `TutorialTrim` solves the operating point and shows it as the table `TrimTable`.
   # `TutorialTrimExport` does the same solve and writes it as the package's trim assets —
   # `assets/trim_point.toml`, `trim_reference.toml`, `trim_controls.toml` — which steps 2–6
   # load with `apply "dyad://F16ModelWorkshop/..."`. Re-run it after changing the flight

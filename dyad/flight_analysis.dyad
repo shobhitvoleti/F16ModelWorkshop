@@ -1,0 +1,22 @@
+"""
+Fly a closed loop and show the signals that tell its story.
+
+A transient simulation of `model` from 0 to `stop`. Its result in Studio is the figure
+`FlightResponse`: one panel per entry of `panels`, each `Title: signal, signal, ...`, where
+a signal is a path into the model such as `f16plant.vt` or `scheduler.w[2]`. Continuous
+signals are drawn against the solver's time steps, clocked ones as steps at their ticks.
+The transient analysis' own tables and solution follow it. Backed by
+`FlightAnalysisSpec` in src/flight_analysis.jl.
+"""
+partial analysis FlightAnalysis
+  extends Analysis
+  model::Dyad.EmptyComponent = Dyad.EmptyComponent()
+  "End time of the simulation, s."
+  parameter stop::Real = 10.0
+  "Panels of the `FlightResponse` figure, each `Title: signal, signal, ...`."
+  parameter panels::String[:] = []
+  "Absolute tolerance of the ODE solver."
+  parameter abstol::Real = 1e-6
+  "Relative tolerance of the ODE solver."
+  parameter reltol::Real = 1e-6
+end

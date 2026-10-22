@@ -76,6 +76,7 @@ end
     @test sol[p.vt][end] < TRIM_VT - 10          # and bleeds airspeed doing it
 end
 
+include("analyses.jl")
 include("lqg_design.jl")
 include("gain_scheduled_pid.jl")
 include("velocity_mpc.jl")

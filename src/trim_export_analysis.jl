@@ -40,6 +40,11 @@ const _TRIM_FILES = (
     ],
 )
 
+# The artifacts of an inner transient analysis that work on this package's models.
+# DyadInterface's `ObservablesTable` throws "Duplicate variable names" on them: it names every
+# element of an array observable (the plant's `y_out`, `u_in`, ...) by the array's name.
+transient_artifacts(md) = filter(a -> a.name !== :ObservablesTable, md.artifacts)
+
 abstract type AbstractTrimExportAnalysisSpec <: AbstractAnalysisSpec end
 
 """
@@ -49,7 +54,7 @@ Trim `model` and write the operating point as `trim_point.toml`, `trim_reference
 and `trim_controls.toml` under `export_dir` (a relative path resolves against the
 package root). The default is the package's own `assets/`, the operating point the rest
 of the workshop applies; pass another directory to trim a different flight condition
-without replacing it.
+without replacing it, or `""` to trim without writing anything.
 """
 @kwdef mutable struct TrimExportAnalysisSpec <: AbstractTrimExportAnalysisSpec
     name::Symbol = :TrimExportAnalysis
@@ -93,9 +98,10 @@ function DyadInterface.run_analysis(spec::TrimExportAnalysisSpec)
             "k" => [at_trim(getproperty(m, Symbol(c, "_cmd")).k) for c in _TRIM_CONTROLS]),
     )
 
+    files = String[]
+    isempty(spec.export_dir) && return TrimExportAnalysisSolution(spec, inner, paramset, files)
     dir = _resolve_export(spec.export_dir)
     mkpath(dir)
-    files = String[]
     for (name, header) in _TRIM_FILES
         path = joinpath(dir, name * ".toml")
         open(path, "w") do io
@@ -109,8 +115,37 @@ function DyadInterface.run_analysis(spec::TrimExportAnalysisSpec)
     return TrimExportAnalysisSolution(spec, inner, paramset, files)
 end
 
+# Units of the trim table, by plant state or control. Angles are shown in degrees, the
+# unit a reader checks a trim in; the assets keep the plant's radians.
+const _TRIM_UNITS = Dict("npos" => "m", "epos" => "m", "alt" => "m", "vt" => "m/s",
+    "phi" => "deg", "theta" => "deg", "psi" => "deg", "alpha" => "deg", "beta" => "deg",
+    "P" => "deg/s", "Q" => "deg/s", "R" => "deg/s",
+    "T" => "N", "el" => "deg", "ail" => "deg", "rud" => "deg", "lef" => "deg")
+const _RADIAN_STATES = ("phi", "theta", "psi", "alpha", "beta", "P", "Q", "R")
+
+"""
+    trim_table(sol::TrimExportAnalysisSolution) -> DataFrame
+
+The trimmed states and controls, one row each, with their units.
+"""
+function trim_table(sol::TrimExportAnalysisSolution)
+    point = sol.paramset["trim_point"]
+    controls = sol.paramset["trim_controls"]["k"]
+    names = String[]; kinds = String[]; values = Float64[]
+    for (state, init) in _TRIM_STATES
+        push!(names, state); push!(kinds, "state")
+        push!(values, state in _RADIAN_STATES ? rad2deg(point[init]) : point[init])
+    end
+    for (c, value) in zip(_TRIM_CONTROLS, controls)
+        push!(names, c); push!(kinds, "control"); push!(values, value)
+    end
+    return DataFrames.DataFrame(name = names, kind = kinds, value = values,
+        unit = [_TRIM_UNITS[n] for n in names])
+end
+
 # The Studio-facing interface delegates to the inner transient solution and adds the
-# exported operating point: `:TrimPoint` as a nested Dict and one download per file.
+# operating point: `:TrimTable` to read, `:TrimPoint` as a nested Dict, and one download
+# per exported file.
 _file_artifact(path) = Symbol(first(splitext(basename(path))))
 
 DyadInterface.symbolic_container(sol::TrimExportAnalysisSolution) = symbolic_container(sol.inner)
@@ -118,6 +153,8 @@ DyadInterface.symbolic_container(sol::TrimExportAnalysisSolution) = symbolic_con
 function DyadInterface.AnalysisSolutionMetadata(sol::TrimExportAnalysisSolution)
     inner_md = AnalysisSolutionMetadata(sol.inner)
     arts = ArtifactMetadata[
+        ArtifactMetadata(:TrimTable, ArtifactType.DataFrame, "Trim",
+            "The trimmed states and controls, with their units."),
         ArtifactMetadata(:TrimPoint, ArtifactType.Native, "Trim point",
             "Trimmed operating point, one table per exported asset file."),
     ]
@@ -125,11 +162,12 @@ function DyadInterface.AnalysisSolutionMetadata(sol::TrimExportAnalysisSolution)
         push!(arts, ArtifactMetadata(_file_artifact(path), ArtifactType.Download,
             basename(path), "Parameter set written to $path."))
     end
-    append!(arts, inner_md.artifacts)
+    append!(arts, transient_artifacts(inner_md))
     return AnalysisSolutionMetadata(arts, inner_md.symbol_groups)
 end
 
 function DyadInterface.artifacts(sol::TrimExportAnalysisSolution, name::Symbol)
+    name === :TrimTable && return trim_table(sol)
     name === :TrimPoint && return sol.paramset
     i = findfirst(path -> _file_artifact(path) === name, sol.files)
     i === nothing || return sol.files[i]

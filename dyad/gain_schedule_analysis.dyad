@@ -1,0 +1,26 @@
+"""
+Design a gain schedule at a few design points and show what it does.
+
+At each airspeed of `velocities`, at `altitude`, `F16ModelWorkshop.ScheduledPID` linearizes
+the aircraft and designs the step-7 autopilot loops for one crossover frequency and phase
+margin. The result in Studio:
+
+- `GainSchedule`: each loop's gain against the dynamic pressure of its design point, the
+  table `AutopilotGainSchedule` interpolates.
+- `LoopShapes`: the pitch loop's gain at every design point, with that point's own gains
+  and with the gains of design point `fixed_point` everywhere. Scheduled, the curves cross
+  0 dB at one frequency; fixed, the crossover moves with the dynamic pressure.
+- `Margins` and `GainTable`: the same numbers as tables.
+
+Backed by `GainScheduleAnalysisSpec` in src/gain_schedule_analysis.jl.
+"""
+partial analysis GainScheduleAnalysis
+  extends Analysis
+  model::Dyad.EmptyComponent = Dyad.EmptyComponent()
+  "Airspeeds of the design points, m/s, strictly increasing."
+  parameter velocities::Real[:] = [140.0, 152.4, 170.0]
+  "Altitude of the design points, m."
+  parameter altitude::Real = 3000.0
+  "Design point whose gains the fixed-gain comparison uses at every design point."
+  parameter fixed_point::Integer = 2
+end

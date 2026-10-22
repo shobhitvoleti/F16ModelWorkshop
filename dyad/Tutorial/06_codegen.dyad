@@ -22,6 +22,13 @@ relations
   connect(controller.y, y)
 end
 
+"""
+Tutorial 6 — compile the 100 Hz controller to C.
+
+`StepCheck` steps the compiled controller next to the designed state-space recursion of
+`discrete_controller.toml`: with the Julia backend always, and with the C build when
+Clang_unified_jll is loaded. `GeneratedFiles` lists the C sources, each also a download.
+"""
 analysis TutorialControllerCodegen
   extends F16ModelWorkshop.ControllerCodegenAnalysis(export_dir = "generated_c/f16_controller")
   model = ClockedDiscreteController()

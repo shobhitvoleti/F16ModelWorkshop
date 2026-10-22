@@ -2,7 +2,7 @@
 Simulate a model and render it to a video file.
 
 The model must carry a MultibodyComponents visualizer driven by a Frame3D pose.
-Rendering needs a Makie backend in the session (`using GLMakie`). Backed by
+The analysis loads GLMakie to render, so it needs a display. Backed by
 `VisualizeAnalysisSpec` in src/visualize_analysis.jl.
 """
 partial analysis VisualizeAnalysis

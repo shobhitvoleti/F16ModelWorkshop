@@ -130,17 +130,17 @@ relations
   vt_reference = vt_cmd.y
   alt_reference = alt_cmd.y
   # ---- Measurements: plant -> select -> sample -> observer ----
-  connect(f16plant.y_out, meas_select.u) {^id01}
-  connect(meas_select.y, sample.u) {^id02}
-  connect(sample.y, observer.y) {^id03}
+  connect(f16plant.y_out, meas_select.u) {^id1}
+  connect(meas_select.y, sample.u) {^id2}
+  connect(sample.y, observer.y) {^id3}
   # ---- Scheduling: one scheduler per axis, their outer product per member ----
-  connect(sample.y[5], sched_vt.rho, clock.y) {^id04}
-  connect(sample.y[1], sched_alt.rho) {^id05}
-  connect(sched_vt.w, weights.u1) {^id06}
-  connect(sched_alt.w, weights.u2) {^id07}
-  connect(weights.y, observer.w, optimizer.w) {^id08}
+  connect(sample.y[5], sched_vt.rho, clock.y) {^id4}
+  connect(sample.y[1], sched_alt.rho) {^id5}
+  connect(sched_vt.w, weights.u1) {^id6}
+  connect(sched_alt.w, weights.u2) {^id7}
+  connect(weights.y, observer.w, optimizer.w) {^id8}
   # ---- Controller internals ----
-  connect(observer.xhat, optimizer.xhat) {^id09}
+  connect(observer.xhat, optimizer.xhat) {^id9}
   connect(optimizer.u, observer.u) {^id10}
   # ---- References ----
   connect(vt_cmd.y, sr_vt.u) {^id11}
@@ -158,63 +158,81 @@ relations
   connect(optimizer.exitflag, zoh_flag.u) {^id19}
 metadata {
   "_links": {
-    "vt_cmd": {
-      "Dyad": {"placement": {"diagram": {"x1": 60, "y1": 60, "x2": 160, "y2": 160}}}
-    },
-    "sr_vt": {
-      "Dyad": {"placement": {"diagram": {"x1": 280, "y1": 60, "x2": 380, "y2": 160}}}
-    },
-    "alt_cmd": {
-      "Dyad": {"placement": {"diagram": {"x1": 60, "y1": 240, "x2": 160, "y2": 340}}}
-    },
-    "sr_alt": {
-      "Dyad": {"placement": {"diagram": {"x1": 280, "y1": 240, "x2": 380, "y2": 340}}}
-    },
-    "ref_map": {
-      "Dyad": {"placement": {"diagram": {"x1": 700, "y1": 140, "x2": 800, "y2": 240}}}
-    },
-    "sched_vt": {
-      "Dyad": {"placement": {"diagram": {"x1": 280, "y1": 430, "x2": 380, "y2": 530}}}
-    },
-    "sched_alt": {
-      "Dyad": {"placement": {"diagram": {"x1": 280, "y1": 600, "x2": 380, "y2": 700}}}
-    },
-    "weights": {
-      "Dyad": {"placement": {"diagram": {"x1": 480, "y1": 515, "x2": 580, "y2": 615}}}
-    },
-    "observer": {
-      "Dyad": {"placement": {"diagram": {"x1": 700, "y1": 600, "x2": 800, "y2": 700}}}
-    },
-    "optimizer": {
-      "Dyad": {"placement": {"diagram": {"x1": 1100, "y1": 430, "x2": 1200, "y2": 530}}}
-    },
-    "zoh_flag": {
-      "Dyad": {"placement": {"diagram": {"x1": 1320, "y1": 220, "x2": 1420, "y2": 320}}}
-    },
-    "zoh": {
-      "Dyad": {"placement": {"diagram": {"x1": 1320, "y1": 430, "x2": 1420, "y2": 530}}}
-    },
-    "cmd_map": {
-      "Dyad": {"placement": {"diagram": {"x1": 1520, "y1": 430, "x2": 1620, "y2": 530}}}
-    },
-    "f16plant": {
-      "Dyad": {"placement": {"diagram": {"x1": 1720, "y1": 430, "x2": 1820, "y2": 530}}}
-    },
-    "meas_select": {
-      "Dyad": {"placement": {"diagram": {"x1": 180, "y1": 900, "x2": 280, "y2": 1000}}}
-    },
-    "sample": {
-      "Dyad": {"placement": {"diagram": {"x1": 400, "y1": 900, "x2": 500, "y2": 1000}}}
-    },
-    "clock": {
-      "Dyad": {"placement": {"diagram": {"x1": 620, "y1": 1080, "x2": 720, "y2": 1180}}}
-    }
+    "f16plant": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1720, "y1": 430, "x2": 1820, "y2": 530, "rot": 0}}}},
+    "sched_vt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 280, "y1": 430, "x2": 380, "y2": 530, "rot": 0}}}},
+    "sched_alt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 280, "y1": 570, "x2": 380, "y2": 670, "rot": 0}}}},
+    "weights": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 470, "y1": 500, "x2": 570, "y2": 600, "rot": 0}}}},
+    "observer": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 700, "y1": 560, "x2": 800, "y2": 660, "rot": 0}}}},
+    "optimizer": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1100, "y1": 430, "x2": 1200, "y2": 530, "rot": 0}}}},
+    "clock": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 620, "y1": 1080, "x2": 720, "y2": 1180, "rot": 0}}}},
+    "meas_select": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 180, "y1": 900, "x2": 280, "y2": 1000, "rot": 0}}}},
+    "sample": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 400, "y1": 900, "x2": 500, "y2": 1000, "rot": 0}}}},
+    "vt_cmd": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 60, "y1": 60, "x2": 160, "y2": 160, "rot": 0}}}},
+    "alt_cmd": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 60, "y1": 240, "x2": 160, "y2": 340, "rot": 0}}}},
+    "sr_vt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 280, "y1": 60, "x2": 380, "y2": 160, "rot": 0}}}},
+    "sr_alt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 280, "y1": 240, "x2": 380, "y2": 340, "rot": 0}}}},
+    "ref_map": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 700, "y1": 60, "x2": 800, "y2": 160, "rot": 0}}}},
+    "zoh": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1320, "y1": 430, "x2": 1420, "y2": 530, "rot": 0}}}},
+    "cmd_map": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1520, "y1": 430, "x2": 1620, "y2": 530, "rot": 0}}}},
+    "zoh_flag": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1320, "y1": 220, "x2": 1420, "y2": 320, "rot": 0}}}},
+    "id1": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1880, "y": 480}, {"x": 1880, "y": 1230}, {"x": 130, "y": 1230}, {"x": 130, "y": 950}], "E": 2}], "renderStyle": "standard"}},
+    "id2": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id3": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 590, "y": 950}, {"x": 590, "y": 647.5}], "E": 2}], "renderStyle": "standard"}},
+    "id4": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 545, "y": 950}, {"x": 545, "y": 820}, {"x": 215, "y": 820}, {"x": 215, "y": 480}], "E": 2}, {"S": 1, "M": [{"x": 560, "y": 950}, {"x": 560, "y": 1130}], "E": 3}], "renderStyle": "standard"}},
+    "id5": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 530, "y": 950}, {"x": 530, "y": 860}, {"x": 200, "y": 860}, {"x": 200, "y": 620}], "E": 2}], "renderStyle": "standard"}},
+    "id6": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 430, "y": 480}, {"x": 430, "y": 525}], "E": 2}], "renderStyle": "standard"}},
+    "id7": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 440, "y": 620}, {"x": 440, "y": 575}], "E": 2}], "renderStyle": "standard"}},
+    "id8": {"Dyad": {"edges": [{"S": 1, "M": [], "E": -1}, {"S": -1, "M": [{"x": 620, "y": 572.5}], "E": 2}, {"S": -1, "M": [{"x": 620, "y": 471.5}], "E": 3}], "junctions": [{"x": 620, "y": 550}], "renderStyle": "standard"}},
+    "id9": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 870, "y": 585}, {"x": 870, "y": 488.5}], "E": 2}], "renderStyle": "standard"}},
+    "id10": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1240, "y": 505}, {"x": 1240, "y": 760}, {"x": 640, "y": 760}, {"x": 640, "y": 597.5}], "E": 2}], "renderStyle": "standard"}},
+    "id11": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id12": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id13": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id14": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 600, "y": 290}, {"x": 600, "y": 110}], "E": 2}], "renderStyle": "standard"}},
+    "id15": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1045, "y": 110}, {"x": 1045, "y": 438.5}], "E": 2}], "renderStyle": "standard"}},
+    "id16": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1260, "y": 505}, {"x": 1260, "y": 480}], "E": 2}], "renderStyle": "standard"}},
+    "id17": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id18": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id19": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1280, "y": 455}, {"x": 1280, "y": 270}], "E": 2}], "renderStyle": "standard"}}
   }
 }
 end
 
+
+"""
+Tutorial 9a — survey the flight envelope.
+
+Trims and linearizes the aircraft at 100 × 100 flight conditions. `Envelope` shows how
+the trimmed angle of attack, thrust, elevator and the pitch divergence rate change with
+airspeed and altitude, and where the bank's nodes sit: one schedule variable is not
+enough across this range.
+"""
+analysis TutorialEnvelope
+  extends F16ModelWorkshop.EnvelopeAnalysis(velocities = [140.0, 250.0], altitudes = [0.0, 9000.0], points = 100)
+  model = F16ModelWorkshop.Plant.F16PlantModel()
+end
+
+"""
+Tutorial 9b — fly the envelope-scheduled MPC.
+
+From 150 m/s and 3000 m to 190 m/s and 4500 m. `FlightResponse` shows both references
+tracked and, below them, the airspeed and altitude weights with which the bank blends its
+nine members.
+"""
 analysis TutorialEnvelopeMPC
-  extends TransientAnalysis(stop = 80.0)
+  extends F16ModelWorkshop.FlightAnalysis(stop = 80.0, panels = ["Airspeed (m/s): f16plant.vt, vt_reference", "Altitude (m): f16plant.alt, alt_reference", "Airspeed weights of the bank (140, 175, 210 m/s): sched_vt.w[1], sched_vt.w[2], sched_vt.w[3]", "Altitude weights of the bank (1000, 4000, 7000 m): sched_alt.w[1], sched_alt.w[2], sched_alt.w[3]", "Elevator (deg): f16plant.el", "Thrust (N): f16plant.T"])
   model = EnvelopeMPCDemo()
 relations
+end
+
+"""
+Tutorial 9c — rebuild the bank's trim table.
+
+Re-trims the aircraft at the nodes of `assets/envelope_trim_alpha.csv` and rewrites it.
+To move the grid, edit the table's first column (airspeeds) or header row (altitudes),
+then run this.
+"""
+analysis TutorialEnvelopeTable
+  extends F16ModelWorkshop.EnvelopeAnalysis(velocities = [140.0, 250.0], altitudes = [0.0, 9000.0], points = 2, table_dir = "assets")
+  model = F16ModelWorkshop.Plant.F16PlantModel()
 end

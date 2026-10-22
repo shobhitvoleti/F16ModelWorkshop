@@ -101,4 +101,11 @@ relations
       y[(j - 1) * n1 + i] = u1[i] * u2[j]
     end
   end
+metadata {
+  "_links": {
+    "u1": {"Dyad": {"placement": {"icon": {"x1": 0, "y1": 200, "x2": 100, "y2": 300}}}},
+    "u2": {"Dyad": {"placement": {"icon": {"x1": 0, "y1": 700, "x2": 100, "y2": 800}}}},
+    "y": {"Dyad": {"placement": {"icon": {"x1": 900, "y1": 450, "x2": 1000, "y2": 550}}}}
+  }
+}
 end

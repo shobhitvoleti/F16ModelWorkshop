@@ -8,6 +8,6 @@ Constant blocks. Backed by `TrimExportAnalysisSpec` in src/trim_export_analysis.
 partial analysis TrimExportAnalysis
   extends Analysis
   model::Dyad.EmptyComponent = Dyad.EmptyComponent()
-  "Directory the three trim assets are written to, relative to the project root."
+  "Directory the three trim assets are written to, relative to the project root; empty to trim without writing them."
   parameter export_dir::String = "assets"
 end

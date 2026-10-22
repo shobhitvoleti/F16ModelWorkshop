@@ -4,6 +4,7 @@ using ModelingToolkit, OrdinaryDiffEqDefault, NonlinearSolve
 import DyadInterface
 import Symbolics
 import TOML
+import DataFrames
 using DyadInterface: AbstractAnalysisSpec, AbstractAnalysisSolution, TransientAnalysisSpec
 
 # Controller sample period of steps 3b, 4 and 6: the Ts of the discrete LQG design and the
@@ -44,6 +45,10 @@ const _Overrides = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}
 include("trim_export_analysis.jl")
 include("visualize_analysis.jl")
 include("controller_codegen_analysis.jl")
+include("flight_analysis.jl")
+include("gain_schedule_analysis.jl")
+include("controller_export_analysis.jl")
+include("envelope_analysis.jl")
 
 include("../generated/module.jl")
 include("velocity_mpc.jl")
