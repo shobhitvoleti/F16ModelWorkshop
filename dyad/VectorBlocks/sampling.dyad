@@ -2,8 +2,8 @@
 Vector sampler: continuous `n`-vector in, clocked `n`-vector out.
 
 One `DiscreteComponents.Sampler` per channel. Each channel's clock is inferred from what
-its `y[i]` connects to: a `PeriodicClock`, or a clocked block such as
-`DiscreteStateSpace` whose block clock unifies all of them.
+its `y[i]` connects to: a `PeriodicClock`, or a clocked block such as `DiscreteStateSpace`
+whose clock unifies all channels.
 """
 component MultiSampler
   "Continuous input connectors"
@@ -12,7 +12,7 @@ component MultiSampler
   y = [RealOutput() for i in 1:n] {^y}
   "Per-channel scalar samplers"
   s = [DiscreteComponents.Sampler() for i in 1:n]
-  "Number of channels (dimension preserved across the block)"
+  "Number of channels"
   structural parameter n::Integer = 1
 relations
   for i in 1:n
@@ -55,7 +55,7 @@ component MultiZeroOrderHold
   y = [RealOutput() for i in 1:n] {^y}
   "Per-channel scalar zero-order holds"
   z = [DiscreteComponents.ZeroOrderHold() for i in 1:n]
-  "Number of channels (dimension preserved across the block)"
+  "Number of channels"
   structural parameter n::Integer = 1
 relations
   for i in 1:n

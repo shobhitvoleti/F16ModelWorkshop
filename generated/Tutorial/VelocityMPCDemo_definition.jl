@@ -5,15 +5,15 @@
 
 
 @doc Markdown.doc"""
-   VelocityMPCDemo(; name, velocities, altitude, initial_velocity, Ts, final_velocity, ramp_start, ramp_duration, pitch_perturbation, newtons_per_kilonewton, n_states, mpc_bank, trim_init, u_trim, reference_gains)
+   VelocityMPCDemo(; name, velocities, altitude, initial_velocity, Ts, final_velocity, ramp_start, ramp_duration, pitch_perturbation, newtons_per_kilonewton, n_states, mpc_bank, trim_init, u_trim, reference_gains, __overrides)
 
 Tutorial 8 — Velocity-scheduled linear MPC.
 
 A bank of constrained `LinearMPC` controllers, one per airspeed knot, flown on the
 nonlinear plant at 20 Hz. `LinearMPCScheduler` turns measured airspeed into hat-function
 member weights, `LinearMPCScheduledObserver` blends the members' Kalman filters, and
-`LinearMPCScheduledOptimizer` solves the active members' quadratic programs and blends
-their first moves.
+`LinearMPCScheduledOptimizer` solves the active members' QPs and blends their first moves.
+The three are separate components so the diagram shows the scheduling and blending.
 
 Signal flow (whole-array connections except where a channel is named):
 
@@ -26,53 +26,51 @@ Signal flow (whole-array connections except where a channel is named):
   ref_map (10) + ref_bias (10) --> ref_sum --> optimizer.r
   optimizer.u (4) --> zoh --> cmd_map (5) --> f16plant.u_in
 
-Design points:
+Design (`F16ModelWorkshop.VelocityMPC.bank`):
 
-- The bank (`F16ModelWorkshop.VelocityMPC.bank`) lives in one absolute frame, with a
-  per-knot offset `f_j = -A_j x_j - B_j u_j` so each member is exact at its own trim and
-  the members' weighted sum is an absolute command under shared box and rate limits.
-- The command level is penalized about each member's own trimmed command (`eu = -Q2 u_j`),
-  and each terminal weight is the Riccati cost-to-go, so every member's unconstrained
-  solution is its LQR for any horizon.
-- The scheduler, observer and optimizer are instantiated separately, so the diagram shows
-  how the bank is scheduled and blended.
-- `cmd_map` converts thrust from kN (controller) to N (plant), keeping the QP well scaled.
-- The reference is `ref_map * [commanded airspeed; weights] + ref_bias`: the commanded
+- One absolute frame for the whole bank, with a per-knot affine offset
+  `f_j = -A_j x_j - B_j u_j`, so each member is exact at its own trim and the members'
+  weighted sum is an absolute command under shared box and rate limits.
+- The command is penalized about each member's own trimmed command (`eu = -Q2 u_j`), and
+  each terminal weight is the Riccati cost-to-go, so each member's unconstrained solution
+  is its LQR for any horizon.
+- `cmd_map` converts thrust from kN (controller) to N (plant) to keep the QP well scaled.
+- Reference: `ref_map * [commanded airspeed; weights] + ref_bias`, i.e. the commanded
   airspeed, the weighted knot trims on pitch and angle of attack, and the commanded
-  altitude in `ref_bias`. All ten states are measured, so the observer's estimate is the
-  measurement.
+  altitude in `ref_bias`.
+- All ten states are measured, so the observer's estimate is the measurement.
 
-Scenario: trimmed at 148 m/s and 3000 m with 2° of extra pitch attitude, commanded to
-160 m/s over 12 s from t = 2 s, a ramp that crosses the 152.4 m/s knot.
+Scenario: trimmed at 148 m/s and 3000 m with 2° of extra pitch attitude, then a 12 s ramp
+to 160 m/s from t = 2 s that crosses the 152.4 m/s knot.
 
 ## Parameters:
 
 | Name         | Description                         | Units  |   Default value |
 | ------------ | ----------------------------------- | ------ | --------------- |
-| `velocities`         | Airspeed knots the bank is designed at, m/s, strictly increasing.                         | --  |   [140.0, 152.4, 170.0] |
-| `altitude`         | Altitude every knot is trimmed at, m.                         | --  |   3000.0 |
-| `initial_velocity`         | Airspeed the loop starts trimmed at, m/s.                         | --  |   148.0 |
+| `velocities`         | Airspeed knots of the bank, m/s, strictly increasing.                         | --  |   [140.0, 152.4, 170.0] |
+| `altitude`         | Trim altitude of every knot and commanded altitude, m.                         | --  |   3000.0 |
+| `initial_velocity`         | Initial trimmed airspeed, m/s.                         | --  |   148.0 |
 | `Ts`         | Controller sample period, s.                         | --  |   0.05 |
-| `final_velocity`         | Airspeed the reference ramp ends at, m/s.                         | --  |   160.0 |
-| `ramp_start`         | Time the reference ramp begins, s.                         | --  |   2.0 |
-| `ramp_duration`         | Length of the reference ramp, s.                         | --  |   12.0 |
-| `pitch_perturbation`         | Pitch attitude added to the trimmed initial state, rad (2 deg).                         | --  |   0.03490658503988659 |
-| `newtons_per_kilonewton`         | Newtons of thrust per kilonewton of commanded thrust.                         | --  |   1000.0 |
-| `n_states`         | Number of regulated states, the width of the measurement and reference vectors.                         | --  |   10 |
-| `n_reference_inputs`         | Width of the reference map's input, the commanded airspeed plus one weight per knot (derived).                         | --  |   size(velocities, 1) + 1 |
-| `mpc_bank`         | The bank of controllers, one per knot of `velocities`.                         | --  |   F16ModelWor...locity, Ts) |
-| `trim_init`         | Trimmed states of the flight condition the loop starts from.                         | --  |   F16ModelWor..., altitude) |
-| `u_trim`         | Trimmed command of that flight condition, [kN, deg, deg, deg].                         | --  |   F16ModelWor..., altitude) |
-| `reference_gains`         | Reference map from [commanded airspeed; member weights] to the ten regulated states' references.                         | --  |   F16ModelWor..., altitude) |
+| `final_velocity`         | Final commanded airspeed, m/s.                         | --  |   160.0 |
+| `ramp_start`         | Ramp start time, s.                         | --  |   2.0 |
+| `ramp_duration`         | Ramp duration, s.                         | --  |   12.0 |
+| `pitch_perturbation`         | Initial pitch-attitude perturbation from trim, rad (2 deg).                         | --  |   0.03490658503988659 |
+| `newtons_per_kilonewton`         | Thrust unit conversion, N per kN.                         | --  |   1000.0 |
+| `n_states`         | Number of regulated states.                         | --  |   10 |
+| `n_reference_inputs`         | Reference-map inputs: commanded airspeed plus one weight per knot (derived).                         | --  |   size(velocities, 1) + 1 |
+| `mpc_bank`         | Controller bank, one member per knot.                         | --  |   F16ModelWor...locity, Ts) |
+| `trim_init`         | Trimmed initial states.                         | --  |   F16ModelWor..., altitude) |
+| `u_trim`         | Trimmed initial command [kN, deg, deg, deg].                         | --  |   F16ModelWor..., altitude) |
+| `reference_gains`         | Reference map, [commanded airspeed; member weights] to the ten references.                         | --  |   F16ModelWor..., altitude) |
 
 ## Variables
 
 | Name         | Description                         | Units  | 
 | ------------ | ----------------------------------- | ------ |
-| `exitflag`         | Composite solver status of the last tick, held so it can be read from the solution.                         | --  |
-| `vt_reference`         | Commanded airspeed on the continuous time base, so the reference can be plotted against the plant's trajectory.                         | --  |
+| `exitflag`         | Composite solver status of the last tick.                         | --  |
+| `vt_reference`         | Commanded airspeed on the continuous time base, for plotting.                         | --  |
 """
-@component function VelocityMPCDemo(; name = nothing, velocities=[Float64(140.0), 152.4, Float64(170.0)], altitude=Float64(3000.0), initial_velocity=Float64(148.0), Ts=0.05, final_velocity=Float64(160.0), ramp_start=Float64(2.0), ramp_duration=Float64(12.0), pitch_perturbation=0.03490658503988659, newtons_per_kilonewton=Float64(1000.0), n_states=10, reference_gains=F16ModelWorkshop.VelocityMPC.reference_map(velocities, altitude), trim_init=F16ModelWorkshop.VelocityMPC.trim_states(initial_velocity, altitude), u_trim=F16ModelWorkshop.VelocityMPC.trim_command(initial_velocity, altitude), mpc_bank=F16ModelWorkshop.VelocityMPC.bank(velocities, altitude, initial_velocity, Ts), kwargs...)
+@component function VelocityMPCDemo(; name = nothing, var"velocities"=[Float64(140.0), 152.4, Float64(170.0)], var"altitude"=Float64(3000.0), var"initial_velocity"=Float64(148.0), var"Ts"=0.05, var"final_velocity"=Float64(160.0), var"ramp_start"=Float64(2.0), var"ramp_duration"=Float64(12.0), var"pitch_perturbation"=0.03490658503988659, var"newtons_per_kilonewton"=Float64(1000.0), var"n_states"=10, var"reference_gains"=nothing, var"trim_init"=nothing, var"u_trim"=nothing, var"mpc_bank"=nothing, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -80,7 +78,7 @@ Scenario: trimmed at 148 m/s and 3000 m with 2° of extra pitch attitude, comman
     @named model = VelocityMPCDemo()
   """))
 
-  __overrides = __build_overrides(kwargs)
+  __overrides = Dict{String, Any}(__overrides)
   __params = Symbolics.SymbolicT[]
   __vars = Symbolics.SymbolicT[]
   __systems = System[]
@@ -89,6 +87,28 @@ Scenario: trimmed at 148 m/s and 3000 m with 2° of extra pitch attitude, comman
   __initialization_eqs = Equation[]
   __eqs = Equation[]
   __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Keyword argument overrides
+  haskey(__overrides, "velocities") && (velocities = pop!(__overrides, "velocities"))
+  haskey(__overrides, "altitude") && (altitude = pop!(__overrides, "altitude"))
+  haskey(__overrides, "initial_velocity") && (initial_velocity = pop!(__overrides, "initial_velocity"))
+  haskey(__overrides, "Ts") && (Ts = pop!(__overrides, "Ts"))
+  haskey(__overrides, "final_velocity") && (final_velocity = pop!(__overrides, "final_velocity"))
+  haskey(__overrides, "ramp_start") && (ramp_start = pop!(__overrides, "ramp_start"))
+  haskey(__overrides, "ramp_duration") && (ramp_duration = pop!(__overrides, "ramp_duration"))
+  haskey(__overrides, "pitch_perturbation") && (pitch_perturbation = pop!(__overrides, "pitch_perturbation"))
+  haskey(__overrides, "newtons_per_kilonewton") && (newtons_per_kilonewton = pop!(__overrides, "newtons_per_kilonewton"))
+  haskey(__overrides, "n_states") && (n_states = pop!(__overrides, "n_states"))
+  haskey(__overrides, "reference_gains") && (reference_gains = pop!(__overrides, "reference_gains"))
+  haskey(__overrides, "trim_init") && (trim_init = pop!(__overrides, "trim_init"))
+  haskey(__overrides, "u_trim") && (u_trim = pop!(__overrides, "u_trim"))
+  haskey(__overrides, "mpc_bank") && (mpc_bank = pop!(__overrides, "mpc_bank"))
+
+  ### Deferred keyword defaults (defaults referencing other keyword arguments)
+  isnothing(reference_gains) && (reference_gains = F16ModelWorkshop.VelocityMPC.reference_map(velocities, altitude))
+  isnothing(trim_init) && (trim_init = F16ModelWorkshop.VelocityMPC.trim_states(initial_velocity, altitude))
+  isnothing(u_trim) && (u_trim = F16ModelWorkshop.VelocityMPC.trim_command(initial_velocity, altitude))
+  isnothing(mpc_bank) && (mpc_bank = F16ModelWorkshop.VelocityMPC.bank(velocities, altitude, initial_velocity, Ts))
 
   ### Structural Parameters (functions)
 
@@ -110,69 +130,69 @@ Scenario: trimmed at 148 m/s and 3000 m with 2° of extra pitch attitude, comman
   ### Final Path Parameters
 
   ### Variables (declarations)
-  append!(__vars, @variables (exitflag(t)::Real), [description = "Composite solver status of the last tick, held so it can be read from the solution."])
-  append!(__vars, @variables (vt_reference(t)::Real), [description = "Commanded airspeed on the continuous time base, so the reference can be plotted against the plant's trajectory."])
+  append!(__vars, @variables (exitflag(t)::Real), [description = "Composite solver status of the last tick."])
+  append!(__vars, @variables (vt_reference(t)::Real), [description = "Commanded airspeed on the continuous time base, for plotting."])
 
   ### Variables (assignments)
   __ovr_exitflag = pop!(__overrides, "exitflag", nothing); isnothing(__ovr_exitflag) || push!(__eqs, exitflag ~ __ovr_exitflag)
-  __ovr_exitflag__initial = pop!(__overrides, "exitflag__initial", nothing); isnothing(__ovr_exitflag__initial) || (__initial_conditions[exitflag] = __ovr_exitflag__initial)
-  __ovr_exitflag__guess = pop!(__overrides, "exitflag__guess", nothing)
+  __ovr_exitflag__initial = pop!(__overrides, "exitflag.initial", nothing); isnothing(__ovr_exitflag__initial) || (__initial_conditions[exitflag] = __ovr_exitflag__initial)
+  __ovr_exitflag__guess = pop!(__overrides, "exitflag.guess", nothing)
   __ovr_vt_reference = pop!(__overrides, "vt_reference", nothing); isnothing(__ovr_vt_reference) || push!(__eqs, vt_reference ~ __ovr_vt_reference)
-  __ovr_vt_reference__initial = pop!(__overrides, "vt_reference__initial", nothing); isnothing(__ovr_vt_reference__initial) || (__initial_conditions[vt_reference] = __ovr_vt_reference__initial)
-  __ovr_vt_reference__guess = pop!(__overrides, "vt_reference__guess", nothing)
+  __ovr_vt_reference__initial = pop!(__overrides, "vt_reference.initial", nothing); isnothing(__ovr_vt_reference__initial) || (__initial_conditions[vt_reference] = __ovr_vt_reference__initial)
+  __ovr_vt_reference__guess = pop!(__overrides, "vt_reference.guess", nothing)
 
   ### Constants
   __constants = Any[]
 
   ### Components
-  # Subcomponent f16plant of type F16ModelWorkshop.Plant.F16PlantModel
+  # Subcomponent f16plant of type F16ModelWorkshop.Plant.F16PlantFromState
   f16plant_overrides = __pop_subcomponent_overrides!(__overrides, "f16plant")
-  push!(__systems, @named f16plant = F16ModelWorkshop.Plant.F16PlantModel(; alt_init=trim_init[3], phi_init=trim_init[4], theta_init=trim_init[5] + pitch_perturbation, psi_init=trim_init[6], vt_init=trim_init[7], alpha_init=trim_init[8], beta_init=trim_init[9], P_init=trim_init[10], Q_init=trim_init[11], R_init=trim_init[12], f16plant_overrides...))
+  push!(__systems, @named f16plant = F16ModelWorkshop.Plant.F16PlantFromState(; x0=trim_init, theta_init=trim_init[5] + pitch_perturbation, __overrides = f16plant_overrides))
   # Subcomponent scheduler of type MPCComponents.Experimental.LinearMPCScheduler
   scheduler_overrides = __pop_subcomponent_overrides!(__overrides, "scheduler")
-  push!(__systems, @named scheduler = MPCComponents.Experimental.LinearMPCScheduler(; rho_grid=velocities, scheduler_overrides...))
+  push!(__systems, @named scheduler = MPCComponents.Experimental.LinearMPCScheduler(; rho_grid=velocities, __overrides = scheduler_overrides))
   # Subcomponent observer of type MPCComponents.Experimental.LinearMPCScheduledObserver
   observer_overrides = __pop_subcomponent_overrides!(__overrides, "observer")
-  push!(__systems, @named observer = MPCComponents.Experimental.LinearMPCScheduledObserver(; mpc=mpc_bank, observer_overrides...))
+  push!(__systems, @named observer = MPCComponents.Experimental.LinearMPCScheduledObserver(; mpc=mpc_bank, __overrides = observer_overrides))
   # Subcomponent optimizer of type MPCComponents.Experimental.LinearMPCScheduledOptimizer
   optimizer_overrides = __pop_subcomponent_overrides!(__overrides, "optimizer")
-  push!(__systems, @named optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(; mpc=mpc_bank, u0=u_trim, optimizer_overrides...))
+  push!(__systems, @named optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(; mpc=mpc_bank, u0=u_trim, __overrides = optimizer_overrides))
   # Subcomponent clock of type DiscreteComponents.PeriodicClock
   clock_overrides = __pop_subcomponent_overrides!(__overrides, "clock")
-  push!(__systems, @named clock = DiscreteComponents.PeriodicClock(; dt=Ts, clock_overrides...))
+  push!(__systems, @named clock = DiscreteComponents.PeriodicClock(; dt=Ts, __symbol_overrides(clock_overrides)...))
   # Subcomponent meas_select of type F16ModelWorkshop.VectorBlocks.VectorSelect
   meas_select_overrides = __pop_subcomponent_overrides!(__overrides, "meas_select")
-  push!(__systems, @named meas_select = F16ModelWorkshop.VectorBlocks.VectorSelect(; n=12, indices=[3, 4, 5, 6, 7, 8, 9, 10, 11, 12], meas_select_overrides...))
+  push!(__systems, @named meas_select = F16ModelWorkshop.VectorBlocks.VectorSelect(; n=12, indices=[3, 4, 5, 6, 7, 8, 9, 10, 11, 12], __overrides = meas_select_overrides))
   # Subcomponent sample of type F16ModelWorkshop.VectorBlocks.MultiSampler
   sample_overrides = __pop_subcomponent_overrides!(__overrides, "sample")
-  push!(__systems, @named sample = F16ModelWorkshop.VectorBlocks.MultiSampler(; n=n_states, sample_overrides...))
+  push!(__systems, @named sample = F16ModelWorkshop.VectorBlocks.MultiSampler(; n=n_states, __overrides = sample_overrides))
   # Subcomponent vt_cmd of type BlockComponents.Sources.Ramp
   vt_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "vt_cmd")
-  push!(__systems, @named vt_cmd = BlockComponents.Sources.Ramp(; offset=initial_velocity, height=final_velocity - initial_velocity, start_time=ramp_start, duration=ramp_duration, vt_cmd_overrides...))
+  push!(__systems, @named vt_cmd = BlockComponents.Sources.Ramp(; offset=initial_velocity, height=final_velocity - initial_velocity, start_time=ramp_start, duration=ramp_duration, __overrides = vt_cmd_overrides))
   # Subcomponent sr_vt of type DiscreteComponents.Sampler
   sr_vt_overrides = __pop_subcomponent_overrides!(__overrides, "sr_vt")
-  push!(__systems, @named sr_vt = DiscreteComponents.Sampler(; sr_vt_overrides...))
+  push!(__systems, @named sr_vt = DiscreteComponents.Sampler(; __overrides = sr_vt_overrides))
   # Subcomponent ref_map of type DiscreteComponents.Examples.MatrixGain
   ref_map_overrides = __pop_subcomponent_overrides!(__overrides, "ref_map")
-  push!(__systems, @named ref_map = DiscreteComponents.Examples.MatrixGain(; ny=n_states, nu=n_reference_inputs, K=reference_gains, ref_map_overrides...))
+  push!(__systems, @named ref_map = DiscreteComponents.Examples.MatrixGain(; ny=n_states, nu=n_reference_inputs, K=reference_gains, __overrides = ref_map_overrides))
   # Subcomponent ref_bias of type F16ModelWorkshop.VectorBlocks.VectorConstant
   ref_bias_overrides = __pop_subcomponent_overrides!(__overrides, "ref_bias")
-  push!(__systems, @named ref_bias = F16ModelWorkshop.VectorBlocks.VectorConstant(; n=n_states, k=[altitude, Float64(0.0), Float64(0.0), Float64(0.0), Float64(0.0), Float64(0.0), Float64(0.0), Float64(0.0), Float64(0.0), Float64(0.0)], ref_bias_overrides...))
+  push!(__systems, @named ref_bias = F16ModelWorkshop.VectorBlocks.VectorConstant(; n=n_states, k=[altitude, Float64(0.0), Float64(0.0), Float64(0.0), Float64(0.0), Float64(0.0), Float64(0.0), Float64(0.0), Float64(0.0), Float64(0.0)], __overrides = ref_bias_overrides))
   # Subcomponent ref_sum of type F16ModelWorkshop.VectorBlocks.VectorAdd
   ref_sum_overrides = __pop_subcomponent_overrides!(__overrides, "ref_sum")
-  push!(__systems, @named ref_sum = F16ModelWorkshop.VectorBlocks.VectorAdd(; n=n_states, ref_sum_overrides...))
+  push!(__systems, @named ref_sum = F16ModelWorkshop.VectorBlocks.VectorAdd(; n=n_states, __overrides = ref_sum_overrides))
   # Subcomponent zoh of type F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold
   zoh_overrides = __pop_subcomponent_overrides!(__overrides, "zoh")
-  push!(__systems, @named zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(; n=4, zoh_overrides...))
+  push!(__systems, @named zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(; n=4, __overrides = zoh_overrides))
   # Subcomponent cmd_map of type DiscreteComponents.Examples.MatrixGain
   cmd_map_overrides = __pop_subcomponent_overrides!(__overrides, "cmd_map")
-  push!(__systems, @named cmd_map = DiscreteComponents.Examples.MatrixGain(; ny=5, nu=4, K=[newtons_per_kilonewton Float64(0.0) Float64(0.0) Float64(0.0); Float64(0.0) Float64(1.0) Float64(0.0) Float64(0.0); Float64(0.0) Float64(0.0) Float64(1.0) Float64(0.0); Float64(0.0) Float64(0.0) Float64(0.0) Float64(1.0); Float64(0.0) Float64(0.0) Float64(0.0) Float64(0.0)], cmd_map_overrides...))
+  push!(__systems, @named cmd_map = DiscreteComponents.Examples.MatrixGain(; ny=5, nu=4, K=[newtons_per_kilonewton Float64(0.0) Float64(0.0) Float64(0.0); Float64(0.0) Float64(1.0) Float64(0.0) Float64(0.0); Float64(0.0) Float64(0.0) Float64(1.0) Float64(0.0); Float64(0.0) Float64(0.0) Float64(0.0) Float64(1.0); Float64(0.0) Float64(0.0) Float64(0.0) Float64(0.0)], __overrides = cmd_map_overrides))
   # Subcomponent zoh_flag of type DiscreteComponents.ZeroOrderHold
   zoh_flag_overrides = __pop_subcomponent_overrides!(__overrides, "zoh_flag")
-  push!(__systems, @named zoh_flag = DiscreteComponents.ZeroOrderHold(; initial_condition=Float64(1.0), zoh_flag_overrides...))
+  push!(__systems, @named zoh_flag = DiscreteComponents.ZeroOrderHold(; initial_condition=Float64(1.0), __overrides = zoh_flag_overrides))
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
 
   ### Guesses
   isnothing(__ovr_exitflag__guess) || (__guesses[exitflag] = __ovr_exitflag__guess)
@@ -207,6 +227,6 @@ Scenario: trimmed at 148 m/s and 3000 m with 2° of extra pitch attitude, comman
   push!(__eqs, connect(optimizer.exitflag, zoh_flag.u))
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export VelocityMPCDemo

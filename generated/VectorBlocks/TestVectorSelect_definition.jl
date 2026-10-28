@@ -5,20 +5,18 @@
 
 
 @doc Markdown.doc"""
-   TestVectorSelect(; name)
+   TestVectorSelect(; name, __overrides)
 
-Minimal validation of the vector channel selector.
+Validation of the vector channel selector.
 
-A four-channel `VectorConstant` carrying `[1, 2, 3, 4]` feeds a `VectorSelect` that
-picks channels 4 and 2, in that order. Each selected channel drives an `Integrator`,
-which both consumes the signal continuously and gives the model a real ODE state (an
-empty `u0` crashes the auto-dt initializer).
+A `VectorConstant` carrying `[1, 2, 3, 4]` feeds a `VectorSelect` picking channels 4 and
+2, in that order. Each picked channel drives an `Integrator`, which also gives the model
+an ODE state (an empty `u0` crashes the auto-dt initializer).
 
-Expected: `retcode == Success`, and at t = 1 s the integrals are `pick_first.x == 4`
-and `pick_second.x == 2` — the selection is applied, and in the order `indices` gives
-rather than in ascending channel order.
+Expected: `retcode == Success` and, at t = 1 s, `pick_first.x == 4` and
+`pick_second.x == 2`: the selection follows `indices` order, not ascending order.
 """
-@component function TestVectorSelect(; name = nothing, kwargs...)
+@component function TestVectorSelect(; name = nothing, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -26,7 +24,7 @@ rather than in ascending channel order.
     @named model = TestVectorSelect()
   """))
 
-  __overrides = __build_overrides(kwargs)
+  __overrides = Dict{String, Any}(__overrides)
   __params = Symbolics.SymbolicT[]
   __vars = Symbolics.SymbolicT[]
   __systems = System[]
@@ -64,19 +62,19 @@ rather than in ascending channel order.
   ### Components
   # Subcomponent src of type F16ModelWorkshop.VectorBlocks.VectorConstant
   src_overrides = __pop_subcomponent_overrides!(__overrides, "src")
-  push!(__systems, @named src = F16ModelWorkshop.VectorBlocks.VectorConstant(; n=4, k=[Float64(1.0), Float64(2.0), Float64(3.0), Float64(4.0)], src_overrides...))
+  push!(__systems, @named src = F16ModelWorkshop.VectorBlocks.VectorConstant(; n=4, k=[Float64(1.0), Float64(2.0), Float64(3.0), Float64(4.0)], __overrides = src_overrides))
   # Subcomponent pick of type F16ModelWorkshop.VectorBlocks.VectorSelect
   pick_overrides = __pop_subcomponent_overrides!(__overrides, "pick")
-  push!(__systems, @named pick = F16ModelWorkshop.VectorBlocks.VectorSelect(; n=4, indices=[4, 2], pick_overrides...))
+  push!(__systems, @named pick = F16ModelWorkshop.VectorBlocks.VectorSelect(; n=4, indices=[4, 2], __overrides = pick_overrides))
   # Subcomponent pick_first of type BlockComponents.Continuous.Integrator
   pick_first_overrides = __pop_subcomponent_overrides!(__overrides, "pick_first")
-  push!(__systems, @named pick_first = BlockComponents.Continuous.Integrator(; pick_first_overrides...))
+  push!(__systems, @named pick_first = BlockComponents.Continuous.Integrator(; __overrides = pick_first_overrides))
   # Subcomponent pick_second of type BlockComponents.Continuous.Integrator
   pick_second_overrides = __pop_subcomponent_overrides!(__overrides, "pick_second")
-  push!(__systems, @named pick_second = BlockComponents.Continuous.Integrator(; pick_second_overrides...))
+  push!(__systems, @named pick_second = BlockComponents.Continuous.Integrator(; __overrides = pick_second_overrides))
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
 
   ### Guesses
 
@@ -91,6 +89,6 @@ rather than in ascending channel order.
   push!(__eqs, connect(pick.y[2], pick_second.u))
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export TestVectorSelect

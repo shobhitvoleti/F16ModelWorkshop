@@ -9,4 +9,5 @@ if isfile(joinpath((@__DIR__) |> Base.dirname |> Base.dirname, "dyad", "Plant", 
 end
 
 
+include("F16PlantFromState_experiment.jl")
 include("F16PlantModel_experiment.jl")

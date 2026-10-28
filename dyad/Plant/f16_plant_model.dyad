@@ -4,10 +4,10 @@ component F16PlantModel
   u_in = [RealInput() for i in 1:5] {^u_in}
   "State outputs: [npos, epos, alt, phi, theta, psi, vt, alpha, beta, P, Q, R]"
   y_out = [RealOutput() for i in 1:12] {^y_out}
-  # ---- 12 state variables ----
-  # Declared inline rather than as `initial x = x_init` relations: the relation form is
-  # dropped by algebraic_only linearization (LQGAnalysis / LinearAnalysis), which leaves
-  # the operating point unpinned and solved by least squares from `guess` values.
+  # ---- States ----
+  # Initials are inline because algebraic_only linearization (LQGAnalysis /
+  # LinearAnalysis) drops `initial x = x_init` relations, leaving the operating point
+  # to a least-squares solve from guesses.
   variable npos::Real = initial npos_init
   variable epos::Real = initial epos_init
   variable alt::Real = initial alt_init
@@ -20,7 +20,7 @@ component F16PlantModel
   variable P::Real = initial P_init
   variable Q::Real = initial Q_init
   variable R::Real = initial R_init
-  # ---- Initial condition parameters ----
+  # ---- Initial conditions ----
   parameter npos_init::Real = 0.0
   parameter epos_init::Real = 0.0
   parameter alt_init::Real = 1000.0
@@ -40,9 +40,8 @@ component F16PlantModel
   final parameter S::Real = 27.87
   final parameter cbar::Real = 3.45
   final parameter xcgr::Real = 0.35
-  "CG position, fraction of cbar. 0.35 is the aerodynamic reference and leaves the
-  aircraft statically unstable in pitch (Cma = +0.082/rad); moving it forward to 0.30
-  restores positive pitch stiffness."
+  "CG position, fraction of cbar. At the 0.35 reference the aircraft is statically
+  unstable in pitch (Cma = +0.082/rad); 0.30 restores positive pitch stiffness."
   parameter xcg::Real = 0.35
   final parameter Heng::Real = 0.0
   final parameter Jx::Real = 12874.8
@@ -69,23 +68,21 @@ component F16PlantModel
   #                                                     [  P̂      ]
   #                                                     [  R̂      ]
   # ================================================================
-  #  Coefficients are a least-squares condensation of the Stevens & Lewis F-16
-  #  tables about the tutorial operating point, taken at the reference CG so the
-  #  CG transfer below is the only place xcg enters. Regenerate with
-  #  scripts/fit_snl_aero.jl.
+  #  Least-squares fit of the Stevens & Lewis F-16 tables about the tutorial operating
+  #  point, at the reference CG; xcg enters only through the CG transfer below.
+  #  Regenerate with scripts/fit_snl_aero.jl.
   final parameter C0_lon::Real[3] = [-0.027932, -0.096752, -0.01018]
   final parameter Cmat_lon::Real[3, 4] = [[0.090904, 1.1657, -0.008374, 1.0946], [-3.7128, 0.49685, -0.43545, -30.249], [0.082392, -0.41732, -0.55797, -5.4525]]
-  #  Zero by symmetry: no side force, roll or yaw at zero sideslip with centered controls.
+  #  Zero by symmetry: no lateral force or moment at zero sideslip and centered controls.
   final parameter C0_lat::Real[3] = [0.0, 0.0, 0.0]
   final parameter Cmat_lat::Real[3, 5] = [[-1.1459, 0.060161, 0.16425, 0.033231, 0.92628], [-0.12812, -0.1433, 0.025573, -0.41643, 0.11158], [0.2279, -0.026385, -0.081572, 0.012385, -0.37854]]
   # ---- Intermediate variables ----
-  # Control surfaces (mapped from u_in)
+  # Controls, as in u_in, and surface deflections in radians
   variable T::Real
   variable el::Real
   variable ail::Real
   variable rud::Real
   variable lef::Real
-  # Control deflections in radians
   variable el_rad::Real
   variable ail_rad::Real
   variable rud_rad::Real
@@ -109,30 +106,25 @@ component F16PlantModel
   # Atmosphere
   variable rho::Real
   variable qbar::Real
-  # Aerodynamic input vectors
+  # Aerodynamic input vectors and coefficients [Cx, Cz, Cm], [Cy, Cl, Cn]
   variable x_lon::Real[4]
   variable x_lat::Real[5]
-  # Aerodynamic coefficient vectors: [Cx,Cz,Cm] and [Cy,Cl,Cn]
   variable C_lon::Real[3]
   variable C_lat::Real[3]
-  # Body-axis accelerations
+  # Body-axis accelerations, total aerodynamic moments, inertia denominator
   variable Udot::Real
   variable Vdot::Real
   variable Wdot::Real
-  # Total aerodynamic moments
   variable L_tot::Real
   variable M_tot::Real
   variable N_tot::Real
-  # Inertia denominator
   variable denom::Real
 relations
-  # ---- Input mapping: u_in = [T, el, ail, rud, lef] ----
   T = u_in[1]
   el = u_in[2]
   ail = u_in[3]
   rud = u_in[4]
   lef = u_in[5]
-  # ---- Output mapping: y_out = [npos, epos, alt, phi, theta, psi, vt, alpha, beta, P, Q, R] ----
   y_out[1] = npos
   y_out[2] = epos
   y_out[3] = alt
@@ -145,12 +137,10 @@ relations
   y_out[10] = P
   y_out[11] = Q
   y_out[12] = R
-  # ---- Control surface deg → rad ----
   el_rad = el * deg2rad
   ail_rad = ail * deg2rad
   rud_rad = rud * deg2rad
   lef_rad = lef * deg2rad
-  # ---- Trigonometry ----
   sa = sin(alpha)
   ca = cos(alpha)
   sb = sin(beta)
@@ -169,21 +159,16 @@ relations
   # ---- Atmosphere (ISA troposphere) ----
   rho = 1.225 * (1.0 - 0.0065 * alt / 288.15) ^ 4.256
   qbar = 0.5 * rho * vt * vt
-  # ================================================================
-  #  Aerodynamic coefficients — matrix equations
-  # ================================================================
-  # Longitudinal input vector
+  # ---- Aerodynamic coefficients (matrix layout at Cmat_lon / Cmat_lat) ----
   x_lon[1] = alpha
   x_lon[2] = alpha * alpha
   x_lon[3] = el_rad
   x_lon[4] = cbar * Q / (2.0 * vt)
-  # Lateral input vector
   x_lat[1] = beta
   x_lat[2] = ail_rad
   x_lat[3] = rud_rad
   x_lat[4] = B * P / (2.0 * vt)
   x_lat[5] = B * R / (2.0 * vt)
-  # Matrix multiply: 6 scalar equations → 2 matrix equations
   C_lon = C0_lon + Cmat_lon * x_lon
   C_lat = C0_lat + Cmat_lat * x_lat
   # ================================================================
@@ -201,9 +186,9 @@ relations
   der(alpha) = (U * Wdot - W * Udot) / (U * U + W * W)
   der(beta) = (Vdot * vt - V_body * (U * Udot + V_body * Vdot + W * Wdot) / vt) / (vt * vt * cb)
   # ---- Aerodynamic moments ----
-  # Pitch and yaw carry the CG transfer: the deck is referenced to xcgr, so moving the
-  # CG to xcg swings the normal force Cz through the offset (xcgr - xcg)*cbar. This is
-  # the term that decides static stability — at xcgr it vanishes and Cma stays positive.
+  # Pitch and yaw carry the CG transfer from the deck's reference xcgr to xcg: Cz (Cy for
+  # yaw) acts through the offset (xcgr - xcg)*cbar. This term sets static pitch stability;
+  # at xcg = xcgr it vanishes and Cma stays positive.
   L_tot = C_lat[2] * qbar * S * B
   M_tot = (C_lon[3] + C_lon[2] * (xcgr - xcg)) * qbar * S * cbar
   N_tot = (C_lat[3] - C_lat[1] * (xcgr - xcg) * cbar / B) * qbar * S * B
@@ -251,6 +236,26 @@ metadata {
         "tags": []
       }
     }
+  }
+}
+end
+
+"""
+`F16PlantModel` started from a state vector instead of twelve `*_init` parameters.
+
+`x0` is in the order of `y_out`, `[npos, epos, alt, phi, theta, psi, vt, alpha, beta, P, Q,
+R]`, so a trim computed in Julia (e.g. `VelocityMPC.trim_states`) passes straight in. A
+`*_init` modification on the instance still overrides its entry, e.g. to perturb one state.
+"""
+component F16PlantFromState
+  extends F16ModelWorkshop.Plant.F16PlantModel(npos_init = x0[1], epos_init = x0[2], alt_init = x0[3], phi_init = x0[4], theta_init = x0[5], psi_init = x0[6], vt_init = x0[7], alpha_init = x0[8], beta_init = x0[9], P_init = x0[10], Q_init = x0[11], R_init = x0[12])
+  "Initial state [npos, epos, alt, phi, theta, psi, vt, alpha, beta, P, Q, R]; defaults to those of F16PlantModel"
+  parameter x0::Real[12] = [0.0, 0.0, 1000.0, 0.0, 0.0591, 0.0, 152.4, 0.0591, 0.0, 0.0, 0.0, 0.0]
+metadata {
+  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/f16_plant_model.svg"}},
+  "_links": {
+    "u_in": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 450, "x2": 100, "y2": 550, "rot": 0}}, "tags": []}},
+    "y_out": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 550, "rot": 0}}, "tags": []}}
   }
 }
 end

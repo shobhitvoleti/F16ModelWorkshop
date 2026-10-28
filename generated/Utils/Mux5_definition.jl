@@ -5,15 +5,15 @@
 
 
 @doc Markdown.doc"""
-   Mux5(; name, u_guess)
+   Mux5(; name, u_guess, __overrides)
 
-Mux5: combine 5 scalar inputs into a vector output
+Mux5: combine 5 scalar inputs into a 5-vector
 
 ## Parameters:
 
 | Name         | Description                         | Units  |   Default value |
 | ------------ | ----------------------------------- | ------ | --------------- |
-| `u_guess`         | Operating-point seed for the inputs. […]                         | --  |   zeros(5) |
+| `u_guess`         | Operating-point guesses for the inputs. On the broken-loop side of an analysis point the mux has no source during linearization, so the initializer needs a starting value. Demuxes need none: the plant still drives their inputs.                         | --  |   zeros(5) |
 
 ## Connectors
 
@@ -24,7 +24,7 @@ Mux5: combine 5 scalar inputs into a vector output
  * `u5` - This connector represents a real signal as an input to a component ([`RealInput`](@ref))
  * `y` - This connector represents a real signal as an output from a component ([`RealOutput`](@ref))
 """
-@component function Mux5(; name = nothing, u_guess=zeros(5), kwargs...)
+@component function Mux5(; name = nothing, var"u_guess"=zeros(5), __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -32,7 +32,7 @@ Mux5: combine 5 scalar inputs into a vector output
     @named model = Mux5()
   """))
 
-  __overrides = __build_overrides(kwargs)
+  __overrides = Dict{String, Any}(__overrides)
   __params = Symbolics.SymbolicT[]
   __vars = Symbolics.SymbolicT[]
   __systems = System[]
@@ -41,6 +41,9 @@ Mux5: combine 5 scalar inputs into a vector output
   __initialization_eqs = Equation[]
   __eqs = Equation[]
   __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Keyword argument overrides
+  haskey(__overrides, "u_guess") && (u_guess = pop!(__overrides, "u_guess"))
 
   ### Structural Parameters (functions)
 
@@ -56,14 +59,8 @@ Mux5: combine 5 scalar inputs into a vector output
 
   ### Symbolic Parameters
   __local__u_guess = u_guess
-  append!(__params, @parameters (u_guess[1:5]::Real), [description = "Operating-point seed for the inputs.
-  append!(__params, @parameters (u_guess[1:5]::Real), [description = 
-  append!(__params, @parameters (u_guess[1:5]::Real), [description = A mux gathering the far side of an analysis point has no source once linearization
-  append!(__params, @parameters (u_guess[1:5]::Real), [description = opens the loop, so the initializer cannot solve for these and needs a starting value.
-  append!(__params, @parameters (u_guess[1:5]::Real), [description = The matching demuxes need no such seed: their inputs stay driven by the plant through
-  append!(__params, @parameters (u_guess[1:5]::Real), [description = connect equations. Seeding here keeps the guesses out of every model that instruments
-  append!(__params, @parameters (u_guess[1:5]::Real), [description = a loop."])
-  __initial_conditions[u_guess] = __local__u_guess
+  append!(__params, @parameters (u_guess[1:5]::Real), [description = "Operating-point guesses for the inputs. On the broken-loop side of an analysis point\nthe mux has no source during linearization, so the initializer needs a starting value.\nDemuxes need none: the plant still drives their inputs."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, u_guess, __local__u_guess)
 
   ### Final Parameters (assignments)
 
@@ -85,7 +82,7 @@ Mux5: combine 5 scalar inputs into a vector output
   ### Components
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
 
   ### Guesses
   __guesses[u1] = (u_guess[1])
@@ -103,6 +100,6 @@ Mux5: combine 5 scalar inputs into a vector output
   push!(__eqs, y ~ [u1, u2, u3, u4, u5])
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export Mux5

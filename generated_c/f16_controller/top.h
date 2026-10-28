@@ -12,17 +12,17 @@ typedef struct {
 NTuple5_f64 data;
 } SynchArray_f64x5;
 typedef struct {
-double elements[60];
-} NTuple60_f64;
-typedef struct {
-NTuple60_f64 data;
-} SynchArray_f64x5x12;
-typedef struct {
 double elements[12];
 } NTuple12_f64;
 typedef struct {
 NTuple12_f64 data;
 } SynchArray_f64x12;
+typedef struct {
+double elements[60];
+} NTuple60_f64;
+typedef struct {
+NTuple60_f64 data;
+} SynchArray_f64x5x12;
 typedef struct {
 double elements[144];
 } NTuple144_f64;
@@ -33,7 +33,7 @@ typedef struct {
 double elements[1];
 } NTuple1_f64;
 
-/* mutable struct SynchToolkit.var"##SynchRuntime#277".Pars */
+/* mutable struct SynchToolkit.var"##SynchRuntime#751".Pars */
 struct Pars {
 SynchArray_f64x12x12 controller_A;
 SynchArray_f64x12x12 controller_B;
@@ -64,7 +64,7 @@ top_f64x12_bool_Pars_out top_f64x12_bool_Pars_step(SynchArray_f64x12 u28_u_u28_t
  * inputs, outputs, then state:
  *   (u(t))[1:12] : SynchJulia.SynchVector{Float64, 12} -> const double u28_u_u28_t_u29_u29_u5b_1_colon_12_u5d[12] (input buffer, 12 elements)
  *   clock1 : Bool -> bool clock1 (input value)
- *   pars : SynchToolkit.var"##SynchRuntime#277".Pars -> Pars *pars (input object, by pointer)
+ *   pars : SynchToolkit.var"##SynchRuntime#751".Pars -> Pars *pars (input object, by pointer)
  *   (y(t))[1:5] : SynchJulia.SynchVector{Float64, 5} -> double u28_y_u28_t_u29_u29_u5b_1_colon_5_u5d[5] (output buffer, 5 elements)
  *   (y(t))[1:5] presence -> bool *has_u28_y_u28_t_u29_u29_u5b_1_colon_5_u5d (output; false means absent this tick)
  *   state -> top_f64x12_bool_Pars_mem *self (reset with top_f64x12_bool_Pars_reset before the first tick)

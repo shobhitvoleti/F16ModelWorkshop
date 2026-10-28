@@ -4,6 +4,7 @@
 /Manifest*.toml
 /.claude/
 /.dev/
+/.dyadcache
 /.migration-backups/
 /agent_resources/
 /assets/f16_continuous_closed_loop.mp4

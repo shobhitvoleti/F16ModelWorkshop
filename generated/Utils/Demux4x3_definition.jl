@@ -5,9 +5,9 @@
 
 
 @doc Markdown.doc"""
-   Demux4x3(; name)
+   Demux4x3(; name, __overrides)
 
-Demux4x3: split a 12-element vector input into four 3-element vector outputs (stage 1)
+Demux4x3: split a 12-vector into four 3-vectors
 
 ## Connectors
 
@@ -17,7 +17,7 @@ Demux4x3: split a 12-element vector input into four 3-element vector outputs (st
  * `y3` - This connector represents a real signal as an output from a component ([`RealOutput`](@ref))
  * `y4` - This connector represents a real signal as an output from a component ([`RealOutput`](@ref))
 """
-@component function Demux4x3(; name = nothing, kwargs...)
+@component function Demux4x3(; name = nothing, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -25,7 +25,7 @@ Demux4x3: split a 12-element vector input into four 3-element vector outputs (st
     @named model = Demux4x3()
   """))
 
-  __overrides = __build_overrides(kwargs)
+  __overrides = Dict{String, Any}(__overrides)
   __params = Symbolics.SymbolicT[]
   __vars = Symbolics.SymbolicT[]
   __systems = System[]
@@ -68,7 +68,7 @@ Demux4x3: split a 12-element vector input into four 3-element vector outputs (st
   ### Components
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
 
   ### Guesses
 
@@ -84,6 +84,6 @@ Demux4x3: split a 12-element vector input into four 3-element vector outputs (st
   push!(__eqs, y4 ~ [u[10], u[11], u[12]])
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export Demux4x3

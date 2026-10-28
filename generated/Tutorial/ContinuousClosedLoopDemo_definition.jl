@@ -5,35 +5,31 @@
 
 
 @doc Markdown.doc"""
-   ContinuousClosedLoopDemo(; name)
+   ContinuousClosedLoopDemo(; name, __overrides)
 
 Tutorial 5 — 3-D visualization.
 
-Takes the finished closed loop and renders it as an animation of the airframe. The
-loop itself is untouched: each viz model `extends` its closed loop and adds only a
-measurement tap, a pose bridge and a visualizer, so what you watch is the same
-simulation the earlier steps produce.
-
-Two loops are rendered so continuous and sampled-data control can be compared on
-the identical 10 deg pitch perturbation:
+Renders a closed loop as an animation of the airframe. Each viz model `extends` its
+closed loop and adds only a measurement tap, a pose bridge and a visualizer, so the
+animation is the same simulation as the earlier steps. Both run the 10 deg pitch
+perturbation of step 4, so continuous and sampled-data control can be compared:
   `ContinuousClosedLoopVizDemo`  the LQG regulator of step 3, running continuously
   `DiscreteClosedLoopVizDemo`    the 100 Hz sampled-data loop of step 4
 
-Both render over the 10 s window step 4 simulates. The LQG design regulates the
-perturbation over that horizon but does not hold trim indefinitely: with `npos`/`epos`
-carrying cost against a fixed zero reference, the position error grows with distance
-flown and the loop departs at roughly 19 s. Extending `stop` past that renders the
-departure, not the recovery.
+Both render the 10 s window of step 4. The regulator does not hold trim indefinitely:
+the `npos`/`epos` error grows with distance flown (see `TutorialLQG`) and the loop
+departs at about 19 s, so extending `stop` past that renders the departure, not the
+recovery.
 
-Measurement tap (both models), reusing the plant's own vector output:
+Measurement tap (both models), from the plant's vector output:
   f16plant.y_out -> Demux4x3 -> y1 [npos,epos,alt] -> Demux3 -> Mux3 -> pose.pos
                              -> y2 [phi,theta,psi] --------------------> pose.ang
 
-`SignalPoseSource` expects a Y-up world frame while the plant reports NED, hence the
-Demux3/Mux3 pair: it reorders the position triple to npos->x, alt->y, epos->z. The
-Euler triple needs no reordering — [phi, theta, psi] is already [roll, pitch, yaw].
+`SignalPoseSource` expects a Y-up world frame and the plant reports NED, so the
+Demux3/Mux3 pair reorders position to npos->x, alt->y, epos->z. The Euler triple
+[phi, theta, psi] is already [roll, pitch, yaw].
 """
-@component function ContinuousClosedLoopDemo(; name = nothing, kwargs...)
+@component function ContinuousClosedLoopDemo(; name = nothing, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -41,7 +37,7 @@ Euler triple needs no reordering — [phi, theta, psi] is already [roll, pitch, 
     @named model = ContinuousClosedLoopDemo()
   """))
 
-  __overrides = __build_overrides(kwargs)
+  __overrides = Dict{String, Any}(__overrides)
   __params = Symbolics.SymbolicT[]
   __vars = Symbolics.SymbolicT[]
   __systems = System[]
@@ -80,6 +76,7 @@ Euler triple needs no reordering — [phi, theta, psi] is already [roll, pitch, 
   # Subcomponent f16plant of type F16ModelWorkshop.Plant.F16PlantModel
   f16plant_overrides = __pop_subcomponent_overrides!(__overrides, "f16plant")
   __f16plant_apply_exclude = Set{String}()
+  __f16plant_apply_1_exclude = Set{String}(["theta_init"])
   __f16plant_apply_schema = Dict{String,NamedTuple}(
     "npos_init" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
     "epos_init" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
@@ -162,7 +159,11 @@ Euler triple needs no reordering — [phi, theta, psi] is already [roll, pitch, 
   __f16plant_apply_1 = __dyad_load_parameters(pkgdir(@__MODULE__), String(nameof(Base.moduleroot(@__MODULE__))), "dyad://F16ModelWorkshop/trim_point.toml")
   __f16plant_apply_1_flat = __dyad_flatten(__f16plant_apply_1)
   __dyad_check_apply(__f16plant_apply_1_flat, __f16plant_apply_schema, "dyad://F16ModelWorkshop/trim_point.toml")
-  push!(__systems, @named f16plant = F16ModelWorkshop.Plant.F16PlantModel(; __dyad_apply_overrides(__f16plant_apply_1, __f16plant_apply_1_flat, __f16plant_apply_exclude, __f16plant_apply_schema)..., theta_init=0.17453292519943295, f16plant_overrides...))
+  __f16plant_apply_1_ovr = __dyad_apply_overrides(__f16plant_apply_1, __f16plant_apply_1_flat, __f16plant_apply_1_exclude, __f16plant_apply_schema)
+  f16plant_dict = Dict{String, Any}()
+  merge!(f16plant_dict, __f16plant_apply_1_ovr)
+  merge!(f16plant_dict, f16plant_overrides)
+  push!(__systems, @named f16plant = F16ModelWorkshop.Plant.F16PlantModel(; theta_init=0.17453292519943295, __overrides = f16plant_dict))
   # Subcomponent controller of type BlockComponents.Continuous.StateSpace
   controller_overrides = __pop_subcomponent_overrides!(__overrides, "controller")
   __controller_apply_exclude = Set{String}(["nx", "nu", "ny"])
@@ -184,7 +185,11 @@ Euler triple needs no reordering — [phi, theta, psi] is already [roll, pitch, 
   __controller_apply_1 = __dyad_load_parameters(pkgdir(@__MODULE__), String(nameof(Base.moduleroot(@__MODULE__))), "dyad://F16ModelWorkshop/controller.toml")
   __controller_apply_1_flat = __dyad_flatten(__controller_apply_1)
   __dyad_check_apply(__controller_apply_1_flat, __controller_apply_schema, "dyad://F16ModelWorkshop/controller.toml")
-  push!(__systems, @named controller = BlockComponents.Continuous.StateSpace(; nx=12, nu=12, ny=5, __dyad_apply_overrides(__controller_apply_1, __controller_apply_1_flat, __controller_apply_exclude, __controller_apply_schema)..., controller_overrides...))
+  __controller_apply_1_ovr = __dyad_apply_overrides(__controller_apply_1, __controller_apply_1_flat, __controller_apply_exclude, __controller_apply_schema)
+  controller_dict = Dict{String, Any}()
+  merge!(controller_dict, __controller_apply_1_ovr)
+  merge!(controller_dict, controller_overrides)
+  push!(__systems, @named controller = BlockComponents.Continuous.StateSpace(; nx=12, nu=12, ny=5, __overrides = controller_dict))
   # Subcomponent ref of type F16ModelWorkshop.VectorBlocks.VectorConstant
   ref_overrides = __pop_subcomponent_overrides!(__overrides, "ref")
   __ref_apply_exclude = Set{String}(["n"])
@@ -195,10 +200,14 @@ Euler triple needs no reordering — [phi, theta, psi] is already [roll, pitch, 
   __ref_apply_1 = __dyad_load_parameters(pkgdir(@__MODULE__), String(nameof(Base.moduleroot(@__MODULE__))), "dyad://F16ModelWorkshop/trim_reference.toml")
   __ref_apply_1_flat = __dyad_flatten(__ref_apply_1)
   __dyad_check_apply(__ref_apply_1_flat, __ref_apply_schema, "dyad://F16ModelWorkshop/trim_reference.toml")
-  push!(__systems, @named ref = F16ModelWorkshop.VectorBlocks.VectorConstant(; n=12, __dyad_apply_overrides(__ref_apply_1, __ref_apply_1_flat, __ref_apply_exclude, __ref_apply_schema)..., ref_overrides...))
+  __ref_apply_1_ovr = __dyad_apply_overrides(__ref_apply_1, __ref_apply_1_flat, __ref_apply_exclude, __ref_apply_schema)
+  ref_dict = Dict{String, Any}()
+  merge!(ref_dict, __ref_apply_1_ovr)
+  merge!(ref_dict, ref_overrides)
+  push!(__systems, @named ref = F16ModelWorkshop.VectorBlocks.VectorConstant(; n=12, __overrides = ref_dict))
   # Subcomponent err of type F16ModelWorkshop.VectorBlocks.VectorAdd
   err_overrides = __pop_subcomponent_overrides!(__overrides, "err")
-  push!(__systems, @named err = F16ModelWorkshop.VectorBlocks.VectorAdd(; n=12, k1=Float64(1), k2=Float64(-1), err_overrides...))
+  push!(__systems, @named err = F16ModelWorkshop.VectorBlocks.VectorAdd(; n=12, k1=Float64(1), k2=Float64(-1), __overrides = err_overrides))
   # Subcomponent trim of type F16ModelWorkshop.VectorBlocks.VectorConstant
   trim_overrides = __pop_subcomponent_overrides!(__overrides, "trim")
   __trim_apply_exclude = Set{String}(["n"])
@@ -209,13 +218,17 @@ Euler triple needs no reordering — [phi, theta, psi] is already [roll, pitch, 
   __trim_apply_1 = __dyad_load_parameters(pkgdir(@__MODULE__), String(nameof(Base.moduleroot(@__MODULE__))), "dyad://F16ModelWorkshop/trim_controls.toml")
   __trim_apply_1_flat = __dyad_flatten(__trim_apply_1)
   __dyad_check_apply(__trim_apply_1_flat, __trim_apply_schema, "dyad://F16ModelWorkshop/trim_controls.toml")
-  push!(__systems, @named trim = F16ModelWorkshop.VectorBlocks.VectorConstant(; n=5, __dyad_apply_overrides(__trim_apply_1, __trim_apply_1_flat, __trim_apply_exclude, __trim_apply_schema)..., trim_overrides...))
+  __trim_apply_1_ovr = __dyad_apply_overrides(__trim_apply_1, __trim_apply_1_flat, __trim_apply_exclude, __trim_apply_schema)
+  trim_dict = Dict{String, Any}()
+  merge!(trim_dict, __trim_apply_1_ovr)
+  merge!(trim_dict, trim_overrides)
+  push!(__systems, @named trim = F16ModelWorkshop.VectorBlocks.VectorConstant(; n=5, __overrides = trim_dict))
   # Subcomponent ctrl of type F16ModelWorkshop.VectorBlocks.VectorAdd
   ctrl_overrides = __pop_subcomponent_overrides!(__overrides, "ctrl")
-  push!(__systems, @named ctrl = F16ModelWorkshop.VectorBlocks.VectorAdd(; n=5, k1=Float64(1), k2=Float64(1), ctrl_overrides...))
+  push!(__systems, @named ctrl = F16ModelWorkshop.VectorBlocks.VectorAdd(; n=5, k1=Float64(1), k2=Float64(1), __overrides = ctrl_overrides))
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
 
   ### Guesses
 
@@ -233,6 +246,6 @@ Euler triple needs no reordering — [phi, theta, psi] is already [roll, pitch, 
   push!(__eqs, connect(ctrl.y, f16plant.u_in))
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export ContinuousClosedLoopDemo

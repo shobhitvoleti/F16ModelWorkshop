@@ -3,5 +3,8 @@
   "julia.juliaup.server": "https://juliahub.com/juliabin",
   "julia.additionalArgs": [
     "--optimize=0"
-  ]
+  ],
+  "julia.environmentPath": "${workspaceFolder}",
+  "julia.languageServerJuliaupChannel": "dyad-3.5.0",
+  "julia.executablePath": "julia +dyad-3.5.0"
 }

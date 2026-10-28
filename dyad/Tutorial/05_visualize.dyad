@@ -1,46 +1,39 @@
 """
 Tutorial 5 — 3-D visualization.
 
-Takes the finished closed loop and renders it as an animation of the airframe. The
-loop itself is untouched: each viz model `extends` its closed loop and adds only a
-measurement tap, a pose bridge and a visualizer, so what you watch is the same
-simulation the earlier steps produce.
-
-Two loops are rendered so continuous and sampled-data control can be compared on
-the identical 10 deg pitch perturbation:
+Renders a closed loop as an animation of the airframe. Each viz model `extends` its
+closed loop and adds only a measurement tap, a pose bridge and a visualizer, so the
+animation is the same simulation as the earlier steps. Both run the 10 deg pitch
+perturbation of step 4, so continuous and sampled-data control can be compared:
   `ContinuousClosedLoopVizDemo`  the LQG regulator of step 3, running continuously
   `DiscreteClosedLoopVizDemo`    the 100 Hz sampled-data loop of step 4
 
-Both render over the 10 s window step 4 simulates. The LQG design regulates the
-perturbation over that horizon but does not hold trim indefinitely: with `npos`/`epos`
-carrying cost against a fixed zero reference, the position error grows with distance
-flown and the loop departs at roughly 19 s. Extending `stop` past that renders the
-departure, not the recovery.
+Both render the 10 s window of step 4. The regulator does not hold trim indefinitely:
+the `npos`/`epos` error grows with distance flown (see `TutorialLQG`) and the loop
+departs at about 19 s, so extending `stop` past that renders the departure, not the
+recovery.
 
-Measurement tap (both models), reusing the plant's own vector output:
+Measurement tap (both models), from the plant's vector output:
   f16plant.y_out -> Demux4x3 -> y1 [npos,epos,alt] -> Demux3 -> Mux3 -> pose.pos
                              -> y2 [phi,theta,psi] --------------------> pose.ang
 
-`SignalPoseSource` expects a Y-up world frame while the plant reports NED, hence the
-Demux3/Mux3 pair: it reorders the position triple to npos->x, alt->y, epos->z. The
-Euler triple needs no reordering — [phi, theta, psi] is already [roll, pitch, yaw].
+`SignalPoseSource` expects a Y-up world frame and the plant reports NED, so the
+Demux3/Mux3 pair reorders position to npos->x, alt->y, epos->z. The Euler triple
+[phi, theta, psi] is already [roll, pitch, yaw].
 """
 component ContinuousClosedLoopDemo
-  "Vector-I/O F16 plant; 10 deg initial pitch perturbation about trim."
-  # Trim operating point, then a 10 deg pitch perturbation: modifications resolve
-  # left-to-right, so the named theta_init after the clause overrides the file value.
+  "Vector-I/O F16 plant, started 10 deg nose-up of trim."
+  # Modifications resolve left to right, so theta_init overrides the trim file's value.
   f16plant = F16ModelWorkshop.Plant.F16PlantModel(apply "dyad://F16ModelWorkshop/trim_point.toml", theta_init = 0.17453292519943295) {^f16plant}
-  "Continuous LQG controller as a state-space block."
+  "Continuous LQG controller designed in step 3."
   controller = BlockComponents.Continuous.StateSpace(nx = 12, nu = 12, ny = 5, apply "dyad://F16ModelWorkshop/controller.toml") {^controller}
-  "Reference set-points for the 12 measured states (vector source)."
+  "Reference set-points for the 12 measured states."
   ref = F16ModelWorkshop.VectorBlocks.VectorConstant(n = 12, apply "dyad://F16ModelWorkshop/trim_reference.toml") {^ref}
-  "Tracking error block: error = ref - measurement (12 ch)."
+  "Tracking error: ref - measurement (12 ch)."
   err = F16ModelWorkshop.VectorBlocks.VectorAdd(n = 12, k1 = 1, k2 = -1) {^err}
-  "Trim control offset [T, el, ail, rud, lef] (vector source)."
+  "Trim control offset [T, el, ail, rud, lef]."
   trim = F16ModelWorkshop.VectorBlocks.VectorConstant(n = 5, apply "dyad://F16ModelWorkshop/trim_controls.toml") {^trim}
-  # The continuous controller asset carries no output operating point, so trim is
-  # added here; the discrete asset folds the same offset into its own y0 instead.
-  "Absolute control command = controller output + trim (5 ch)."
+  "Absolute control command = controller output + trim (5 ch); `controller.toml` has no output offset."
   ctrl = F16ModelWorkshop.VectorBlocks.VectorAdd(n = 5, k1 = 1, k2 = 1) {^ctrl}
 relations
   connect(ref.y, err.u1) {^id1}
@@ -67,12 +60,12 @@ metadata {
 }
 end
 
-"Continuous closed loop (03's regulator) with the airframe rendered from its pose."
+"Continuous closed loop (step 3's regulator) with the airframe rendered from its pose."
 component ContinuousClosedLoopVizDemo
   extends ContinuousClosedLoopDemo
   "Stage 1: split the 12-state plant output into four 3-vectors [pos, att, air, rates]."
   demux = F16ModelWorkshop.Utils.Demux4x3() {^demux}
-  "Stage 2: split the position group into scalars so they can be reordered NED -> Y-up."
+  "Stage 2: split the position group into scalars for the NED -> Y-up reorder."
   demux_pos = F16ModelWorkshop.Utils.Demux3() {^demux_pos}
   "Regather the position scalars in the pose source's Y-up order [npos, alt, epos]."
   pose_mux = F16ModelWorkshop.Utils.Mux3() {^pose_mux}
@@ -108,12 +101,12 @@ metadata {
 }
 end
 
-"Sampled-data closed loop (04's 100 Hz controller) with the airframe rendered from its pose."
+"Sampled-data closed loop (step 4's 100 Hz controller) with the airframe rendered from its pose."
 component DiscreteClosedLoopVizDemo
   extends DiscreteClosedLoopDemo
   "Stage 1: split the 12-state plant output into four 3-vectors [pos, att, air, rates]."
   demux = F16ModelWorkshop.Utils.Demux4x3() {^demux}
-  "Stage 2: split the position group into scalars so they can be reordered NED -> Y-up."
+  "Stage 2: split the position group into scalars for the NED -> Y-up reorder."
   demux_pos = F16ModelWorkshop.Utils.Demux3() {^demux_pos}
   "Regather the position scalars in the pose source's Y-up order [npos, alt, epos]."
   pose_mux = F16ModelWorkshop.Utils.Mux3() {^pose_mux}
@@ -132,35 +125,19 @@ relations
   connect(pose.frame_a, viz.frame_a) {^id22}
 metadata {
   "_links": {
-    "demux": {
-      "Dyad": {"placement": {"diagram": {"x1": 600, "y1": 450, "x2": 700, "y2": 550}}}
-    },
-    "demux_pos": {
-      "Dyad": {"placement": {"diagram": {"x1": 600, "y1": 10, "x2": 700, "y2": 110}}}
-    },
-    "pose_mux": {
-      "Dyad": {"placement": {"diagram": {"x1": 670, "y1": 120, "x2": 770, "y2": 220}}}
-    },
-    "pose": {
-      "Dyad": {"placement": {"diagram": {"x1": 740, "y1": 120, "x2": 840, "y2": 220}}}
-    },
-    "viz": {
-      "Dyad": {"placement": {"diagram": {"x1": 890, "y1": 120, "x2": 990, "y2": 220}}}
-    },
-    "id15": {
-      "Dyad": {"edges": [{"S": 1, "M": [{"x": 460, "y": 500}, {"x": 460, "y": 196}], "E": 2}]}
-    },
-    "id16": {
-      "Dyad": {"edges": [{"S": 1, "M": [{"x": 710, "y": 462.5}, {"x": 710, "y": 60}], "E": 2}]}
-    },
-    "id17": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
-    "id18": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
-    "id19": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
-    "id20": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
-    "id21": {
-      "Dyad": {"edges": [{"S": 1, "M": [{"x": 730, "y": 487.5}, {"x": 730, "y": 198}], "E": 2}]}
-    },
-    "id22": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}}
+    "demux": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 490, "y1": 690, "x2": 630, "y2": 830, "rot": 0}}}},
+    "demux_pos": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 700, "y1": 620, "x2": 820, "y2": 740, "rot": 0}}}},
+    "pose_mux": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 620, "x2": 1020, "y2": 740, "rot": 0}}}},
+    "pose": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1090, "y1": 645, "x2": 1230, "y2": 785, "rot": 0}}}},
+    "viz": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1320, "y1": 655, "x2": 1440, "y2": 775, "rot": 0}}}},
+    "id15": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1210, "y": 300}, {"x": 1210, "y": 580}, {"x": 440, "y": 580}, {"x": 440, "y": 760}], "E": 2}], "renderStyle": "standard"}},
+    "id16": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 660, "y": 707.5}, {"x": 660, "y": 680}], "E": 2}], "renderStyle": "standard"}},
+    "id17": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id18": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 840, "y": 716}, {"x": 840, "y": 668}, {"x": 890, "y": 668}, {"x": 890, "y": 680}], "E": 2}], "renderStyle": "standard"}},
+    "id19": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 870, "y": 680}, {"x": 870, "y": 716}], "E": 2}], "renderStyle": "standard"}},
+    "id20": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id21": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 650, "y": 742.5}, {"x": 650, "y": 830}, {"x": 1060, "y": 830}, {"x": 1060, "y": 754.2}], "E": 2}], "renderStyle": "standard"}},
+    "id22": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}}
   }
 }
 end

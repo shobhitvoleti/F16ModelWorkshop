@@ -5,32 +5,110 @@
 
 
 using DyadInterface
-using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel, SpecializationLevel
-using ModelingToolkit: SymbolicT, toggle_namespacing
 using F16ModelWorkshop: AbstractControllerCodegenAnalysisSpec, ControllerCodegenAnalysisSpec
-@kwdef mutable struct TutorialControllerCodegenSpec <: AbstractControllerCodegenAnalysisSpec
+@component function TutorialControllerCodegen__System(; name = nothing, var"export_dir"="generated_c/f16_controller", __overrides = Dict{String, Any}())
+  isnothing(name) && throw(ArgumentError("""
+    The `name` keyword must be provided. Please consider using the `@named` macro,
+    like so:
+  
+    @named model = TutorialControllerCodegen__System()
+  """))
+
+  __overrides = Dict{String, Any}(__overrides)
+  __params = Symbolics.SymbolicT[]
+  __vars = Symbolics.SymbolicT[]
+  __systems = System[]
+  __guesses = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initial_conditions = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initialization_eqs = Equation[]
+  __eqs = Equation[]
+  __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Keyword argument overrides
+  haskey(__overrides, "export_dir") && (export_dir = pop!(__overrides, "export_dir"))
+
+  ### Structural Parameters (functions)
+
+  ### Structural Parameters (Final)
+
+  ### Path Parameters (functions)
+
+  ### Path Parameters (non-final)
+
+  ### Final Parameters (declarations)
+
+  ### Deferred assignment (default values that depend on final parameters)
+
+  ### Symbolic Parameters
+  __local__export_dir = export_dir
+  append!(__params, @parameters (export_dir::String), [description = "Directory the C sources are written to, relative to the project root."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, export_dir, __local__export_dir)
+
+  ### Final Parameters (assignments)
+
+  ### Final Path Parameters
+
+  ### Variables (declarations)
+
+  ### Variables (assignments)
+
+  ### Constants
+  __constants = Any[]
+
+  ### Components
+  # Subcomponent model of type F16ModelWorkshop.Tutorial.ClockedDiscreteController
+  model_overrides = __pop_subcomponent_overrides!(__overrides, "model")
+  push!(__systems, @named model = F16ModelWorkshop.Tutorial.ClockedDiscreteController(; __overrides = model_overrides))
+
+  ### Check there are no unmatched overrides
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
+
+  ### Guesses
+
+  ### Initialization Equations
+
+  ### Assertions
+  __assertions = []
+
+  ### Equations
+
+  # Return completely constructed System
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+end
+export TutorialControllerCodegen__System
+
+@kwdef struct TutorialControllerCodegen__Spec <: AbstractControllerCodegenAnalysisSpec
   name::Symbol = :TutorialControllerCodegen
+  __overrides::Dict{SymbolicT, SymbolicT} = Dict{SymbolicT, SymbolicT}()
   # Directory the C sources are written to, relative to the project root.
   var"export_dir"::String = "generated_c/f16_controller"
-  # Tutorial 6 — standalone C for the discrete LQG controller.
+  # Tutorial 6 — step 4's discrete LQG controller on its own, for C code generation.
   # 
-  # `ClockedDiscreteController` is step 4's controller on its own: the clocked
-  # `DiscreteStateSpace` and its 100 Hz clock, with the 12 tracking errors in and the 5
-  # absolute commands out as whole-array connectors. `TutorialControllerCodegen` compiles it
-  # with `SynchToolkit.stkcompile` and writes the C to `generated_c/f16_controller/`: once
-  # per tick, `top_*_step_c` takes `double u[12]` and fills `double y[5]`.
+  # The clocked `DiscreteStateSpace` and its 100 Hz clock: 12 tracking errors in, 5 absolute
+  # commands out. `TutorialControllerCodegen` compiles it with `SynchToolkit.stkcompile` into
+  # `generated_c/f16_controller/`; each tick, `top_*_step_c` takes `double u[12]` and fills
+  # `double y[5]`.
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.ClockedDiscreteController(; name=:ClockedDiscreteController)
+  __system::System = TutorialControllerCodegen__System(; name, var"export_dir"=var"export_dir")
 end
 
-function DyadInterface.run_analysis(spec::TutorialControllerCodegenSpec)
+function __dyad_base_analysis_spec(spec::TutorialControllerCodegen__Spec)
   overrides = Dict{SymbolicT, SymbolicT}()
   no_namespace_model = toggle_namespacing(spec.model, false)
   
-  base_spec = ControllerCodegenAnalysisSpec(;
-    name=:ControllerCodegenAnalysis, overrides, export_dir=spec.export_dir, model=spec.model
+  merge!(overrides, spec.__overrides)
+  ControllerCodegenAnalysisSpec(;
+    name=spec.name, overrides, __system=spec.__system, var"export_dir"=spec.var"export_dir", var"model"=spec.var"model"
   )
-  run_analysis(base_spec)
 end
 
-TutorialControllerCodegen(;kwargs...) = run_analysis(TutorialControllerCodegenSpec(;kwargs...))
-export TutorialControllerCodegen, TutorialControllerCodegenSpec
+function DyadInterface.run_analysis(spec::TutorialControllerCodegen__Spec)
+  run_analysis(__dyad_base_analysis_spec(spec))
+end
+
+function DyadInterface.setup_analysis(spec::TutorialControllerCodegen__Spec; kwargs...)
+  DyadInterface.setup_analysis(__dyad_base_analysis_spec(spec); kwargs...)
+end
+
+TutorialControllerCodegen(;kwargs...) = run_analysis(TutorialControllerCodegen__Spec(;kwargs...))
+export TutorialControllerCodegen, TutorialControllerCodegen__Spec

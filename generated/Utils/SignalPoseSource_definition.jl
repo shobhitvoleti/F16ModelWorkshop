@@ -5,7 +5,7 @@
 
 
 @doc Markdown.doc"""
-   SignalPoseSource(; name)
+   SignalPoseSource(; name, __overrides)
 
 Signal-to-Frame3D bridge: maps Y-up position and NED Euler angles to a Frame3D connector
 
@@ -27,7 +27,7 @@ connectors that can be connected together ([`Frame3D`](@ref))
 | `sy`         |                          | --  |
 | `cy`         |                          | --  |
 """
-@component function SignalPoseSource(; name = nothing, kwargs...)
+@component function SignalPoseSource(; name = nothing, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -35,7 +35,7 @@ connectors that can be connected together ([`Frame3D`](@ref))
     @named model = SignalPoseSource()
   """))
 
-  __overrides = __build_overrides(kwargs)
+  __overrides = Dict{String, Any}(__overrides)
   __params = Symbolics.SymbolicT[]
   __vars = Symbolics.SymbolicT[]
   __systems = System[]
@@ -75,23 +75,23 @@ connectors that can be connected together ([`Frame3D`](@ref))
 
   ### Variables (assignments)
   __ovr_sp = pop!(__overrides, "sp", nothing); isnothing(__ovr_sp) || push!(__eqs, sp ~ __ovr_sp)
-  __ovr_sp__initial = pop!(__overrides, "sp__initial", nothing); isnothing(__ovr_sp__initial) || (__initial_conditions[sp] = __ovr_sp__initial)
-  __ovr_sp__guess = pop!(__overrides, "sp__guess", nothing)
+  __ovr_sp__initial = pop!(__overrides, "sp.initial", nothing); isnothing(__ovr_sp__initial) || (__initial_conditions[sp] = __ovr_sp__initial)
+  __ovr_sp__guess = pop!(__overrides, "sp.guess", nothing)
   __ovr_cp = pop!(__overrides, "cp", nothing); isnothing(__ovr_cp) || push!(__eqs, cp ~ __ovr_cp)
-  __ovr_cp__initial = pop!(__overrides, "cp__initial", nothing); isnothing(__ovr_cp__initial) || (__initial_conditions[cp] = __ovr_cp__initial)
-  __ovr_cp__guess = pop!(__overrides, "cp__guess", nothing)
+  __ovr_cp__initial = pop!(__overrides, "cp.initial", nothing); isnothing(__ovr_cp__initial) || (__initial_conditions[cp] = __ovr_cp__initial)
+  __ovr_cp__guess = pop!(__overrides, "cp.guess", nothing)
   __ovr_st = pop!(__overrides, "st", nothing); isnothing(__ovr_st) || push!(__eqs, st ~ __ovr_st)
-  __ovr_st__initial = pop!(__overrides, "st__initial", nothing); isnothing(__ovr_st__initial) || (__initial_conditions[st] = __ovr_st__initial)
-  __ovr_st__guess = pop!(__overrides, "st__guess", nothing)
+  __ovr_st__initial = pop!(__overrides, "st.initial", nothing); isnothing(__ovr_st__initial) || (__initial_conditions[st] = __ovr_st__initial)
+  __ovr_st__guess = pop!(__overrides, "st.guess", nothing)
   __ovr_ct = pop!(__overrides, "ct", nothing); isnothing(__ovr_ct) || push!(__eqs, ct ~ __ovr_ct)
-  __ovr_ct__initial = pop!(__overrides, "ct__initial", nothing); isnothing(__ovr_ct__initial) || (__initial_conditions[ct] = __ovr_ct__initial)
-  __ovr_ct__guess = pop!(__overrides, "ct__guess", nothing)
+  __ovr_ct__initial = pop!(__overrides, "ct.initial", nothing); isnothing(__ovr_ct__initial) || (__initial_conditions[ct] = __ovr_ct__initial)
+  __ovr_ct__guess = pop!(__overrides, "ct.guess", nothing)
   __ovr_sy = pop!(__overrides, "sy", nothing); isnothing(__ovr_sy) || push!(__eqs, sy ~ __ovr_sy)
-  __ovr_sy__initial = pop!(__overrides, "sy__initial", nothing); isnothing(__ovr_sy__initial) || (__initial_conditions[sy] = __ovr_sy__initial)
-  __ovr_sy__guess = pop!(__overrides, "sy__guess", nothing)
+  __ovr_sy__initial = pop!(__overrides, "sy.initial", nothing); isnothing(__ovr_sy__initial) || (__initial_conditions[sy] = __ovr_sy__initial)
+  __ovr_sy__guess = pop!(__overrides, "sy.guess", nothing)
   __ovr_cy = pop!(__overrides, "cy", nothing); isnothing(__ovr_cy) || push!(__eqs, cy ~ __ovr_cy)
-  __ovr_cy__initial = pop!(__overrides, "cy__initial", nothing); isnothing(__ovr_cy__initial) || (__initial_conditions[cy] = __ovr_cy__initial)
-  __ovr_cy__guess = pop!(__overrides, "cy__guess", nothing)
+  __ovr_cy__initial = pop!(__overrides, "cy.initial", nothing); isnothing(__ovr_cy__initial) || (__initial_conditions[cy] = __ovr_cy__initial)
+  __ovr_cy__guess = pop!(__overrides, "cy.guess", nothing)
 
   ### Constants
   __constants = Any[]
@@ -100,7 +100,7 @@ connectors that can be connected together ([`Frame3D`](@ref))
   push!(__systems, @named frame_a = __Dyad__Frame3D())
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
 
   ### Guesses
   isnothing(__ovr_sp__guess) || (__guesses[sp] = __ovr_sp__guess)
@@ -142,6 +142,6 @@ connectors that can be connected together ([`Frame3D`](@ref))
   push!(__eqs, getindex(getproperty(frame_a, :tau), 3) ~ 0.0)
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export SignalPoseSource

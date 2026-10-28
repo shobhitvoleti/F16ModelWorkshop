@@ -1,5 +1,5 @@
 """
-Design a gain schedule at a few design points and show what it does.
+Design a gain schedule at a few design points and compare it with fixed gains.
 
 At each airspeed of `velocities`, at `altitude`, `F16ModelWorkshop.ScheduledPID` linearizes
 the aircraft and designs the step-7 autopilot loops for one crossover frequency and phase

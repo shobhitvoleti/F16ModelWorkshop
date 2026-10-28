@@ -1,9 +1,5 @@
-# Transient analysis with a curated figure, paired with the `partial analysis` in
-# dyad/flight_analysis.dyad. Defined before the generated code, which references the
-# `*Spec` type.
+# Transient analysis with a curated figure (dyad/flight_analysis.dyad).
 
-using DyadInterface: AnalysisSolutionMetadata, ArtifactMetadata, ArtifactType,
-                     artifacts, customizable_visualization, symbolic_container
 import Plots
 
 abstract type AbstractFlightAnalysisSpec <: AbstractAnalysisSpec end
@@ -11,8 +7,8 @@ abstract type AbstractFlightAnalysisSpec <: AbstractAnalysisSpec end
 """
     FlightAnalysisSpec(; model, stop = 10.0, panels = String[], abstol = 1e-6, reltol = 1e-6)
 
-Simulate `model` from 0 to `stop` and describe the figure of its result: each entry of
-`panels` is `"Title: signal, signal, ..."`, a signal being a path into the model such as
+Simulate `model` from 0 to `stop` (s). Each `panels` entry `"Title: signal, ..."` is one
+panel of the `:FlightResponse` figure; a signal is a path into the model such as
 `"f16plant.vt"` or `"scheduler.w[2]"`.
 """
 @kwdef mutable struct FlightAnalysisSpec <: AbstractFlightAnalysisSpec
@@ -23,13 +19,14 @@ Simulate `model` from 0 to `stop` and describe the figure of its result: each en
     abstol::Float64 = 1e-6
     reltol::Float64 = 1e-6
     overrides::_Overrides = _Overrides()
+    __system::Union{Nothing, System} = nothing   # handed over by Dyad-generated specs; unused
 end
 
 """
     FlightAnalysisSolution
 
-The transient solution (`inner`, and its ODE solution as `sol`) together with the spec
-whose `panels` the `:FlightResponse` figure draws.
+The transient solution (`inner`, and its ODE solution as `sol`) and the `spec` whose
+`panels` the `:FlightResponse` figure draws.
 """
 struct FlightAnalysisSolution{S, O} <: AbstractAnalysisSolution
     spec::FlightAnalysisSpec

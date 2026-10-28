@@ -5,11 +5,11 @@
 
 
 @doc Markdown.doc"""
-   ContinuousClosedLoopVizDemo(; name)
+   ContinuousClosedLoopVizDemo(; name, __overrides)
 
-Continuous closed loop (03's regulator) with the airframe rendered from its pose.
+Continuous closed loop (step 3's regulator) with the airframe rendered from its pose.
 """
-@component function ContinuousClosedLoopVizDemo(; name = nothing, kwargs...)
+@component function ContinuousClosedLoopVizDemo(; name = nothing, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -17,7 +17,7 @@ Continuous closed loop (03's regulator) with the airframe rendered from its pose
     @named model = ContinuousClosedLoopVizDemo()
   """))
 
-  __overrides = __build_overrides(kwargs)
+  __overrides = Dict{String, Any}(__overrides)
   __params = Symbolics.SymbolicT[]
   __vars = Symbolics.SymbolicT[]
   __systems = System[]
@@ -56,6 +56,7 @@ Continuous closed loop (03's regulator) with the airframe rendered from its pose
   # Subcomponent f16plant of type F16ModelWorkshop.Plant.F16PlantModel
   f16plant_overrides = __pop_subcomponent_overrides!(__overrides, "f16plant")
   __f16plant_apply_exclude = Set{String}()
+  __f16plant_apply_1_exclude = Set{String}(["theta_init"])
   __f16plant_apply_schema = Dict{String,NamedTuple}(
     "npos_init" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
     "epos_init" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
@@ -138,7 +139,11 @@ Continuous closed loop (03's regulator) with the airframe rendered from its pose
   __f16plant_apply_1 = __dyad_load_parameters(pkgdir(@__MODULE__), String(nameof(Base.moduleroot(@__MODULE__))), "dyad://F16ModelWorkshop/trim_point.toml")
   __f16plant_apply_1_flat = __dyad_flatten(__f16plant_apply_1)
   __dyad_check_apply(__f16plant_apply_1_flat, __f16plant_apply_schema, "dyad://F16ModelWorkshop/trim_point.toml")
-  push!(__systems, @named f16plant = F16ModelWorkshop.Plant.F16PlantModel(; __dyad_apply_overrides(__f16plant_apply_1, __f16plant_apply_1_flat, __f16plant_apply_exclude, __f16plant_apply_schema)..., theta_init=0.17453292519943295, f16plant_overrides...))
+  __f16plant_apply_1_ovr = __dyad_apply_overrides(__f16plant_apply_1, __f16plant_apply_1_flat, __f16plant_apply_1_exclude, __f16plant_apply_schema)
+  f16plant_dict = Dict{String, Any}()
+  merge!(f16plant_dict, __f16plant_apply_1_ovr)
+  merge!(f16plant_dict, f16plant_overrides)
+  push!(__systems, @named f16plant = F16ModelWorkshop.Plant.F16PlantModel(; theta_init=0.17453292519943295, __overrides = f16plant_dict))
   # Subcomponent controller of type BlockComponents.Continuous.StateSpace
   controller_overrides = __pop_subcomponent_overrides!(__overrides, "controller")
   __controller_apply_exclude = Set{String}(["nx", "nu", "ny"])
@@ -160,7 +165,11 @@ Continuous closed loop (03's regulator) with the airframe rendered from its pose
   __controller_apply_1 = __dyad_load_parameters(pkgdir(@__MODULE__), String(nameof(Base.moduleroot(@__MODULE__))), "dyad://F16ModelWorkshop/controller.toml")
   __controller_apply_1_flat = __dyad_flatten(__controller_apply_1)
   __dyad_check_apply(__controller_apply_1_flat, __controller_apply_schema, "dyad://F16ModelWorkshop/controller.toml")
-  push!(__systems, @named controller = BlockComponents.Continuous.StateSpace(; nx=12, nu=12, ny=5, __dyad_apply_overrides(__controller_apply_1, __controller_apply_1_flat, __controller_apply_exclude, __controller_apply_schema)..., controller_overrides...))
+  __controller_apply_1_ovr = __dyad_apply_overrides(__controller_apply_1, __controller_apply_1_flat, __controller_apply_exclude, __controller_apply_schema)
+  controller_dict = Dict{String, Any}()
+  merge!(controller_dict, __controller_apply_1_ovr)
+  merge!(controller_dict, controller_overrides)
+  push!(__systems, @named controller = BlockComponents.Continuous.StateSpace(; nx=12, nu=12, ny=5, __overrides = controller_dict))
   # Subcomponent ref of type F16ModelWorkshop.VectorBlocks.VectorConstant
   ref_overrides = __pop_subcomponent_overrides!(__overrides, "ref")
   __ref_apply_exclude = Set{String}(["n"])
@@ -171,10 +180,14 @@ Continuous closed loop (03's regulator) with the airframe rendered from its pose
   __ref_apply_1 = __dyad_load_parameters(pkgdir(@__MODULE__), String(nameof(Base.moduleroot(@__MODULE__))), "dyad://F16ModelWorkshop/trim_reference.toml")
   __ref_apply_1_flat = __dyad_flatten(__ref_apply_1)
   __dyad_check_apply(__ref_apply_1_flat, __ref_apply_schema, "dyad://F16ModelWorkshop/trim_reference.toml")
-  push!(__systems, @named ref = F16ModelWorkshop.VectorBlocks.VectorConstant(; n=12, __dyad_apply_overrides(__ref_apply_1, __ref_apply_1_flat, __ref_apply_exclude, __ref_apply_schema)..., ref_overrides...))
+  __ref_apply_1_ovr = __dyad_apply_overrides(__ref_apply_1, __ref_apply_1_flat, __ref_apply_exclude, __ref_apply_schema)
+  ref_dict = Dict{String, Any}()
+  merge!(ref_dict, __ref_apply_1_ovr)
+  merge!(ref_dict, ref_overrides)
+  push!(__systems, @named ref = F16ModelWorkshop.VectorBlocks.VectorConstant(; n=12, __overrides = ref_dict))
   # Subcomponent err of type F16ModelWorkshop.VectorBlocks.VectorAdd
   err_overrides = __pop_subcomponent_overrides!(__overrides, "err")
-  push!(__systems, @named err = F16ModelWorkshop.VectorBlocks.VectorAdd(; n=12, k1=Float64(1), k2=Float64(-1), err_overrides...))
+  push!(__systems, @named err = F16ModelWorkshop.VectorBlocks.VectorAdd(; n=12, k1=Float64(1), k2=Float64(-1), __overrides = err_overrides))
   # Subcomponent trim of type F16ModelWorkshop.VectorBlocks.VectorConstant
   trim_overrides = __pop_subcomponent_overrides!(__overrides, "trim")
   __trim_apply_exclude = Set{String}(["n"])
@@ -185,28 +198,32 @@ Continuous closed loop (03's regulator) with the airframe rendered from its pose
   __trim_apply_1 = __dyad_load_parameters(pkgdir(@__MODULE__), String(nameof(Base.moduleroot(@__MODULE__))), "dyad://F16ModelWorkshop/trim_controls.toml")
   __trim_apply_1_flat = __dyad_flatten(__trim_apply_1)
   __dyad_check_apply(__trim_apply_1_flat, __trim_apply_schema, "dyad://F16ModelWorkshop/trim_controls.toml")
-  push!(__systems, @named trim = F16ModelWorkshop.VectorBlocks.VectorConstant(; n=5, __dyad_apply_overrides(__trim_apply_1, __trim_apply_1_flat, __trim_apply_exclude, __trim_apply_schema)..., trim_overrides...))
+  __trim_apply_1_ovr = __dyad_apply_overrides(__trim_apply_1, __trim_apply_1_flat, __trim_apply_exclude, __trim_apply_schema)
+  trim_dict = Dict{String, Any}()
+  merge!(trim_dict, __trim_apply_1_ovr)
+  merge!(trim_dict, trim_overrides)
+  push!(__systems, @named trim = F16ModelWorkshop.VectorBlocks.VectorConstant(; n=5, __overrides = trim_dict))
   # Subcomponent ctrl of type F16ModelWorkshop.VectorBlocks.VectorAdd
   ctrl_overrides = __pop_subcomponent_overrides!(__overrides, "ctrl")
-  push!(__systems, @named ctrl = F16ModelWorkshop.VectorBlocks.VectorAdd(; n=5, k1=Float64(1), k2=Float64(1), ctrl_overrides...))
+  push!(__systems, @named ctrl = F16ModelWorkshop.VectorBlocks.VectorAdd(; n=5, k1=Float64(1), k2=Float64(1), __overrides = ctrl_overrides))
   # Subcomponent demux of type F16ModelWorkshop.Utils.Demux4x3
   demux_overrides = __pop_subcomponent_overrides!(__overrides, "demux")
-  push!(__systems, @named demux = F16ModelWorkshop.Utils.Demux4x3(; demux_overrides...))
+  push!(__systems, @named demux = F16ModelWorkshop.Utils.Demux4x3(; __overrides = demux_overrides))
   # Subcomponent demux_pos of type F16ModelWorkshop.Utils.Demux3
   demux_pos_overrides = __pop_subcomponent_overrides!(__overrides, "demux_pos")
-  push!(__systems, @named demux_pos = F16ModelWorkshop.Utils.Demux3(; demux_pos_overrides...))
+  push!(__systems, @named demux_pos = F16ModelWorkshop.Utils.Demux3(; __overrides = demux_pos_overrides))
   # Subcomponent pose_mux of type F16ModelWorkshop.Utils.Mux3
   pose_mux_overrides = __pop_subcomponent_overrides!(__overrides, "pose_mux")
-  push!(__systems, @named pose_mux = F16ModelWorkshop.Utils.Mux3(; pose_mux_overrides...))
+  push!(__systems, @named pose_mux = F16ModelWorkshop.Utils.Mux3(; __overrides = pose_mux_overrides))
   # Subcomponent pose of type F16ModelWorkshop.Utils.SignalPoseSource
   pose_overrides = __pop_subcomponent_overrides!(__overrides, "pose")
-  push!(__systems, @named pose = F16ModelWorkshop.Utils.SignalPoseSource(; pose_overrides...))
+  push!(__systems, @named pose = F16ModelWorkshop.Utils.SignalPoseSource(; __overrides = pose_overrides))
   # Subcomponent viz of type MultibodyComponents.ShapefileVisualizer
   viz_overrides = __pop_subcomponent_overrides!(__overrides, "viz")
-  push!(__systems, @named viz = MultibodyComponents.ShapefileVisualizer(; shapefile=F16ModelWorkshop.asset_path("object", "F-16.obj"), shape_scale=1.4, shape_transform=MultibodyComponents.Rp2T(MultibodyComponents.RotXYZ(0, 0, 0), [-32.9, 2.5, 0.1]), viz_overrides...))
+  push!(__systems, @named viz = MultibodyComponents.ShapefileVisualizer(; shapefile=F16ModelWorkshop.asset_path("object", "F-16.obj"), shape_scale=1.4, shape_transform=MultibodyComponents.Rp2T(MultibodyComponents.RotXYZ(0, 0, 0), [-32.9, 2.5, 0.1]), __overrides = viz_overrides))
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
 
   ### Guesses
 
@@ -232,6 +249,6 @@ Continuous closed loop (03's regulator) with the airframe rendered from its pose
   push!(__eqs, connect(pose.frame_a, viz.frame_a))
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export ContinuousClosedLoopVizDemo

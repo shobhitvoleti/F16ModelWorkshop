@@ -1,6 +1,6 @@
-# The plant's coefficient deck condenses the Stevens & Lewis F-16 tables
-# (scripts/fit_snl_aero.jl). These tests pin it to the book: the published trim point,
-# and the pitch instability that the F-16 is designed around.
+# The plant's coefficient deck is a fit to the Stevens & Lewis F-16 tables
+# (scripts/fit_snl_aero.jl). These tests pin it to the book: the published trim point
+# and the pitch instability the F-16 is designed around.
 #
 # Reference: Stevens, Lewis & Johnson, "Aircraft Control and Simulation", 3rd ed.,
 # Table 3.6-3 (trimmed flight conditions) and Example 3.8-1 (longitudinal modes).
@@ -17,12 +17,12 @@ const _Tutorial = F16ModelWorkshop.Tutorial
 """
     trim_at(; alt, vt, xcg) -> (; T, el, alpha)
 
-Solve the straight-and-level trim at one flight condition and CG position. The export
-goes to a scratch directory so the package's own trim assets are left alone.
+Straight-and-level trim at one flight condition and CG position. Exports to a scratch
+directory so the package's trim assets stay untouched.
 """
 function trim_at(; alt, vt, xcg)
-    model = _Tutorial.TrimDemo(; name = :trim_probe,
-        f16plant__alt_init = alt, f16plant__vt_init = vt, f16plant__xcg = xcg)
+    model = _Tutorial.TrimDemo(; name = :trim_probe, __overrides = Dict{String, Any}(
+        "f16plant.alt_init" => alt, "f16plant.vt_init" => vt, "f16plant.xcg" => xcg))
     spec = F16ModelWorkshop.TrimExportAnalysisSpec(; model, export_dir = mktempdir())
     ps = DyadInterface.run_analysis(spec).paramset
     controls = ps["trim_controls"]["k"]
@@ -33,19 +33,19 @@ end
     modes_at(; alt, vt, xcg) -> (; lon, lat)
 
 Eigenvalues of the trimmed plant, split into the longitudinal `[vt, α, θ, Q]` and
-lateral `[β, φ, P, R]` sets. Taking these as submatrices of the full Jacobian holds
-the remaining states fixed, which is how S&L Example 3.8-1 presents them — the
-position and heading states are integrators that contribute only poles at the origin.
+lateral `[β, φ, P, R]` sets. The submatrices of the full Jacobian hold the other states
+fixed, as in S&L Example 3.8-1; position and heading are integrators that contribute
+only poles at the origin.
 
-The Jacobian is finite-differenced rather than taken symbolically so this stays
-independent of whether the plant's expressions admit an analytic derivative.
+The Jacobian is finite-differenced so the check does not depend on the plant's
+expressions having an analytic derivative.
 """
 function modes_at(; alt, vt, xcg)
     tr = trim_at(; alt, vt, xcg)
-    model = _Trimming.F16OpenLoopTrim(; name = :mode_probe,
-        T_cmd__k = tr.T, el_cmd__k = tr.el, plant__xcg = xcg,
-        plant__alt_init = alt, plant__vt_init = vt,
-        plant__alpha_init = tr.alpha, plant__theta_init = tr.alpha)
+    model = _Trimming.F16OpenLoopTrim(; name = :mode_probe, __overrides = Dict{String, Any}(
+        "T_cmd.k" => tr.T, "el_cmd.k" => tr.el, "plant.xcg" => xcg,
+        "plant.alt_init" => alt, "plant.vt_init" => vt,
+        "plant.alpha_init" => tr.alpha, "plant.theta_init" => tr.alpha))
     sys = mtkcompile(model)
     prob = ODEProblem(sys, Pair[], (0.0, 1.0))
     u0 = copy(prob.u0)
@@ -67,8 +67,8 @@ end
 unstable(ev) = count(e -> real(e) > 1e-4, ev)
 
 @testset "deck tracks the S&L tables" begin
-    # Re-run the fit and compare against what the plants actually carry, so a
-    # hand-edited coefficient fails here rather than quietly changing the aircraft.
+    # Re-runs the fit and compares it with the deck's coefficients, so a hand-edited
+    # coefficient fails here.
     include(joinpath(@__DIR__, "..", "scripts", "fit_snl_aero.jl"))
     C0_lon, Cmat_lon, _ = longitudinal()
     @test C0_lon≈[-0.027932, -0.096752, -0.01018] rtol=1e-4
@@ -79,14 +79,10 @@ unstable(ev) = count(e -> real(e) > 1e-4, ev)
     @test C0_lat == zeros(3)                      # symmetric airframe
     @test Cmat_lat[2, 2] < 0                      # aileron rolls the correct way
 
-    # Accuracy against the tables over the range the closed loop actually flies. The
-    # fit is taken over alpha in [-2, 10]; below that it extrapolates, and these
-    # bounds are what make the extrapolation safe to rely on down to -6 deg.
-    #
-    # The normal-force bound is set by the low-alpha edge, where the error reaches
-    # 0.049 against a Cz of 0.35; through the trim region it is under 0.005. The
-    # pitching moment stays tight throughout, which is what matters — it is the
-    # coefficient that decides whether the aircraft is stable.
+    # Accuracy against the tables over the alpha range the closed loop flies. The fit
+    # covers [-2, 10] deg; these bounds make its extrapolation down to -6 deg safe.
+    # The Cz bound is set by the low-alpha edge (error 0.049 against Cz ≈ 0.35; under
+    # 0.005 near trim). Cm, which decides stability, stays tight throughout.
     d2r = pi / 180
     for a in -6:0.5:10
         el = -0.6949
@@ -95,7 +91,7 @@ unstable(ev) = count(e -> real(e) > 1e-4, ev)
         tab = f16_aero_coefficients(500.0, a, 0.0, 0.0, 0.0, 0.0, el, 0.0, 0.0;
             xcg = F16AeroData.XCGR)
         @test fit_lon[2]≈tab.cz atol=0.05         # normal force
-        @test fit_lon[3]≈tab.cm atol=0.004        # pitching moment — sets stability
+        @test fit_lon[3]≈tab.cm atol=0.004        # pitching moment
     end
 end
 
@@ -104,14 +100,13 @@ end
     tr = trim_at(alt = 0.0, vt = 502 * 0.3048, xcg = 0.35)
     @test tr.alpha≈0.03691 rtol=0.02      # book 0.03691 rad
     @test tr.el≈-0.7588 rtol=0.06         # book -0.7588 deg
-    @test tr.T > 0                        # level flight needs positive thrust
+    @test tr.T > 0
 end
 
 @testset "trimmed level flight over the speed range" begin
-    # S&L Table 3.6-2: as speed drops, alpha rises monotonically. Both points sit
-    # inside the alpha range the deck was fitted over. They are far from `TrimDemo`'s
-    # guesses, so they are trimmed with the Newton solve of `VelocityMPC` on the same
-    # plant rather than with the initialization solver.
+    # S&L Table 3.6-2: alpha rises monotonically as speed drops. Both points lie inside
+    # the deck's fitted alpha range but far from `TrimDemo`'s guesses, so they are
+    # trimmed with `VelocityMPC`'s Newton solve on the same plant.
     plant = F16ModelWorkshop.VelocityMPC.dynamics(0.35)
     alpha(vt) = F16ModelWorkshop.VelocityMPC.trim_point(plant, vt; altitude = 0.0).x[8]
     @test alpha(400 * 0.3048) > alpha(600 * 0.3048) > 0
@@ -120,12 +115,12 @@ end
 @testset "statically unstable in pitch at the reference CG" begin
     m = modes_at(alt = 3000.0, vt = 152.4, xcg = 0.35)
 
-    # The signature S&L describe for a statically unstable airplane: the short period
-    # splits onto the real axis and one root crosses into the right half plane.
+    # S&L's signature of static instability: the short period splits onto the real axis
+    # and one root enters the right half plane.
     @test unstable(m.lon) == 1
     rhp = only(filter(e -> real(e) > 1e-4, m.lon))
     @test imag(rhp) ≈ 0 atol=1e-8         # exponential pitch departure, not a flutter
-    @test 0.05 < real(rhp) < 0.15         # time to double of a few seconds
+    @test 0.05 < real(rhp) < 0.15         # time to double 5–14 s
 
     # Lateral-directional stays conventional: damped dutch roll, convergent roll.
     @test unstable(m.lat) == 0
@@ -137,10 +132,9 @@ end
 @testset "moving the CG forward restores pitch stiffness" begin
     m = modes_at(alt = 3000.0, vt = 152.4, xcg = 0.30)
 
-    # At 0.30c̄ the short period is a well-damped complex pair again — the fast pitch
-    # divergence is gone. What survives is a slow root from the phugoid coupling to
-    # altitude: thrust here is a fixed force, so it neither lapses with height nor
-    # falls off with speed, and nothing damps the resulting energy exchange.
+    # At 0.30c̄ the short period is a well-damped complex pair again. A slow root from the
+    # phugoid's coupling to altitude survives: thrust is a fixed force that neither lapses
+    # with height nor falls off with speed, so nothing damps the energy exchange.
     short_period = filter(e -> abs(e) > 0.5, m.lon)
     @test length(short_period) == 2
     @test all(e -> real(e) < 0, short_period)

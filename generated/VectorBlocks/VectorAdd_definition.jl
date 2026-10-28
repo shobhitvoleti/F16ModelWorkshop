@@ -5,7 +5,7 @@
 
 
 @doc Markdown.doc"""
-   VectorAdd(; name, n, k1, k2)
+   VectorAdd(; name, n, k1, k2, __overrides)
 
 Vector weighted adder, `y = k1*u1 + k2*u2`: the `n`-wide analogue of
 `BlockComponents.Math.Add`. With `k2 = -1` it is a tracking-error block.
@@ -24,7 +24,7 @@ Vector weighted adder, `y = k1*u1 + k2*u2`: the `n`-wide analogue of
  * `u2` - This connector represents a real signal as an input to a component ([`RealInput`](@ref))
  * `y` - This connector represents a real signal as an output from a component ([`RealOutput`](@ref))
 """
-@component function VectorAdd(; name = nothing, n=1, k1=Float64(1.0), k2=Float64(1.0), kwargs...)
+@component function VectorAdd(; name = nothing, var"n"=1, var"k1"=Float64(1.0), var"k2"=Float64(1.0), __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -32,7 +32,7 @@ Vector weighted adder, `y = k1*u1 + k2*u2`: the `n`-wide analogue of
     @named model = VectorAdd()
   """))
 
-  __overrides = __build_overrides(kwargs)
+  __overrides = Dict{String, Any}(__overrides)
   __params = Symbolics.SymbolicT[]
   __vars = Symbolics.SymbolicT[]
   __systems = System[]
@@ -41,6 +41,11 @@ Vector weighted adder, `y = k1*u1 + k2*u2`: the `n`-wide analogue of
   __initialization_eqs = Equation[]
   __eqs = Equation[]
   __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Keyword argument overrides
+  haskey(__overrides, "n") && (n = pop!(__overrides, "n"))
+  haskey(__overrides, "k1") && (k1 = pop!(__overrides, "k1"))
+  haskey(__overrides, "k2") && (k2 = pop!(__overrides, "k2"))
 
   ### Structural Parameters (functions)
 
@@ -57,10 +62,10 @@ Vector weighted adder, `y = k1*u1 + k2*u2`: the `n`-wide analogue of
   ### Symbolic Parameters
   __local__k1 = k1
   append!(__params, @parameters (k1::Real), [description = "Gain on the first input."])
-  __initial_conditions[k1] = __local__k1
+  __dyad_seed_parameter!(__initial_conditions, __bindings, k1, __local__k1)
   __local__k2 = k2
   append!(__params, @parameters (k2::Real), [description = "Gain on the second input."])
-  __initial_conditions[k2] = __local__k2
+  __dyad_seed_parameter!(__initial_conditions, __bindings, k2, __local__k2)
 
   ### Final Parameters (assignments)
 
@@ -79,7 +84,7 @@ Vector weighted adder, `y = k1*u1 + k2*u2`: the `n`-wide analogue of
   ### Components
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
 
   ### Guesses
 
@@ -92,6 +97,6 @@ Vector weighted adder, `y = k1*u1 + k2*u2`: the `n`-wide analogue of
   push!(__eqs, y ~ k1 * u1 + k2 * u2)
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export VectorAdd

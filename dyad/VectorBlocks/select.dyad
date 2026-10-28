@@ -1,9 +1,9 @@
 """
 Vector channel selector: routes chosen channels of an `n`-vector onto an `m`-vector.
 
-`y[j] = u[indices[j]]`, so the block covers slices, reorderings and repetitions alike.
-It carries no state and imposes no clock, so it works on continuous and clocked signals.
-Steps 7–9 use it to narrow the plant's 12 outputs to the states they measure.
+`y[j] = u[indices[j]]`, covering slices, reorderings and repetitions. Stateless and
+clock-agnostic, so it works on continuous and clocked signals. Steps 7–9 use it to narrow
+the plant's 12 outputs to the states they measure.
 """
 component VectorSelect
   "Input connectors."
@@ -43,16 +43,14 @@ metadata {
 end
 
 """
-Minimal validation of the vector channel selector.
+Validation of the vector channel selector.
 
-A four-channel `VectorConstant` carrying `[1, 2, 3, 4]` feeds a `VectorSelect` that
-picks channels 4 and 2, in that order. Each selected channel drives an `Integrator`,
-which both consumes the signal continuously and gives the model a real ODE state (an
-empty `u0` crashes the auto-dt initializer).
+A `VectorConstant` carrying `[1, 2, 3, 4]` feeds a `VectorSelect` picking channels 4 and
+2, in that order. Each picked channel drives an `Integrator`, which also gives the model
+an ODE state (an empty `u0` crashes the auto-dt initializer).
 
-Expected: `retcode == Success`, and at t = 1 s the integrals are `pick_first.x == 4`
-and `pick_second.x == 2` — the selection is applied, and in the order `indices` gives
-rather than in ascending channel order.
+Expected: `retcode == Success` and, at t = 1 s, `pick_first.x == 4` and
+`pick_second.x == 2`: the selection follows `indices` order, not ascending order.
 """
 test component TestVectorSelect
   "Four numbered channels."

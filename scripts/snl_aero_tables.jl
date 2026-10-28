@@ -1,19 +1,18 @@
-# Stevens & Lewis F-16 aerodynamic tables — reference data for
-# scripts/fit_snl_aero.jl, which condenses them into the coefficient deck carried
-# by F16PlantModel. Not part of the package: the plant uses the fitted deck, because
-# table interpolants carry no symbolic derivative and the tutorial's
-# linearization-based analyses need one.
+# Stevens & Lewis F-16 aerodynamic tables: reference data for scripts/fit_snl_aero.jl,
+# which condenses them into the coefficient deck of F16PlantModel. Not part of the
+# package: table interpolants have no symbolic derivative, which the tutorial's
+# linearization-based analyses need.
 #
 # Source encoding: DAVE-ML example "F16_aero.dml" (Bruce Jackson, NASA Langley,
 # 2002), https://daveml.org/examples/F16_aero.dml
 # Data lineage: NASA TP-1538 (Nguyen et al., 1979) -> Stevens & Lewis,
 # "Aircraft Control and Simulation" -> NASA TM-2003-212145 (Garza & Morelli).
 #
-# Units: all breakpoints in degrees; table values nondimensional.
-# Interpolation contract (per the DML independentVarRef spec): linear, with
-# inputs CLAMPED to the breakpoint range (extrapolate="neither").
-# 2-D tables are stored (first breakpoint = rows, second = columns), matching
-# the DML row-major layout where the last breakpoint dimension varies fastest.
+# Units: breakpoints in degrees; table values nondimensional.
+# Interpolation (per the DML independentVarRef spec): linear, with inputs clamped to
+# the breakpoint range (extrapolate="neither").
+# 2-D tables are stored first breakpoint = rows, second = columns, matching the DML
+# row-major layout (last breakpoint dimension varies fastest).
 
 "Stevens & Lewis F-16 aerodynamic tables (see file header for provenance)."
 module F16AeroData
@@ -55,8 +54,7 @@ const CM = [
 
 # "Basic Cl": Basic coefficient of rolling moment as a function of angle of attack and sideslip angle
 # dims: BETA_ABS_BP x ALPHA_BP
-# S&L book values (see the parser's data-lineage note); the
-# Morelli/DML original follows as CL0_ABS_DML.
+# S&L book values; the Morelli/DML variant follows as CL0_ABS_DML.
 const CL0_ABS = [
     0 0 0 0 0 0 0 0 0 0 0 0;
     -0.001 -0.004 -0.008 -0.012 -0.016 -0.019 -0.02 -0.02 -0.015 -0.008 -0.013 -0.015;
@@ -67,8 +65,7 @@ const CL0_ABS = [
     0.009 -0.011 -0.023 -0.037 -0.05 -0.047 -0.074 -0.079 -0.091 -0.076 -0.077 -0.076
 ]
 
-# As encoded in the DML (Morelli adaptation); referenced by the
-# NASA checkcase tests.
+# As encoded in the DML (Morelli adaptation); the NASA checkcases use this variant.
 const CL0_ABS_DML = [
     0 0 0 0 0 0 0 0 0 0 0 0;
     -0.001 -0.004 -0.008 -0.012 -0.016 -0.022 -0.022 -0.021 -0.015 -0.008 -0.013 -0.015;

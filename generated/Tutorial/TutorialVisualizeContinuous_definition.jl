@@ -5,11 +5,101 @@
 
 
 using DyadInterface
-using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel, SpecializationLevel
-using ModelingToolkit: SymbolicT, toggle_namespacing
 using F16ModelWorkshop: AbstractVisualizeAnalysisSpec, VisualizeAnalysisSpec
-@kwdef mutable struct TutorialVisualizeContinuousSpec <: AbstractVisualizeAnalysisSpec
+@component function TutorialVisualizeContinuous__System(; name = nothing, var"stop"=10.0, var"filename"="assets/f16_continuous_closed_loop.mp4", var"nominal_length"=500.0, var"camera"=[-500.0, 3200.0, 200.0], var"lookat"=[2000.0, 3000.0, 0.0], var"show_axis"=false, __overrides = Dict{String, Any}())
+  isnothing(name) && throw(ArgumentError("""
+    The `name` keyword must be provided. Please consider using the `@named` macro,
+    like so:
+  
+    @named model = TutorialVisualizeContinuous__System()
+  """))
+
+  __overrides = Dict{String, Any}(__overrides)
+  __params = Symbolics.SymbolicT[]
+  __vars = Symbolics.SymbolicT[]
+  __systems = System[]
+  __guesses = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initial_conditions = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initialization_eqs = Equation[]
+  __eqs = Equation[]
+  __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Keyword argument overrides
+  haskey(__overrides, "stop") && (stop = pop!(__overrides, "stop"))
+  haskey(__overrides, "filename") && (filename = pop!(__overrides, "filename"))
+  haskey(__overrides, "nominal_length") && (nominal_length = pop!(__overrides, "nominal_length"))
+  haskey(__overrides, "camera") && (camera = pop!(__overrides, "camera"))
+  haskey(__overrides, "lookat") && (lookat = pop!(__overrides, "lookat"))
+  haskey(__overrides, "show_axis") && (show_axis = pop!(__overrides, "show_axis"))
+
+  ### Structural Parameters (functions)
+
+  ### Structural Parameters (Final)
+
+  ### Path Parameters (functions)
+
+  ### Path Parameters (non-final)
+
+  ### Final Parameters (declarations)
+
+  ### Deferred assignment (default values that depend on final parameters)
+
+  ### Symbolic Parameters
+  __local__stop = stop
+  append!(__params, @parameters (stop::Float64), [description = "Simulated duration, s."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, stop, __local__stop)
+  __local__filename = filename
+  append!(__params, @parameters (filename::String), [description = "Destination of the animation, relative to the project root."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, filename, __local__filename)
+  __local__nominal_length = nominal_length
+  append!(__params, @parameters (nominal_length::Float64), [description = "Characteristic scene size; sets the renderer's default scaling."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, nominal_length, __local__nominal_length)
+  __local__camera = camera
+  append!(__params, @parameters (camera::Array{Float64, 1}), [description = "Camera position [x, y, z] in the visualizer's Y-up world frame."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, camera, __local__camera)
+  __local__lookat = lookat
+  append!(__params, @parameters (lookat::Array{Float64, 1}), [description = "Point the camera is aimed at [x, y, z]."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, lookat, __local__lookat)
+  __local__show_axis = show_axis
+  append!(__params, @parameters (show_axis::Bool), [description = "Draw the world axes."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, show_axis, __local__show_axis)
+
+  ### Final Parameters (assignments)
+
+  ### Final Path Parameters
+
+  ### Variables (declarations)
+
+  ### Variables (assignments)
+
+  ### Constants
+  __constants = Any[]
+
+  ### Components
+  # Subcomponent model of type F16ModelWorkshop.Tutorial.ContinuousClosedLoopVizDemo
+  model_overrides = __pop_subcomponent_overrides!(__overrides, "model")
+  push!(__systems, @named model = F16ModelWorkshop.Tutorial.ContinuousClosedLoopVizDemo(; __overrides = model_overrides))
+
+  ### Check there are no unmatched overrides
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
+
+  ### Guesses
+
+  ### Initialization Equations
+
+  ### Assertions
+  __assertions = []
+
+  ### Equations
+
+  # Return completely constructed System
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+end
+export TutorialVisualizeContinuous__System
+
+@kwdef struct TutorialVisualizeContinuous__Spec <: AbstractVisualizeAnalysisSpec
   name::Symbol = :TutorialVisualizeContinuous
+  __overrides::Dict{SymbolicT, SymbolicT} = Dict{SymbolicT, SymbolicT}()
   # Simulated duration, s.
   var"stop"::Float64 = 10.0
   # Destination of the animation, relative to the project root.
@@ -22,19 +112,28 @@ using F16ModelWorkshop: AbstractVisualizeAnalysisSpec, VisualizeAnalysisSpec
   var"lookat"::Array{Float64, 1} = [2000.0, 3000.0, 0.0]
   # Draw the world axes.
   var"show_axis"::Bool = false
-  # Continuous closed loop (03's regulator) with the airframe rendered from its pose.
+  # Continuous closed loop (step 3's regulator) with the airframe rendered from its pose.
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.ContinuousClosedLoopVizDemo(; name=:ContinuousClosedLoopVizDemo)
+  __system::System = TutorialVisualizeContinuous__System(; name, var"stop"=var"stop", var"filename"=var"filename", var"nominal_length"=var"nominal_length", var"camera"=var"camera", var"lookat"=var"lookat", var"show_axis"=var"show_axis")
 end
 
-function DyadInterface.run_analysis(spec::TutorialVisualizeContinuousSpec)
+function __dyad_base_analysis_spec(spec::TutorialVisualizeContinuous__Spec)
   overrides = Dict{SymbolicT, SymbolicT}()
   no_namespace_model = toggle_namespacing(spec.model, false)
   
-  base_spec = VisualizeAnalysisSpec(;
-    name=:VisualizeAnalysis, overrides, stop=spec.stop, filename=spec.filename, nominal_length=spec.nominal_length, camera=spec.camera, lookat=spec.lookat, show_axis=spec.show_axis, model=spec.model
+  merge!(overrides, spec.__overrides)
+  VisualizeAnalysisSpec(;
+    name=spec.name, overrides, __system=spec.__system, var"stop"=spec.var"stop", var"filename"=spec.var"filename", var"nominal_length"=spec.var"nominal_length", var"camera"=spec.var"camera", var"lookat"=spec.var"lookat", var"show_axis"=spec.var"show_axis", var"model"=spec.var"model"
   )
-  run_analysis(base_spec)
 end
 
-TutorialVisualizeContinuous(;kwargs...) = run_analysis(TutorialVisualizeContinuousSpec(;kwargs...))
-export TutorialVisualizeContinuous, TutorialVisualizeContinuousSpec
+function DyadInterface.run_analysis(spec::TutorialVisualizeContinuous__Spec)
+  run_analysis(__dyad_base_analysis_spec(spec))
+end
+
+function DyadInterface.setup_analysis(spec::TutorialVisualizeContinuous__Spec; kwargs...)
+  DyadInterface.setup_analysis(__dyad_base_analysis_spec(spec); kwargs...)
+end
+
+TutorialVisualizeContinuous(;kwargs...) = run_analysis(TutorialVisualizeContinuous__Spec(;kwargs...))
+export TutorialVisualizeContinuous, TutorialVisualizeContinuous__Spec

@@ -5,11 +5,93 @@
 
 
 using DyadInterface
-using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel, SpecializationLevel
-using ModelingToolkit: SymbolicT, toggle_namespacing
 using F16ModelWorkshop: AbstractFlightAnalysisSpec, FlightAnalysisSpec
-@kwdef mutable struct TutorialVelocityMPCSpec <: AbstractFlightAnalysisSpec
+@component function TutorialVelocityMPC__System(; name = nothing, var"stop"=25.0, var"panels"=["Airspeed (m/s): f16plant.vt, vt_reference", "Altitude (m): f16plant.alt", "Weight of each bank member (140, 152.4, 170 m/s): scheduler.w[1], scheduler.w[2], scheduler.w[3]", "Elevator (deg): f16plant.el", "Thrust (N): f16plant.T", "Solver status, 1 when every member solved: exitflag"], var"abstol"=0.000001, var"reltol"=0.000001, __overrides = Dict{String, Any}())
+  isnothing(name) && throw(ArgumentError("""
+    The `name` keyword must be provided. Please consider using the `@named` macro,
+    like so:
+  
+    @named model = TutorialVelocityMPC__System()
+  """))
+
+  __overrides = Dict{String, Any}(__overrides)
+  __params = Symbolics.SymbolicT[]
+  __vars = Symbolics.SymbolicT[]
+  __systems = System[]
+  __guesses = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initial_conditions = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initialization_eqs = Equation[]
+  __eqs = Equation[]
+  __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Keyword argument overrides
+  haskey(__overrides, "stop") && (stop = pop!(__overrides, "stop"))
+  haskey(__overrides, "panels") && (panels = pop!(__overrides, "panels"))
+  haskey(__overrides, "abstol") && (abstol = pop!(__overrides, "abstol"))
+  haskey(__overrides, "reltol") && (reltol = pop!(__overrides, "reltol"))
+
+  ### Structural Parameters (functions)
+
+  ### Structural Parameters (Final)
+
+  ### Path Parameters (functions)
+
+  ### Path Parameters (non-final)
+
+  ### Final Parameters (declarations)
+
+  ### Deferred assignment (default values that depend on final parameters)
+
+  ### Symbolic Parameters
+  __local__stop = stop
+  append!(__params, @parameters (stop::Float64), [description = "End time of the simulation, s."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, stop, __local__stop)
+  __local__panels = panels
+  append!(__params, @parameters (panels::Array{String, 1}), [description = "Panels of the `FlightResponse` figure, each `Title: signal, signal, ...`."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, panels, __local__panels)
+  __local__abstol = abstol
+  append!(__params, @parameters (abstol::Float64), [description = "Absolute tolerance of the ODE solver."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, abstol, __local__abstol)
+  __local__reltol = reltol
+  append!(__params, @parameters (reltol::Float64), [description = "Relative tolerance of the ODE solver."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, reltol, __local__reltol)
+
+  ### Final Parameters (assignments)
+
+  ### Final Path Parameters
+
+  ### Variables (declarations)
+
+  ### Variables (assignments)
+
+  ### Constants
+  __constants = Any[]
+
+  ### Components
+  # Subcomponent model of type F16ModelWorkshop.Tutorial.VelocityMPCDemo
+  model_overrides = __pop_subcomponent_overrides!(__overrides, "model")
+  push!(__systems, @named model = F16ModelWorkshop.Tutorial.VelocityMPCDemo(; __overrides = model_overrides))
+
+  ### Check there are no unmatched overrides
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
+
+  ### Guesses
+
+  ### Initialization Equations
+
+  ### Assertions
+  __assertions = []
+
+  ### Equations
+
+  # Return completely constructed System
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+end
+export TutorialVelocityMPC__System
+
+@kwdef struct TutorialVelocityMPC__Spec <: AbstractFlightAnalysisSpec
   name::Symbol = :TutorialVelocityMPC
+  __overrides::Dict{SymbolicT, SymbolicT} = Dict{SymbolicT, SymbolicT}()
   # End time of the simulation, s.
   var"stop"::Float64 = 25.0
   # Panels of the `FlightResponse` figure, each `Title: signal, signal, ...`.
@@ -23,8 +105,8 @@ using F16ModelWorkshop: AbstractFlightAnalysisSpec, FlightAnalysisSpec
   # A bank of constrained `LinearMPC` controllers, one per airspeed knot, flown on the
   # nonlinear plant at 20 Hz. `LinearMPCScheduler` turns measured airspeed into hat-function
   # member weights, `LinearMPCScheduledObserver` blends the members' Kalman filters, and
-  # `LinearMPCScheduledOptimizer` solves the active members' quadratic programs and blends
-  # their first moves.
+  # `LinearMPCScheduledOptimizer` solves the active members' QPs and blends their first moves.
+  # The three are separate components so the diagram shows the scheduling and blending.
   # 
   # Signal flow (whole-array connections except where a channel is named):
   # 
@@ -37,36 +119,43 @@ using F16ModelWorkshop: AbstractFlightAnalysisSpec, FlightAnalysisSpec
   #   ref_map (10) + ref_bias (10) --> ref_sum --> optimizer.r
   #   optimizer.u (4) --> zoh --> cmd_map (5) --> f16plant.u_in
   # 
-  # Design points:
+  # Design (`F16ModelWorkshop.VelocityMPC.bank`):
   # 
-  # - The bank (`F16ModelWorkshop.VelocityMPC.bank`) lives in one absolute frame, with a
-  #   per-knot offset `f_j = -A_j x_j - B_j u_j` so each member is exact at its own trim and
-  #   the members' weighted sum is an absolute command under shared box and rate limits.
-  # - The command level is penalized about each member's own trimmed command (`eu = -Q2 u_j`),
-  #   and each terminal weight is the Riccati cost-to-go, so every member's unconstrained
-  #   solution is its LQR for any horizon.
-  # - The scheduler, observer and optimizer are instantiated separately, so the diagram shows
-  #   how the bank is scheduled and blended.
-  # - `cmd_map` converts thrust from kN (controller) to N (plant), keeping the QP well scaled.
-  # - The reference is `ref_map * [commanded airspeed; weights] + ref_bias`: the commanded
+  # - One absolute frame for the whole bank, with a per-knot affine offset
+  #   `f_j = -A_j x_j - B_j u_j`, so each member is exact at its own trim and the members'
+  #   weighted sum is an absolute command under shared box and rate limits.
+  # - The command is penalized about each member's own trimmed command (`eu = -Q2 u_j`), and
+  #   each terminal weight is the Riccati cost-to-go, so each member's unconstrained solution
+  #   is its LQR for any horizon.
+  # - `cmd_map` converts thrust from kN (controller) to N (plant) to keep the QP well scaled.
+  # - Reference: `ref_map * [commanded airspeed; weights] + ref_bias`, i.e. the commanded
   #   airspeed, the weighted knot trims on pitch and angle of attack, and the commanded
-  #   altitude in `ref_bias`. All ten states are measured, so the observer's estimate is the
-  #   measurement.
+  #   altitude in `ref_bias`.
+  # - All ten states are measured, so the observer's estimate is the measurement.
   # 
-  # Scenario: trimmed at 148 m/s and 3000 m with 2° of extra pitch attitude, commanded to
-  # 160 m/s over 12 s from t = 2 s, a ramp that crosses the 152.4 m/s knot.
+  # Scenario: trimmed at 148 m/s and 3000 m with 2° of extra pitch attitude, then a 12 s ramp
+  # to 160 m/s from t = 2 s that crosses the 152.4 m/s knot.
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.VelocityMPCDemo(; name=:VelocityMPCDemo)
+  __system::System = TutorialVelocityMPC__System(; name, var"stop"=var"stop", var"panels"=var"panels", var"abstol"=var"abstol", var"reltol"=var"reltol")
 end
 
-function DyadInterface.run_analysis(spec::TutorialVelocityMPCSpec)
+function __dyad_base_analysis_spec(spec::TutorialVelocityMPC__Spec)
   overrides = Dict{SymbolicT, SymbolicT}()
   no_namespace_model = toggle_namespacing(spec.model, false)
   
-  base_spec = FlightAnalysisSpec(;
-    name=:FlightAnalysis, overrides, stop=spec.stop, panels=spec.panels, abstol=spec.abstol, reltol=spec.reltol, model=spec.model
+  merge!(overrides, spec.__overrides)
+  FlightAnalysisSpec(;
+    name=spec.name, overrides, __system=spec.__system, var"stop"=spec.var"stop", var"panels"=spec.var"panels", var"abstol"=spec.var"abstol", var"reltol"=spec.var"reltol", var"model"=spec.var"model"
   )
-  run_analysis(base_spec)
 end
 
-TutorialVelocityMPC(;kwargs...) = run_analysis(TutorialVelocityMPCSpec(;kwargs...))
-export TutorialVelocityMPC, TutorialVelocityMPCSpec
+function DyadInterface.run_analysis(spec::TutorialVelocityMPC__Spec)
+  run_analysis(__dyad_base_analysis_spec(spec))
+end
+
+function DyadInterface.setup_analysis(spec::TutorialVelocityMPC__Spec; kwargs...)
+  DyadInterface.setup_analysis(__dyad_base_analysis_spec(spec); kwargs...)
+end
+
+TutorialVelocityMPC(;kwargs...) = run_analysis(TutorialVelocityMPC__Spec(;kwargs...))
+export TutorialVelocityMPC, TutorialVelocityMPC__Spec

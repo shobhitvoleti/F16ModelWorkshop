@@ -1,14 +1,14 @@
 # Checks on tutorial step 7 (`Tutorial.GainScheduledPIDDemo`), run by
-# test/gain_scheduled_pid.jl. Controller outputs are clocked, so each check holds them with
-# a zero-order hold and a continuous integrator gives the model a state to solve.
+# test/gain_scheduled_pid.jl. Clocked outputs are read through a zero-order hold; an
+# integrator gives each model a continuous state.
 
 """
-`DiscreteComponents.DiscretePIDScheduled` with constant gain inputs is `DiscreteComponents.DiscretePIDStandard`.
+`DiscreteComponents.DiscretePIDScheduled` with constant gain inputs matches `DiscreteComponents.DiscretePIDStandard`.
 
-Both controllers see the same sampled reference and measurement, two sines, and the same
-gains, the scheduled one as input signals and the standard one as parameters. The output
-limit is reached by both sines' peaks, so the anti-windup tracking is exercised too. The
-held outputs must agree at every tick.
+Both controllers get the same sampled sine reference and measurement and the same gains:
+as input signals to the scheduled one, as parameters to the standard one. The sine peaks
+reach the output limit, so anti-windup tracking is exercised. The held outputs must agree
+at every tick.
 """
 test component PIDScheduledMatchesStandard
   "Controller sample period, s."
@@ -66,9 +66,9 @@ end
 """
 `Tutorial.AutopilotGainSchedule` interpolates its gain table linearly in dynamic pressure.
 
-The schedule is fed a constant altitude and airspeed. Its held outputs must equal the
-columns of `ScheduledPID.gain_table` weighted by the hat functions of the dynamic pressure
-over `ScheduledPID.knot_pressures`, and the end column outside the knots.
+Fed a constant altitude and airspeed, its held outputs must equal the columns of
+`ScheduledPID.gain_table` weighted by the hat functions of dynamic pressure over
+`ScheduledPID.knot_pressures`, or the end column outside the knots.
 """
 test component GainScheduleInterpolates
   "Airspeed fed to the schedule, m/s."

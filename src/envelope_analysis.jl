@@ -1,6 +1,5 @@
-# Flight-envelope survey, paired with the `partial analysis` in
-# dyad/envelope_analysis.dyad. Defined before the generated code, which references the
-# `*Spec` type; the survey itself is `EnvelopeMPC`, loaded after it.
+# Flight-envelope survey (dyad/envelope_analysis.dyad). The survey lives in `EnvelopeMPC`,
+# which is included after this file and resolved at run time.
 
 abstract type AbstractEnvelopeAnalysisSpec <: AbstractAnalysisSpec end
 
@@ -19,6 +18,7 @@ Trim and linearize the plant on a `points × points` grid between the bounds of
     points::Int = 100
     table_dir::String = ""
     overrides::_Overrides = _Overrides()
+    __system::Union{Nothing, System} = nothing   # handed over by Dyad-generated specs; unused
 end
 
 """

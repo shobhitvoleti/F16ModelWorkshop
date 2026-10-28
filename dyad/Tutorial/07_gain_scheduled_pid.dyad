@@ -1,9 +1,8 @@
 """
 Dynamic pressure from altitude and true airspeed.
 
-``q̄ = \tfrac{1}{2} ρ(h) V^2`` with the density of `F16PlantModel`'s troposphere model,
-``ρ = 1.225 (1 - 0.0065 h / 288.15)^{4.256}``. It is what an air-data computer hands a
-gain schedule: every aerodynamic force and moment of the plant is proportional to it.
+``q̄ = \tfrac{1}{2} ρ(h) V^2``, with the troposphere density of `F16PlantModel`,
+``ρ = 1.225 (1 - 0.0065 h / 288.15)^{4.256}``.
 """
 component DynamicPressure
   "Altitude, m"
@@ -25,32 +24,28 @@ metadata {
 end
 
 """
-Gain schedule of the step-7 autopilot, with dynamic pressure as the scheduling variable.
+Gain schedule of the step-7 autopilot, interpolated in dynamic pressure.
 
-The schedule is the gain-scheduling procedure of Stevens & Lewis, *Aircraft Control and
-Simulation*. The loops are designed at a few straight-and-level design points, one per
-airspeed of `velocities` at `altitude`, by `F16ModelWorkshop.ScheduledPID.loop_design`; the
-gains of every design point are tabulated, one column of `gains` per point; and the
-schedule interpolates the table linearly in the dynamic pressure ``q̄`` computed from the
-sampled altitude and airspeed. Below the first and above the last design point it holds
-the end columns.
+The gain-scheduling procedure of Stevens & Lewis, *Aircraft Control and Simulation*:
+`F16ModelWorkshop.ScheduledPID.loop_design` designs the loops at straight-and-level design
+points, one per airspeed of `velocities` at `altitude`; `gains` holds one column per point;
+the table is interpolated linearly in the ``q̄`` of the sampled altitude and airspeed, and
+held at its end columns outside the design points.
 
-``q̄`` is the scheduling variable because the effectiveness of every aerodynamic control
-is proportional to it. From the first design point to the last, ``q̄`` grows by 47 % and the
-pitch gain falls by 26 %, which keeps the pitch loop's crossover frequency and phase
-margin.
+``q̄`` is the scheduling variable because every aerodynamic force and moment, and so every
+control's effectiveness, is proportional to it. From the first design point to the last,
+``q̄`` grows by 47 % and the pitch gain falls by 26 %, keeping the pitch loop's crossover
+frequency and phase margin.
 
-The outputs are the standard-form gains of the three PID controllers of
-`GainScheduledPIDDemo` and the trimmed pitch attitude, elevator and thrust they add as
-feed-forward, in the order of `ScheduledPID.SCHEDULE_ROWS`. The controllers contain no
-scheduling logic; they only receive these signals.
+Outputs, in the order of `ScheduledPID.SCHEDULE_ROWS`: the standard-form gains of
+`GainScheduledPIDDemo`'s three PID controllers, and the trims they add as feed-forward.
 """
 component AutopilotGainSchedule@[input clk extends Discrete]
   "Sampled altitude, m"
   h = RealInput@[clk]() {^h}
   "Sampled true airspeed, m/s"
   V = RealInput@[clk]() {^V}
-  "Pitch-attitude gain, deg of elevator per rad (negative: the elevator pitches nose down)"
+  "Pitch-attitude gain, deg of elevator per rad (negative: positive elevator pitches nose down)"
   K_pitch = RealOutput@[clk]() {^K_pitch}
   "Pitch-attitude derivative time (pitch-rate damping), s"
   Td_pitch = RealOutput@[clk]() {^Td_pitch}
@@ -74,7 +69,7 @@ component AutopilotGainSchedule@[input clk extends Discrete]
   pressure = F16ModelWorkshop.Tutorial.DynamicPressure() {^pressure}
   "Dynamic pressure to interpolation weights, one per design point, summing to one"
   scheduler = MPCComponents.Experimental.LinearMPCScheduler@[clk = clk](rho_grid = qbar_knots) {^scheduler}
-  "The gain table: the weighted sum of its columns is the interpolated gains and trims"
+  "Gain table: weights in, interpolated gains and trims out"
   table = DiscreteComponents.Examples.MatrixGain(ny = n_rows, nu = n_points, K = gains) {^table}
   "Airspeeds of the design points, m/s, strictly increasing"
   structural parameter velocities::Real[:] = [140.0, 152.4, 170.0]
@@ -84,9 +79,9 @@ component AutopilotGainSchedule@[input clk extends Discrete]
   final structural parameter n_points::Integer = size(velocities, 1)
   "Number of scheduled signals, the rows of `gains`"
   final structural parameter n_rows::Integer = 10
-  "Dynamic pressure of each design point, Pa: the knots of the interpolation (derived)"
+  "Interpolation knots: dynamic pressure of each design point, Pa (derived)"
   final structural parameter qbar_knots::Real[n_points] = F16ModelWorkshop.ScheduledPID.knot_pressures(velocities, altitude)
-  "The designed gains and trims, one column per design point (derived)"
+  "Gains and trims, one column per design point (derived)"
   final structural parameter gains::Real[n_rows, n_points] = F16ModelWorkshop.ScheduledPID.gain_table(velocities, altitude)
 relations
   connect(h, pressure.h) {^id1}
@@ -142,11 +137,10 @@ end
 """
 Tutorial 7 — Gain-scheduled PID autopilot.
 
-The classical longitudinal autopilot of Stevens & Lewis, *Aircraft Control and
-Simulation*, flown on the nonlinear plant at 20 Hz and gain-scheduled on dynamic pressure.
-Three `DiscreteComponents.DiscretePIDScheduled` controllers take their gains as
-input signals; `AutopilotGainSchedule` computes those signals and is the only component
-that knows about the flight condition.
+The classical longitudinal autopilot of Stevens & Lewis, flown on the nonlinear plant at
+20 Hz and gain-scheduled on dynamic pressure. Three `DiscreteComponents.DiscretePIDScheduled`
+controllers take their gains as input signals; `AutopilotGainSchedule` computes them and is
+the only component that knows the flight condition.
 
 Signal flow:
 
@@ -159,38 +153,37 @@ Signal flow:
   schedule --> every K, Ti, Td and u_ff input
   [autothrottle.y; pitch.y] --> zoh --> cmd_map (5) --> f16plant.u_in
 
-The loops, inner first, as in the book's altitude-hold autopilot with an autothrottle:
+Loops, inner first:
 
-- `pitch` — pitch-attitude hold: elevator from pitch attitude, a PD whose derivative acts
-  on the measurement only (`wd = 0`), which is pitch-rate damping. The airframe is
-  unstable in pitch; this loop stabilizes it.
-- `altitude_hold` — pitch-attitude command from altitude, a PID whose derivative is
+- `pitch` — pitch-attitude hold: elevator from pitch attitude. A PD with the derivative on
+  the measurement only (`wd = 0`), i.e. pitch-rate damping; it stabilizes the airframe,
+  which is unstable in pitch.
+- `altitude_hold` — pitch-attitude command from altitude. A PID whose derivative is
   climb-rate damping.
-- `autothrottle` — thrust from airspeed, a PI. Half the reference enters the
-  proportional path (`wp = 0.5`): with all of it, the slow zero of the integral makes the
-  airspeed overshoot the end of the ramp and creep back over tens of seconds.
+- `autothrottle` — thrust from airspeed. A PI with half the reference in the proportional
+  path (`wp = 0.5`); with all of it, the integral's slow zero makes the airspeed overshoot
+  the end of the ramp and creep back over tens of seconds.
 
-Each loop adds the scheduled trim of its command (pitch attitude, elevator, thrust) as
-feed-forward, so the feedback only corrects the departure from trim, and starts with
-`InitialOutput` at the trim of the initial flight condition, so nothing jumps at t = 0.
+Each loop adds the scheduled trim of its output (pitch attitude, elevator, thrust) as
+feed-forward, so the feedback only corrects the departure from trim, and starts at the trim
+of the initial flight condition (`InitialOutput`), so nothing jumps at t = 0.
 
-Design (`F16ModelWorkshop.ScheduledPID`): at each design point the plant is linearized,
-and each loop is designed in turn on the plant with the inner loops closed, for a fixed
-gain-crossover frequency and phase margin (pitch 2 rad/s and 60°, altitude 0.3 rad/s and
-60°, airspeed 0.5 rad/s and 70°). The design points are the airspeed knots of step 8, so
-the two controllers can be compared on the same manoeuvre.
+Design (`F16ModelWorkshop.ScheduledPID`): at each design point the plant is linearized and
+each loop is designed with the inner loops closed, for a gain-crossover frequency and phase
+margin of 2 rad/s and 60° (pitch), 0.3 rad/s and 60° (altitude), 0.5 rad/s and 70°
+(airspeed). The design points are step 8's airspeed knots, so the two controllers can be
+compared on the same manoeuvre.
 
-Scenario: as in step 8, trimmed at 148 m/s and 3000 m with 2° of extra pitch attitude, and
-commanded to 160 m/s over 12 s from t = 2 s, a ramp that crosses the 152.4 m/s design
-point. Aileron and rudder stay at their trim of zero: the manoeuvre is symmetric and the
-lateral modes are stable.
+Scenario: as in step 8, a ramp from 148 to 160 m/s at 3000 m that crosses the 152.4 m/s
+design point. Aileron and rudder stay at their trim of zero: the manoeuvre is symmetric and
+the lateral modes are stable.
 """
 component GainScheduledPIDDemo
-  "Vector-I/O F16 plant, started at the trim of `initial_velocity` with `pitch_perturbation` added."
-  f16plant = F16ModelWorkshop.Plant.F16PlantModel(alt_init = trim_init[3], phi_init = trim_init[4], theta_init = trim_init[5] + pitch_perturbation, psi_init = trim_init[6], vt_init = trim_init[7], alpha_init = trim_init[8], beta_init = trim_init[9], P_init = trim_init[10], Q_init = trim_init[11], R_init = trim_init[12]) {^f16plant}
-  "The three measured states out of the plant's twelve outputs: altitude, pitch attitude, airspeed."
+  "F16 plant, started at the trim of `initial_velocity` plus `pitch_perturbation`."
+  f16plant = F16ModelWorkshop.Plant.F16PlantFromState(x0 = trim_init, theta_init = trim_init[5] + pitch_perturbation) {^f16plant}
+  "Altitude, pitch attitude and airspeed out of the 12 plant outputs."
   meas_select = F16ModelWorkshop.VectorBlocks.VectorSelect(n = 12, indices = [3, 5, 7]) {^meas_select}
-  "Measurement clock crossing, sampled at `Ts`."
+  "Measurement clock crossing at `Ts`."
   sample = F16ModelWorkshop.VectorBlocks.MultiSampler(n = 3) {^sample}
   "Controller sample clock, planted on the airspeed connection set."
   clock = DiscreteComponents.PeriodicClock(dt = Ts) {^clock}
@@ -210,50 +203,49 @@ component GainScheduledPIDDemo
   alt_cmd = BlockComponents.Sources.Constant(k = altitude) {^alt_cmd}
   "Clock crossing for the commanded altitude."
   sr_alt = DiscreteComponents.Sampler() {^sr_alt}
-  "Command clock crossing: thrust and elevator, held between ticks."
+  "Command clock crossing for thrust and elevator."
   zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(n = 2) {^zoh}
-  "Controller commands to plant commands: kilonewtons to newtons on thrust, elevator in degrees, aileron, rudder and leading-edge flap at zero."
+  "Controller to plant commands: thrust kN to N, elevator in deg; aileron, rudder and leading-edge flap at zero."
   cmd_map = DiscreteComponents.Examples.MatrixGain(ny = 5, nu = 2, K = [[newtons_per_kilonewton, 0.0], [0.0, 1.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]) {^cmd_map}
   "Airspeeds of the design points, m/s, strictly increasing."
   structural parameter velocities::Real[3] = [140.0, 152.4, 170.0]
   "Altitude of the design points and the commanded altitude, m."
   structural parameter altitude::Real = 3000.0
-  "Airspeed the loop starts trimmed at, m/s."
+  "Initial trimmed airspeed, m/s."
   structural parameter initial_velocity::Real = 148.0
   "Controller sample period, s."
   structural parameter Ts::Real = 0.05
-  "Airspeed the reference ramp ends at, m/s."
+  "Final commanded airspeed, m/s."
   structural parameter final_velocity::Real = 160.0
-  "Time the reference ramp begins, s."
+  "Ramp start time, s."
   structural parameter ramp_start::Real = 2.0
-  "Length of the reference ramp, s."
+  "Ramp duration, s."
   structural parameter ramp_duration::Real = 12.0
-  "Pitch attitude added to the trimmed initial state, rad (2 deg)."
+  "Initial pitch-attitude perturbation from trim, rad (2 deg)."
   structural parameter pitch_perturbation::Real = 0.03490658503988659
-  "Newtons of thrust per kilonewton of commanded thrust."
+  "Thrust unit conversion, N per kN."
   structural parameter newtons_per_kilonewton::Real = 1000.0
-  "Elevator travel either side of zero, deg."
+  "Elevator limit, deg, symmetric."
   parameter elevator_limit::Real = 25.0
-  "Largest commanded pitch attitude either side of zero, rad (15 deg)."
+  "Pitch-attitude command limit, rad (15 deg), symmetric."
   parameter pitch_limit::Real = 0.2617993877991494
-  "Largest commanded thrust, kN."
+  "Thrust limit, kN."
   parameter thrust_max::Real = 50.0
-  "Trimmed states of the flight condition the loop starts from."
+  "Trimmed initial states."
   structural parameter trim_init::Real[12] = F16ModelWorkshop.VelocityMPC.trim_states(initial_velocity, altitude)
-  "Trimmed command of that flight condition, [kN, deg, deg, deg]."
+  "Trimmed initial command [kN, deg, deg, deg]."
   structural parameter u_trim::Real[4] = F16ModelWorkshop.VelocityMPC.trim_command(initial_velocity, altitude)
-  "Commanded airspeed on the continuous time base, so the reference can be plotted against the plant's trajectory."
+  "Commanded airspeed on the continuous time base, for plotting."
   variable vt_reference::Real
 relations
   vt_reference = vt_cmd.y
-  # ---- Measurements: plant -> select -> sample ----
+  # ---- Measurements ----
   connect(f16plant.y_out, meas_select.u) {^id1}
   connect(meas_select.y, sample.u) {^id2}
   connect(sample.y[1], schedule.h, altitude_hold.u_m) {^id3}
   connect(sample.y[2], pitch.u_m) {^id4}
-  # The airspeed sample is a measurement, a scheduling variable, and the loop's clock.
   connect(sample.y[3], schedule.V, autothrottle.u_m, clock.y) {^id5}
-  # ---- Schedule -> controller gains and feed-forward ----
+  # ---- Schedule: gains and feed-forward ----
   connect(schedule.K_pitch, pitch.K) {^id6}
   connect(schedule.Td_pitch, pitch.Td) {^id7}
   connect(schedule.el_trim, pitch.u_ff) {^id8}
@@ -264,54 +256,54 @@ relations
   connect(schedule.K_speed, autothrottle.K) {^id13}
   connect(schedule.Ti_speed, autothrottle.Ti) {^id14}
   connect(schedule.T_trim, autothrottle.u_ff) {^id15}
-  # ---- References: altitude -> pitch command -> elevator; airspeed -> thrust ----
+  # ---- References and the altitude -> pitch cascade ----
   connect(alt_cmd.y, sr_alt.u) {^id16}
   connect(sr_alt.y, altitude_hold.u_s) {^id17}
   connect(altitude_hold.y, pitch.u_s) {^id18}
   connect(vt_cmd.y, sr_vt.u) {^id19}
   connect(sr_vt.y, autothrottle.u_s) {^id20}
-  # ---- Commands: controllers -> hold -> plant ----
+  # ---- Commands ----
   connect(autothrottle.y, zoh.u[1]) {^id21}
   connect(pitch.y, zoh.u[2]) {^id22}
   connect(zoh.y, cmd_map.u) {^id23}
   connect(cmd_map.y, f16plant.u_in) {^id24}
 metadata {
   "_links": {
-    "f16plant": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2400, "y1": 1050, "x2": 2500, "y2": 1150, "rot": 0}}}},
-    "meas_select": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2150, "y1": 1650, "x2": 2250, "y2": 1750, "rot": 180}}}},
-    "sample": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1900, "y1": 1650, "x2": 2000, "y2": 1750, "rot": 180}}}},
-    "clock": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1050, "y1": 1800, "x2": 1150, "y2": 1900, "rot": 0}}}},
-    "schedule": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 350, "y1": 80, "x2": 550, "y2": 880, "rot": 0}}}},
-    "pitch": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1730, "y1": 1030, "x2": 1870, "y2": 1170, "rot": 0}}}},
-    "altitude_hold": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1330, "y1": 1030, "x2": 1470, "y2": 1170, "rot": 0}}}},
-    "autothrottle": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 730, "y1": 1030, "x2": 870, "y2": 1170, "rot": 0}}}},
-    "vt_cmd": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 370, "y1": 1011, "x2": 470, "y2": 1111, "rot": 0}}}},
-    "sr_vt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 550, "y1": 1011, "x2": 650, "y2": 1111, "rot": 0}}}},
-    "alt_cmd": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 930, "y1": 1011, "x2": 1030, "y2": 1111, "rot": 0}}}},
-    "sr_alt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1130, "y1": 1011, "x2": 1230, "y2": 1111, "rot": 0}}}},
-    "zoh": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2000, "y1": 1050, "x2": 2100, "y2": 1150, "rot": 0}}}},
-    "cmd_map": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2200, "y1": 1050, "x2": 2300, "y2": 1150, "rot": 0}}}},
-    "id1": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2600, "y": 1100}, {"x": 2600, "y": 1700}], "E": 2}], "renderStyle": "standard"}},
+    "f16plant": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2200, "y1": 900, "x2": 2300, "y2": 1000, "rot": 0}}}},
+    "meas_select": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2000, "y1": 1170, "x2": 2100, "y2": 1270, "rot": 0}}}},
+    "sample": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2200, "y1": 1170, "x2": 2300, "y2": 1270, "rot": 0}}}},
+    "clock": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 250, "y1": 1150, "x2": 350, "y2": 1250, "rot": 0}}}},
+    "schedule": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 150, "y1": 380, "x2": 510, "y2": 740, "rot": 0}}}},
+    "pitch": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1530, "y1": 880, "x2": 1670, "y2": 1020, "rot": 0}}}},
+    "altitude_hold": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1080, "y1": 880, "x2": 1220, "y2": 1020, "rot": 0}}}},
+    "autothrottle": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 580, "y1": 880, "x2": 720, "y2": 1020, "rot": 0}}}},
+    "vt_cmd": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 270, "y1": 860.8, "x2": 370, "y2": 960.8, "rot": 0}}}},
+    "sr_vt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 420, "y1": 860.8, "x2": 520, "y2": 960.8, "rot": 0}}}},
+    "alt_cmd": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 780, "y1": 860.8, "x2": 880, "y2": 960.8, "rot": 0}}}},
+    "sr_alt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 910, "y1": 860.8, "x2": 1010, "y2": 960.8, "rot": 0}}}},
+    "zoh": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1800, "y1": 900, "x2": 1900, "y2": 1000, "rot": 0}}}},
+    "cmd_map": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2000, "y1": 900, "x2": 2100, "y2": 1000, "rot": 0}}}},
+    "id1": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2400, "y": 950}, {"x": 2400, "y": 1120}, {"x": 1960, "y": 1120}, {"x": 1960, "y": 1220}], "E": 2}], "renderStyle": "standard"}},
     "id2": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id3": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1905, "y": 1800}], "E": -1}, {"S": -1, "M": [{"x": 200, "y": 1800}, {"x": 200, "y": 280}], "E": 2}, {"S": -1, "M": [{"x": 1273, "y": 1133.6}], "E": 3}], "junctions": [{"x": 1273, "y": 1800}], "renderStyle": "standard"}},
-    "id4": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1673, "y": 1700}, {"x": 1673, "y": 1133.6}], "E": 2}], "renderStyle": "standard"}},
-    "id5": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1905, "y": 1750}], "E": -1}, {"S": -1, "M": [], "E": -2}, {"S": -1, "M": [{"x": 1000, "y": 1850}], "E": 4}, {"S": -2, "M": [{"x": 250, "y": 1750}, {"x": 250, "y": 680}], "E": 2}, {"S": -2, "M": [{"x": 673, "y": 1133.6}], "E": 3}], "junctions": [{"x": 1000, "y": 1750}, {"x": 673, "y": 1750}], "renderStyle": "standard"}},
-    "id6": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1765, "y": 200}], "E": 2}], "renderStyle": "standard"}},
-    "id7": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1835, "y": 120}], "E": 2}], "renderStyle": "standard"}},
-    "id8": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1698, "y": 280}, {"x": 1698, "y": 1097.2}], "E": 2}], "renderStyle": "standard"}},
-    "id9": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1365, "y": 520}], "E": 2}], "renderStyle": "standard"}},
-    "id10": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1400, "y": 440}], "E": 2}], "renderStyle": "standard"}},
-    "id11": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1435, "y": 360}], "E": 2}], "renderStyle": "standard"}},
-    "id12": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1298, "y": 600}, {"x": 1298, "y": 1097.2}], "E": 2}], "renderStyle": "standard"}},
-    "id13": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 765, "y": 760}], "E": 2}], "renderStyle": "standard"}},
-    "id14": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 800, "y": 680}], "E": 2}], "renderStyle": "standard"}},
-    "id15": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 698, "y": 840}, {"x": 698, "y": 1097.2}], "E": 2}], "renderStyle": "standard"}},
+    "id3": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2400, "y": 1220}, {"x": 2400, "y": 1400}], "E": -1}, {"S": -1, "M": [{"x": 1040, "y": 983.6}], "E": 3}, {"S": -1, "M": [{"x": 80, "y": 1400}, {"x": 80, "y": 470}], "E": 2}], "junctions": [{"x": 1040, "y": 1400}], "renderStyle": "standard"}},
+    "id4": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2400, "y": 1220}, {"x": 2400, "y": 1340}, {"x": 1440, "y": 1340}, {"x": 1440, "y": 983.6}], "E": 2}], "renderStyle": "standard"}},
+    "id5": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2400, "y": 1220}, {"x": 2400, "y": 1370}], "E": -1}, {"S": -1, "M": [{"x": 530, "y": 983.6}], "E": 3}, {"S": -1, "M": [], "E": -2}, {"S": -2, "M": [{"x": 200, "y": 1200}], "E": 4}, {"S": -2, "M": [{"x": 120, "y": 1370}, {"x": 120, "y": 650}], "E": 2}], "junctions": [{"x": 530, "y": 1370}, {"x": 200, "y": 1370}], "renderStyle": "standard"}},
+    "id6": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1565, "y": 434}], "E": 2}], "renderStyle": "standard"}},
+    "id7": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1635, "y": 398}], "E": 2}], "renderStyle": "standard"}},
+    "id8": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1500, "y": 470}, {"x": 1500, "y": 947.2}], "E": 2}], "renderStyle": "standard"}},
+    "id9": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1115, "y": 578}], "E": 2}], "renderStyle": "standard"}},
+    "id10": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1150, "y": 542}], "E": 2}], "renderStyle": "standard"}},
+    "id11": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1185, "y": 506}], "E": 2}], "renderStyle": "standard"}},
+    "id12": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1050, "y": 614}, {"x": 1050, "y": 947.2}], "E": 2}], "renderStyle": "standard"}},
+    "id13": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 615, "y": 686}], "E": 2}], "renderStyle": "standard"}},
+    "id14": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 650, "y": 650}], "E": 2}], "renderStyle": "standard"}},
+    "id15": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 545, "y": 722}, {"x": 545, "y": 947.2}], "E": 2}], "renderStyle": "standard"}},
     "id16": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
     "id17": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id18": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1600, "y": 1100}, {"x": 1600, "y": 1060.8}], "E": 2}], "renderStyle": "standard"}},
+    "id18": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1470, "y": 950}, {"x": 1470, "y": 910.8}], "E": 2}], "renderStyle": "standard"}},
     "id19": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
     "id20": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id21": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 930, "y": 1100}, {"x": 930, "y": 1260}, {"x": 1960, "y": 1260}, {"x": 1960, "y": 1100}], "E": 2}], "renderStyle": "standard"}},
+    "id21": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 750, "y": 950}, {"x": 750, "y": 1060}, {"x": 1760, "y": 1060}, {"x": 1760, "y": 950}], "E": 2}], "renderStyle": "standard"}},
     "id22": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
     "id23": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
     "id24": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}}
@@ -322,10 +314,10 @@ end
 """
 Tutorial 7a — design the gain schedule.
 
-The loops are designed at the three design points of `AutopilotGainSchedule`. Open
-`LoopShapes`: with each design point's own gains the pitch loop crosses 0 dB at the same
-frequency everywhere; with the 152.4 m/s gains held fixed, the crossover moves with the
-dynamic pressure. That difference is what the schedule is for.
+Designs the loops at the three design points of `AutopilotGainSchedule`. In `LoopShapes`,
+with each design point's own gains the pitch loop crosses 0 dB at the same frequency
+everywhere; with the 152.4 m/s gains held fixed, the crossover moves with dynamic pressure.
+That difference is what the schedule is for.
 """
 analysis TutorialGainScheduleDesign
   extends F16ModelWorkshop.GainScheduleAnalysis(velocities = [140.0, 152.4, 170.0], altitude = 3000.0, fixed_point = 2)
@@ -335,9 +327,8 @@ end
 """
 Tutorial 7b — fly the scheduled autopilot.
 
-The step-8 manoeuvre, 148 to 160 m/s at 3000 m. `FlightResponse` shows the dynamic
-pressure crossing the middle design point, the weights of the design points handing over
-there, and the scheduled pitch gain following.
+`FlightResponse` shows the dynamic pressure crossing the middle design point, the
+design-point weights handing over there, and the scheduled pitch gain following.
 """
 analysis TutorialGainScheduledPID
   extends F16ModelWorkshop.FlightAnalysis(stop = 25.0, panels = ["Airspeed (m/s): f16plant.vt, vt_reference", "Altitude (m): f16plant.alt", "Dynamic pressure, the scheduling variable (Pa): f16plant.qbar", "Weight of each design point (140, 152.4, 170 m/s): schedule.scheduler.w[1], schedule.scheduler.w[2], schedule.scheduler.w[3]", "Scheduled pitch gain (deg of elevator per rad): schedule.K_pitch", "Elevator (deg): f16plant.el", "Thrust (N): f16plant.T"])

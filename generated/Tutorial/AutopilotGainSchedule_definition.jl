@@ -5,27 +5,23 @@
 
 
 @doc Markdown.doc"""
-   AutopilotGainSchedule(; name, velocities, altitude)
+   AutopilotGainSchedule(; name, velocities, altitude, __overrides)
 
-Gain schedule of the step-7 autopilot, with dynamic pressure as the scheduling variable.
+Gain schedule of the step-7 autopilot, interpolated in dynamic pressure.
 
-The schedule is the gain-scheduling procedure of Stevens & Lewis, *Aircraft Control and
-Simulation*. The loops are designed at a few straight-and-level design points, one per
-airspeed of `velocities` at `altitude`, by `F16ModelWorkshop.ScheduledPID.loop_design`; the
-gains of every design point are tabulated, one column of `gains` per point; and the
-schedule interpolates the table linearly in the dynamic pressure ``q̄`` computed from the
-sampled altitude and airspeed. Below the first and above the last design point it holds
-the end columns.
+The gain-scheduling procedure of Stevens & Lewis, *Aircraft Control and Simulation*:
+`F16ModelWorkshop.ScheduledPID.loop_design` designs the loops at straight-and-level design
+points, one per airspeed of `velocities` at `altitude`; `gains` holds one column per point;
+the table is interpolated linearly in the ``q̄`` of the sampled altitude and airspeed, and
+held at its end columns outside the design points.
 
-``q̄`` is the scheduling variable because the effectiveness of every aerodynamic control
-is proportional to it. From the first design point to the last, ``q̄`` grows by 47 % and the
-pitch gain falls by 26 %, which keeps the pitch loop's crossover frequency and phase
-margin.
+``q̄`` is the scheduling variable because every aerodynamic force and moment, and so every
+control's effectiveness, is proportional to it. From the first design point to the last,
+``q̄`` grows by 47 % and the pitch gain falls by 26 %, keeping the pitch loop's crossover
+frequency and phase margin.
 
-The outputs are the standard-form gains of the three PID controllers of
-`GainScheduledPIDDemo` and the trimmed pitch attitude, elevator and thrust they add as
-feed-forward, in the order of `ScheduledPID.SCHEDULE_ROWS`. The controllers contain no
-scheduling logic; they only receive these signals.
+Outputs, in the order of `ScheduledPID.SCHEDULE_ROWS`: the standard-form gains of
+`GainScheduledPIDDemo`'s three PID controllers, and the trims they add as feed-forward.
 
 ## Parameters:
 
@@ -35,8 +31,8 @@ scheduling logic; they only receive these signals.
 | `altitude`         | Altitude of the design points, m                         | --  |   3000.0 |
 | `n_points`         | Number of design points (derived)                         | --  |   size(velocities, 1) |
 | `n_rows`         | Number of scheduled signals, the rows of `gains`                         | --  |   10 |
-| `qbar_knots`         | Dynamic pressure of each design point, Pa: the knots of the interpolation (derived)                         | --  |   F16ModelWor..., altitude) |
-| `gains`         | The designed gains and trims, one column per design point (derived)                         | --  |   F16ModelWor..., altitude) |
+| `qbar_knots`         | Interpolation knots: dynamic pressure of each design point, Pa (derived)                         | --  |   F16ModelWor..., altitude) |
+| `gains`         | Gains and trims, one column per design point (derived)                         | --  |   F16ModelWor..., altitude) |
 
 ## Connectors
 
@@ -53,7 +49,7 @@ scheduling logic; they only receive these signals.
  * `el_trim` - This connector represents a real signal as an output from a component ([`RealOutput`](@ref))
  * `T_trim` - This connector represents a real signal as an output from a component ([`RealOutput`](@ref))
 """
-@component function AutopilotGainSchedule(; name = nothing, velocities=[Float64(140.0), 152.4, Float64(170.0)], altitude=Float64(3000.0), kwargs...)
+@component function AutopilotGainSchedule(; name = nothing, var"velocities"=[Float64(140.0), 152.4, Float64(170.0)], var"altitude"=Float64(3000.0), __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -61,7 +57,7 @@ scheduling logic; they only receive these signals.
     @named model = AutopilotGainSchedule()
   """))
 
-  __overrides = __build_overrides(kwargs)
+  __overrides = Dict{String, Any}(__overrides)
   __params = Symbolics.SymbolicT[]
   __vars = Symbolics.SymbolicT[]
   __systems = System[]
@@ -70,6 +66,10 @@ scheduling logic; they only receive these signals.
   __initialization_eqs = Equation[]
   __eqs = Equation[]
   __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Keyword argument overrides
+  haskey(__overrides, "velocities") && (velocities = pop!(__overrides, "velocities"))
+  haskey(__overrides, "altitude") && (altitude = pop!(__overrides, "altitude"))
 
   ### Structural Parameters (functions)
 
@@ -115,16 +115,16 @@ scheduling logic; they only receive these signals.
   ### Components
   # Subcomponent pressure of type F16ModelWorkshop.Tutorial.DynamicPressure
   pressure_overrides = __pop_subcomponent_overrides!(__overrides, "pressure")
-  push!(__systems, @named pressure = F16ModelWorkshop.Tutorial.DynamicPressure(; pressure_overrides...))
+  push!(__systems, @named pressure = F16ModelWorkshop.Tutorial.DynamicPressure(; __overrides = pressure_overrides))
   # Subcomponent scheduler of type MPCComponents.Experimental.LinearMPCScheduler
   scheduler_overrides = __pop_subcomponent_overrides!(__overrides, "scheduler")
-  push!(__systems, @named scheduler = MPCComponents.Experimental.LinearMPCScheduler(; rho_grid=qbar_knots, scheduler_overrides...))
+  push!(__systems, @named scheduler = MPCComponents.Experimental.LinearMPCScheduler(; rho_grid=qbar_knots, __overrides = scheduler_overrides))
   # Subcomponent table of type DiscreteComponents.Examples.MatrixGain
   table_overrides = __pop_subcomponent_overrides!(__overrides, "table")
-  push!(__systems, @named table = DiscreteComponents.Examples.MatrixGain(; ny=n_rows, nu=n_points, K=gains, table_overrides...))
+  push!(__systems, @named table = DiscreteComponents.Examples.MatrixGain(; ny=n_rows, nu=n_points, K=gains, __overrides = table_overrides))
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
 
   ### Guesses
 
@@ -150,6 +150,6 @@ scheduling logic; they only receive these signals.
   push!(__eqs, connect(table.y[10], T_trim))
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export AutopilotGainSchedule

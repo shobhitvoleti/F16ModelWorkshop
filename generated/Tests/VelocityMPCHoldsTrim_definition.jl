@@ -5,26 +5,26 @@
 
 
 @doc Markdown.doc"""
-   VelocityMPCHoldsTrim(; name, velocity, altitude, Ts, velocities, n_states, mpc_bank, trim_full, u_trim)
+   VelocityMPCHoldsTrim(; name, velocity, altitude, Ts, velocities, n_states, mpc_bank, trim_full, u_trim, __overrides)
 
-Every bank member returns its own trim command when it is already at its own trim.
+Every bank member returns its own trim command when already at its own trim.
 
-Measurement and reference are both the trimmed state of `velocity`; the bank's observer and
-`u0` start at that trim. The held commands must equal
-`VelocityMPC.trim_command(velocity, altitude)` at every tick. At a knot of `velocities` only
-that knot's member is active, so the tests build one model per knot (`velocity = 140.0` etc.).
+Measurement and reference are both the trimmed state of `velocity`, and the observer and
+`u0` start there. The held commands must equal `VelocityMPC.trim_command(velocity, altitude)`
+at every tick. At a knot only that knot's member is active, so the tests build one model
+per knot (`velocity = 140.0` etc.).
 
 ## Parameters:
 
 | Name         | Description                         | Units  |   Default value |
 | ------------ | ----------------------------------- | ------ | --------------- |
-| `velocity`         | Airspeed knot under test; both the bank's operating point and the flight condition fed in.                         | --  |   152.4 |
+| `velocity`         | Airspeed knot under test, m/s: the bank's operating point and the flight condition fed in.                         | --  |   152.4 |
 | `altitude`         | Altitude every knot is trimmed at, m.                         | --  |   3000.0 |
 | `Ts`         | Controller sample period, s.                         | --  |   0.05 |
 | `velocities`         | Airspeed knots the bank is designed at, m/s, strictly increasing.                         | --  |   [140.0, 152.4, 170.0] |
 | `n_states`         | Number of regulated states, the width of the measurement and reference vectors.                         | --  |   10 |
 | `mpc_bank`         | The bank of controllers, started at the trim of `velocity` so the observer needs no transient.                         | --  |   F16ModelWor...locity, Ts) |
-| `trim_full`         | Trimmed states of the flight condition under test, all twelve of them.                         | --  |   F16ModelWor..., altitude) |
+| `trim_full`         | All twelve trimmed states of the flight condition under test.                         | --  |   F16ModelWor..., altitude) |
 | `u_trim`         | Trimmed command of that flight condition, [kN, deg, deg, deg]: both `u0` and the expected output.                         | --  |   F16ModelWor..., altitude) |
 
 ## Variables
@@ -37,7 +37,7 @@ that knot's member is active, so the tests build one model per knot (`velocity =
 | `rud_cmd`         | Held rudder command, deg.                         | --  |
 | `exitflag`         | Composite solver status of the last tick, held so it can be read from the solution.                         | --  |
 """
-@component function VelocityMPCHoldsTrim(; name = nothing, velocity=152.4, altitude=Float64(3000.0), Ts=0.05, velocities=[Float64(140.0), 152.4, Float64(170.0)], n_states=10, trim_full=F16ModelWorkshop.VelocityMPC.trim_states(velocity, altitude), u_trim=F16ModelWorkshop.VelocityMPC.trim_command(velocity, altitude), mpc_bank=F16ModelWorkshop.VelocityMPC.bank(velocities, altitude, velocity, Ts), kwargs...)
+@component function VelocityMPCHoldsTrim(; name = nothing, var"velocity"=152.4, var"altitude"=Float64(3000.0), var"Ts"=0.05, var"velocities"=[Float64(140.0), 152.4, Float64(170.0)], var"n_states"=10, var"trim_full"=nothing, var"u_trim"=nothing, var"mpc_bank"=nothing, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -45,7 +45,7 @@ that knot's member is active, so the tests build one model per knot (`velocity =
     @named model = VelocityMPCHoldsTrim()
   """))
 
-  __overrides = __build_overrides(kwargs)
+  __overrides = Dict{String, Any}(__overrides)
   __params = Symbolics.SymbolicT[]
   __vars = Symbolics.SymbolicT[]
   __systems = System[]
@@ -54,6 +54,21 @@ that knot's member is active, so the tests build one model per knot (`velocity =
   __initialization_eqs = Equation[]
   __eqs = Equation[]
   __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Keyword argument overrides
+  haskey(__overrides, "velocity") && (velocity = pop!(__overrides, "velocity"))
+  haskey(__overrides, "altitude") && (altitude = pop!(__overrides, "altitude"))
+  haskey(__overrides, "Ts") && (Ts = pop!(__overrides, "Ts"))
+  haskey(__overrides, "velocities") && (velocities = pop!(__overrides, "velocities"))
+  haskey(__overrides, "n_states") && (n_states = pop!(__overrides, "n_states"))
+  haskey(__overrides, "trim_full") && (trim_full = pop!(__overrides, "trim_full"))
+  haskey(__overrides, "u_trim") && (u_trim = pop!(__overrides, "u_trim"))
+  haskey(__overrides, "mpc_bank") && (mpc_bank = pop!(__overrides, "mpc_bank"))
+
+  ### Deferred keyword defaults (defaults referencing other keyword arguments)
+  isnothing(trim_full) && (trim_full = F16ModelWorkshop.VelocityMPC.trim_states(velocity, altitude))
+  isnothing(u_trim) && (u_trim = F16ModelWorkshop.VelocityMPC.trim_command(velocity, altitude))
+  isnothing(mpc_bank) && (mpc_bank = F16ModelWorkshop.VelocityMPC.bank(velocities, altitude, velocity, Ts))
 
   ### Structural Parameters (functions)
 
@@ -82,20 +97,20 @@ that knot's member is active, so the tests build one model per knot (`velocity =
 
   ### Variables (assignments)
   __ovr_T_cmd = pop!(__overrides, "T_cmd", nothing); isnothing(__ovr_T_cmd) || push!(__eqs, T_cmd ~ __ovr_T_cmd)
-  __ovr_T_cmd__initial = pop!(__overrides, "T_cmd__initial", nothing); isnothing(__ovr_T_cmd__initial) || (__initial_conditions[T_cmd] = __ovr_T_cmd__initial)
-  __ovr_T_cmd__guess = pop!(__overrides, "T_cmd__guess", nothing)
+  __ovr_T_cmd__initial = pop!(__overrides, "T_cmd.initial", nothing); isnothing(__ovr_T_cmd__initial) || (__initial_conditions[T_cmd] = __ovr_T_cmd__initial)
+  __ovr_T_cmd__guess = pop!(__overrides, "T_cmd.guess", nothing)
   __ovr_el_cmd = pop!(__overrides, "el_cmd", nothing); isnothing(__ovr_el_cmd) || push!(__eqs, el_cmd ~ __ovr_el_cmd)
-  __ovr_el_cmd__initial = pop!(__overrides, "el_cmd__initial", nothing); isnothing(__ovr_el_cmd__initial) || (__initial_conditions[el_cmd] = __ovr_el_cmd__initial)
-  __ovr_el_cmd__guess = pop!(__overrides, "el_cmd__guess", nothing)
+  __ovr_el_cmd__initial = pop!(__overrides, "el_cmd.initial", nothing); isnothing(__ovr_el_cmd__initial) || (__initial_conditions[el_cmd] = __ovr_el_cmd__initial)
+  __ovr_el_cmd__guess = pop!(__overrides, "el_cmd.guess", nothing)
   __ovr_ail_cmd = pop!(__overrides, "ail_cmd", nothing); isnothing(__ovr_ail_cmd) || push!(__eqs, ail_cmd ~ __ovr_ail_cmd)
-  __ovr_ail_cmd__initial = pop!(__overrides, "ail_cmd__initial", nothing); isnothing(__ovr_ail_cmd__initial) || (__initial_conditions[ail_cmd] = __ovr_ail_cmd__initial)
-  __ovr_ail_cmd__guess = pop!(__overrides, "ail_cmd__guess", nothing)
+  __ovr_ail_cmd__initial = pop!(__overrides, "ail_cmd.initial", nothing); isnothing(__ovr_ail_cmd__initial) || (__initial_conditions[ail_cmd] = __ovr_ail_cmd__initial)
+  __ovr_ail_cmd__guess = pop!(__overrides, "ail_cmd.guess", nothing)
   __ovr_rud_cmd = pop!(__overrides, "rud_cmd", nothing); isnothing(__ovr_rud_cmd) || push!(__eqs, rud_cmd ~ __ovr_rud_cmd)
-  __ovr_rud_cmd__initial = pop!(__overrides, "rud_cmd__initial", nothing); isnothing(__ovr_rud_cmd__initial) || (__initial_conditions[rud_cmd] = __ovr_rud_cmd__initial)
-  __ovr_rud_cmd__guess = pop!(__overrides, "rud_cmd__guess", nothing)
+  __ovr_rud_cmd__initial = pop!(__overrides, "rud_cmd.initial", nothing); isnothing(__ovr_rud_cmd__initial) || (__initial_conditions[rud_cmd] = __ovr_rud_cmd__initial)
+  __ovr_rud_cmd__guess = pop!(__overrides, "rud_cmd.guess", nothing)
   __ovr_exitflag = pop!(__overrides, "exitflag", nothing); isnothing(__ovr_exitflag) || push!(__eqs, exitflag ~ __ovr_exitflag)
-  __ovr_exitflag__initial = pop!(__overrides, "exitflag__initial", nothing); isnothing(__ovr_exitflag__initial) || (__initial_conditions[exitflag] = __ovr_exitflag__initial)
-  __ovr_exitflag__guess = pop!(__overrides, "exitflag__guess", nothing)
+  __ovr_exitflag__initial = pop!(__overrides, "exitflag.initial", nothing); isnothing(__ovr_exitflag__initial) || (__initial_conditions[exitflag] = __ovr_exitflag__initial)
+  __ovr_exitflag__guess = pop!(__overrides, "exitflag.guess", nothing)
 
   ### Constants
   __constants = Any[]
@@ -103,40 +118,40 @@ that knot's member is active, so the tests build one model per knot (`velocity =
   ### Components
   # Subcomponent state_src of type F16ModelWorkshop.VectorBlocks.VectorConstant
   state_src_overrides = __pop_subcomponent_overrides!(__overrides, "state_src")
-  push!(__systems, @named state_src = F16ModelWorkshop.VectorBlocks.VectorConstant(; n=12, k=trim_full, state_src_overrides...))
+  push!(__systems, @named state_src = F16ModelWorkshop.VectorBlocks.VectorConstant(; n=12, k=trim_full, __overrides = state_src_overrides))
   # Subcomponent state_select of type F16ModelWorkshop.VectorBlocks.VectorSelect
   state_select_overrides = __pop_subcomponent_overrides!(__overrides, "state_select")
-  push!(__systems, @named state_select = F16ModelWorkshop.VectorBlocks.VectorSelect(; n=12, indices=[3, 4, 5, 6, 7, 8, 9, 10, 11, 12], state_select_overrides...))
+  push!(__systems, @named state_select = F16ModelWorkshop.VectorBlocks.VectorSelect(; n=12, indices=[3, 4, 5, 6, 7, 8, 9, 10, 11, 12], __overrides = state_select_overrides))
   # Subcomponent meas_sample of type F16ModelWorkshop.VectorBlocks.MultiSampler
   meas_sample_overrides = __pop_subcomponent_overrides!(__overrides, "meas_sample")
-  push!(__systems, @named meas_sample = F16ModelWorkshop.VectorBlocks.MultiSampler(; n=n_states, meas_sample_overrides...))
+  push!(__systems, @named meas_sample = F16ModelWorkshop.VectorBlocks.MultiSampler(; n=n_states, __overrides = meas_sample_overrides))
   # Subcomponent ref_sample of type F16ModelWorkshop.VectorBlocks.MultiSampler
   ref_sample_overrides = __pop_subcomponent_overrides!(__overrides, "ref_sample")
-  push!(__systems, @named ref_sample = F16ModelWorkshop.VectorBlocks.MultiSampler(; n=n_states, ref_sample_overrides...))
+  push!(__systems, @named ref_sample = F16ModelWorkshop.VectorBlocks.MultiSampler(; n=n_states, __overrides = ref_sample_overrides))
   # Subcomponent clock of type DiscreteComponents.PeriodicClock
   clock_overrides = __pop_subcomponent_overrides!(__overrides, "clock")
-  push!(__systems, @named clock = DiscreteComponents.PeriodicClock(; dt=Ts, clock_overrides...))
+  push!(__systems, @named clock = DiscreteComponents.PeriodicClock(; dt=Ts, __symbol_overrides(clock_overrides)...))
   # Subcomponent scheduler of type MPCComponents.Experimental.LinearMPCScheduler
   scheduler_overrides = __pop_subcomponent_overrides!(__overrides, "scheduler")
-  push!(__systems, @named scheduler = MPCComponents.Experimental.LinearMPCScheduler(; rho_grid=velocities, scheduler_overrides...))
+  push!(__systems, @named scheduler = MPCComponents.Experimental.LinearMPCScheduler(; rho_grid=velocities, __overrides = scheduler_overrides))
   # Subcomponent observer of type MPCComponents.Experimental.LinearMPCScheduledObserver
   observer_overrides = __pop_subcomponent_overrides!(__overrides, "observer")
-  push!(__systems, @named observer = MPCComponents.Experimental.LinearMPCScheduledObserver(; mpc=mpc_bank, observer_overrides...))
+  push!(__systems, @named observer = MPCComponents.Experimental.LinearMPCScheduledObserver(; mpc=mpc_bank, __overrides = observer_overrides))
   # Subcomponent optimizer of type MPCComponents.Experimental.LinearMPCScheduledOptimizer
   optimizer_overrides = __pop_subcomponent_overrides!(__overrides, "optimizer")
-  push!(__systems, @named optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(; mpc=mpc_bank, u0=u_trim, optimizer_overrides...))
+  push!(__systems, @named optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(; mpc=mpc_bank, u0=u_trim, __overrides = optimizer_overrides))
   # Subcomponent zoh of type F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold
   zoh_overrides = __pop_subcomponent_overrides!(__overrides, "zoh")
-  push!(__systems, @named zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(; n=4, zoh_overrides...))
+  push!(__systems, @named zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(; n=4, __overrides = zoh_overrides))
   # Subcomponent zoh_flag of type DiscreteComponents.ZeroOrderHold
   zoh_flag_overrides = __pop_subcomponent_overrides!(__overrides, "zoh_flag")
-  push!(__systems, @named zoh_flag = DiscreteComponents.ZeroOrderHold(; initial_condition=Float64(1.0), zoh_flag_overrides...))
+  push!(__systems, @named zoh_flag = DiscreteComponents.ZeroOrderHold(; initial_condition=Float64(1.0), __overrides = zoh_flag_overrides))
   # Subcomponent intg of type BlockComponents.Continuous.Integrator
   intg_overrides = __pop_subcomponent_overrides!(__overrides, "intg")
-  push!(__systems, @named intg = BlockComponents.Continuous.Integrator(; intg_overrides...))
+  push!(__systems, @named intg = BlockComponents.Continuous.Integrator(; __overrides = intg_overrides))
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
 
   ### Guesses
   isnothing(__ovr_T_cmd__guess) || (__guesses[T_cmd] = __ovr_T_cmd__guess)
@@ -169,6 +184,6 @@ that knot's member is active, so the tests build one model per knot (`velocity =
   push!(__eqs, connect(zoh.y[1], intg.u))
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export VelocityMPCHoldsTrim

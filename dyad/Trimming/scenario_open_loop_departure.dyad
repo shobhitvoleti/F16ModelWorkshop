@@ -1,28 +1,23 @@
 """
 Open-loop pitch departure from trim.
 
-Identical to `F16OpenLoopTrim` except that `theta_init` is nudged 1 degree above the
-trim attitude and the horizon is long enough for the consequence to be unmistakable.
+`F16OpenLoopTrim` with `theta_init` 1 degree above the trim attitude and a longer horizon.
+At the reference CG the airframe is statically unstable in pitch (Cma = +0.082/rad): a real
+pole at about +0.095 rad/s doubles a perturbation every 7.3 s. This is why the aircraft
+needs the regulator of tutorial steps 3 and 4.
 
-At the reference CG the F-16 is statically unstable in pitch (Cma = +0.082/rad), which
-puts a real pole at roughly +0.09 rad/s — a perturbation doubles about every 7.6 s and
-never comes back. Where `F16OpenLoopTrim` shows that the trim point is an equilibrium,
-this shows that it is an unstable one, which is the reason the aircraft needs the
-regulator designed in tutorial steps 3 and 4.
-
-Set `plant.xcg = 0.30` to move the CG forward of the aerodynamic reference and watch
-the same perturbation decay instead.
+`plant.xcg = 0.30` makes the airframe statically stable, but these held controls trim it
+only at the 0.35 reference: at 0.30 they pitch it nose-down into a dive.
 
 Signal flow: Constants -> Mux5 -> F16PlantModel
 """
 test component F16OpenLoopDeparture
-  # ---- Trim control inputs, held fixed: no pilot, no controller ----
+  # ---- Trim control inputs, held fixed ----
   T_cmd   = BlockComponents.Sources.Constant(k = 10794.89)
   el_cmd  = BlockComponents.Sources.Constant(k = -0.6949)
   ail_cmd = BlockComponents.Sources.Constant(k = 0.0)
   rud_cmd = BlockComponents.Sources.Constant(k = 0.0)
   lef_cmd = BlockComponents.Sources.Constant(k = 0.0)
-  # ---- Signal routing ----
   mux = F16ModelWorkshop.Utils.Mux5()
   # ---- Plant, started 1 degree nose-up of the trim attitude ----
   plant = F16ModelWorkshop.Plant.F16PlantModel(
@@ -41,8 +36,8 @@ relations
 end
 
 analysis F16OpenLoopDepartureAnalysis
-  # 40 s: long enough that pitch has tripled and 22 m/s of airspeed is gone, short
-  # enough that alpha stays inside the range the coefficient deck was fitted over.
+  # 40 s: pitch has tripled and 22 m/s of airspeed is gone, while alpha stays inside
+  # the range the coefficient deck was fitted over.
   extends TransientAnalysis(stop = 40.0)
   model = F16OpenLoopDeparture()
 end

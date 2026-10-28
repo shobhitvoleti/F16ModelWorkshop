@@ -1,6 +1,4 @@
-# Transient analysis that renders its solution to a video, paired with the
-# `partial analysis` in dyad/visualize_analysis.dyad. Defined BEFORE the generated
-# code, which references the `*Spec` type.
+# Transient analysis that renders its solution to a video (dyad/visualize_analysis.dyad).
 
 import GeometryBasics
 import MultibodyComponents
@@ -17,11 +15,11 @@ abstract type AbstractVisualizeAnalysisSpec <: AbstractAnalysisSpec end
     lookat::Vector{Float64} = [2000.0, 3000.0, 0.0]
     show_axis::Bool = false
     overrides::_Overrides = _Overrides()
+    __system::Union{Nothing, System} = nothing   # handed over by Dyad-generated specs; unused
 end
 
-# `MultibodyComponents.render` lives in that package's `Render` extension, which loads
-# only once a Makie backend is present. Studio runs analyses in a session where nothing
-# has loaded one, so load GLMakie, a dependency of this package, when it is missing.
+# `MultibodyComponents.render` lives in its `Render` extension, which loads only with a
+# Makie backend. Studio sessions have none, so load GLMakie (a package dependency) on demand.
 const _GLMAKIE = Base.PkgId(Base.UUID("e9467ef8-e4e7-5192-8a1a-b1aee30e663a"), "GLMakie")
 
 function _ensure_render_backend()
@@ -39,10 +37,9 @@ function DyadInterface.run_analysis(spec::VisualizeAnalysisSpec)
         overrides = spec.overrides))
     path = _resolve_export(spec.filename)
     mkpath(dirname(path))
-    # `display = false`: this analysis exists to write a file. Letting the renderer
-    # open its window segfaults outright in a session with no window server, and
-    # would steal focus in one that has it. `invokelatest`, because the extension's
-    # methods may have been defined after this function was compiled.
+    # `display = false`: opening the render window segfaults without a window server and
+    # steals focus with one. `invokelatest`: the extension's methods may postdate this
+    # function's compilation.
     Base.invokelatest(MultibodyComponents.render, res;
         filename = path,
         nominal_length = spec.nominal_length,

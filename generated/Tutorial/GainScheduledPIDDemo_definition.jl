@@ -5,15 +5,14 @@
 
 
 @doc Markdown.doc"""
-   GainScheduledPIDDemo(; name, velocities, altitude, initial_velocity, Ts, final_velocity, ramp_start, ramp_duration, pitch_perturbation, newtons_per_kilonewton, trim_init, u_trim, elevator_limit, pitch_limit, thrust_max)
+   GainScheduledPIDDemo(; name, velocities, altitude, initial_velocity, Ts, final_velocity, ramp_start, ramp_duration, pitch_perturbation, newtons_per_kilonewton, trim_init, u_trim, elevator_limit, pitch_limit, thrust_max, __overrides)
 
 Tutorial 7 — Gain-scheduled PID autopilot.
 
-The classical longitudinal autopilot of Stevens & Lewis, *Aircraft Control and
-Simulation*, flown on the nonlinear plant at 20 Hz and gain-scheduled on dynamic pressure.
-Three `DiscreteComponents.DiscretePIDScheduled` controllers take their gains as
-input signals; `AutopilotGainSchedule` computes those signals and is the only component
-that knows about the flight condition.
+The classical longitudinal autopilot of Stevens & Lewis, flown on the nonlinear plant at
+20 Hz and gain-scheduled on dynamic pressure. Three `DiscreteComponents.DiscretePIDScheduled`
+controllers take their gains as input signals; `AutopilotGainSchedule` computes them and is
+the only component that knows the flight condition.
 
 Signal flow:
 
@@ -26,31 +25,30 @@ Signal flow:
   schedule --> every K, Ti, Td and u_ff input
   [autothrottle.y; pitch.y] --> zoh --> cmd_map (5) --> f16plant.u_in
 
-The loops, inner first, as in the book's altitude-hold autopilot with an autothrottle:
+Loops, inner first:
 
-- `pitch` — pitch-attitude hold: elevator from pitch attitude, a PD whose derivative acts
-  on the measurement only (`wd = 0`), which is pitch-rate damping. The airframe is
-  unstable in pitch; this loop stabilizes it.
-- `altitude_hold` — pitch-attitude command from altitude, a PID whose derivative is
+- `pitch` — pitch-attitude hold: elevator from pitch attitude. A PD with the derivative on
+  the measurement only (`wd = 0`), i.e. pitch-rate damping; it stabilizes the airframe,
+  which is unstable in pitch.
+- `altitude_hold` — pitch-attitude command from altitude. A PID whose derivative is
   climb-rate damping.
-- `autothrottle` — thrust from airspeed, a PI. Half the reference enters the
-  proportional path (`wp = 0.5`): with all of it, the slow zero of the integral makes the
-  airspeed overshoot the end of the ramp and creep back over tens of seconds.
+- `autothrottle` — thrust from airspeed. A PI with half the reference in the proportional
+  path (`wp = 0.5`); with all of it, the integral's slow zero makes the airspeed overshoot
+  the end of the ramp and creep back over tens of seconds.
 
-Each loop adds the scheduled trim of its command (pitch attitude, elevator, thrust) as
-feed-forward, so the feedback only corrects the departure from trim, and starts with
-`InitialOutput` at the trim of the initial flight condition, so nothing jumps at t = 0.
+Each loop adds the scheduled trim of its output (pitch attitude, elevator, thrust) as
+feed-forward, so the feedback only corrects the departure from trim, and starts at the trim
+of the initial flight condition (`InitialOutput`), so nothing jumps at t = 0.
 
-Design (`F16ModelWorkshop.ScheduledPID`): at each design point the plant is linearized,
-and each loop is designed in turn on the plant with the inner loops closed, for a fixed
-gain-crossover frequency and phase margin (pitch 2 rad/s and 60°, altitude 0.3 rad/s and
-60°, airspeed 0.5 rad/s and 70°). The design points are the airspeed knots of step 8, so
-the two controllers can be compared on the same manoeuvre.
+Design (`F16ModelWorkshop.ScheduledPID`): at each design point the plant is linearized and
+each loop is designed with the inner loops closed, for a gain-crossover frequency and phase
+margin of 2 rad/s and 60° (pitch), 0.3 rad/s and 60° (altitude), 0.5 rad/s and 70°
+(airspeed). The design points are step 8's airspeed knots, so the two controllers can be
+compared on the same manoeuvre.
 
-Scenario: as in step 8, trimmed at 148 m/s and 3000 m with 2° of extra pitch attitude, and
-commanded to 160 m/s over 12 s from t = 2 s, a ramp that crosses the 152.4 m/s design
-point. Aileron and rudder stay at their trim of zero: the manoeuvre is symmetric and the
-lateral modes are stable.
+Scenario: as in step 8, a ramp from 148 to 160 m/s at 3000 m that crosses the 152.4 m/s
+design point. Aileron and rudder stay at their trim of zero: the manoeuvre is symmetric and
+the lateral modes are stable.
 
 ## Parameters:
 
@@ -58,26 +56,26 @@ lateral modes are stable.
 | ------------ | ----------------------------------- | ------ | --------------- |
 | `velocities`         | Airspeeds of the design points, m/s, strictly increasing.                         | --  |   [140.0, 152.4, 170.0] |
 | `altitude`         | Altitude of the design points and the commanded altitude, m.                         | --  |   3000.0 |
-| `initial_velocity`         | Airspeed the loop starts trimmed at, m/s.                         | --  |   148.0 |
+| `initial_velocity`         | Initial trimmed airspeed, m/s.                         | --  |   148.0 |
 | `Ts`         | Controller sample period, s.                         | --  |   0.05 |
-| `final_velocity`         | Airspeed the reference ramp ends at, m/s.                         | --  |   160.0 |
-| `ramp_start`         | Time the reference ramp begins, s.                         | --  |   2.0 |
-| `ramp_duration`         | Length of the reference ramp, s.                         | --  |   12.0 |
-| `pitch_perturbation`         | Pitch attitude added to the trimmed initial state, rad (2 deg).                         | --  |   0.03490658503988659 |
-| `newtons_per_kilonewton`         | Newtons of thrust per kilonewton of commanded thrust.                         | --  |   1000.0 |
-| `trim_init`         | Trimmed states of the flight condition the loop starts from.                         | --  |   F16ModelWor..., altitude) |
-| `u_trim`         | Trimmed command of that flight condition, [kN, deg, deg, deg].                         | --  |   F16ModelWor..., altitude) |
-| `elevator_limit`         | Elevator travel either side of zero, deg.                         | --  |   25.0 |
-| `pitch_limit`         | Largest commanded pitch attitude either side of zero, rad (15 deg).                         | --  |   0.2617993877991494 |
-| `thrust_max`         | Largest commanded thrust, kN.                         | --  |   50.0 |
+| `final_velocity`         | Final commanded airspeed, m/s.                         | --  |   160.0 |
+| `ramp_start`         | Ramp start time, s.                         | --  |   2.0 |
+| `ramp_duration`         | Ramp duration, s.                         | --  |   12.0 |
+| `pitch_perturbation`         | Initial pitch-attitude perturbation from trim, rad (2 deg).                         | --  |   0.03490658503988659 |
+| `newtons_per_kilonewton`         | Thrust unit conversion, N per kN.                         | --  |   1000.0 |
+| `trim_init`         | Trimmed initial states.                         | --  |   F16ModelWor..., altitude) |
+| `u_trim`         | Trimmed initial command [kN, deg, deg, deg].                         | --  |   F16ModelWor..., altitude) |
+| `elevator_limit`         | Elevator limit, deg, symmetric.                         | --  |   25.0 |
+| `pitch_limit`         | Pitch-attitude command limit, rad (15 deg), symmetric.                         | --  |   0.2617993877991494 |
+| `thrust_max`         | Thrust limit, kN.                         | --  |   50.0 |
 
 ## Variables
 
 | Name         | Description                         | Units  | 
 | ------------ | ----------------------------------- | ------ |
-| `vt_reference`         | Commanded airspeed on the continuous time base, so the reference can be plotted against the plant's trajectory.                         | --  |
+| `vt_reference`         | Commanded airspeed on the continuous time base, for plotting.                         | --  |
 """
-@component function GainScheduledPIDDemo(; name = nothing, velocities=[Float64(140.0), 152.4, Float64(170.0)], altitude=Float64(3000.0), initial_velocity=Float64(148.0), Ts=0.05, final_velocity=Float64(160.0), ramp_start=Float64(2.0), ramp_duration=Float64(12.0), pitch_perturbation=0.03490658503988659, newtons_per_kilonewton=Float64(1000.0), elevator_limit=Float64(25.0), pitch_limit=0.2617993877991494, thrust_max=Float64(50.0), trim_init=F16ModelWorkshop.VelocityMPC.trim_states(initial_velocity, altitude), u_trim=F16ModelWorkshop.VelocityMPC.trim_command(initial_velocity, altitude), kwargs...)
+@component function GainScheduledPIDDemo(; name = nothing, var"velocities"=[Float64(140.0), 152.4, Float64(170.0)], var"altitude"=Float64(3000.0), var"initial_velocity"=Float64(148.0), var"Ts"=0.05, var"final_velocity"=Float64(160.0), var"ramp_start"=Float64(2.0), var"ramp_duration"=Float64(12.0), var"pitch_perturbation"=0.03490658503988659, var"newtons_per_kilonewton"=Float64(1000.0), var"elevator_limit"=Float64(25.0), var"pitch_limit"=0.2617993877991494, var"thrust_max"=Float64(50.0), var"trim_init"=nothing, var"u_trim"=nothing, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -85,7 +83,7 @@ lateral modes are stable.
     @named model = GainScheduledPIDDemo()
   """))
 
-  __overrides = __build_overrides(kwargs)
+  __overrides = Dict{String, Any}(__overrides)
   __params = Symbolics.SymbolicT[]
   __vars = Symbolics.SymbolicT[]
   __systems = System[]
@@ -94,6 +92,26 @@ lateral modes are stable.
   __initialization_eqs = Equation[]
   __eqs = Equation[]
   __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Keyword argument overrides
+  haskey(__overrides, "velocities") && (velocities = pop!(__overrides, "velocities"))
+  haskey(__overrides, "altitude") && (altitude = pop!(__overrides, "altitude"))
+  haskey(__overrides, "initial_velocity") && (initial_velocity = pop!(__overrides, "initial_velocity"))
+  haskey(__overrides, "Ts") && (Ts = pop!(__overrides, "Ts"))
+  haskey(__overrides, "final_velocity") && (final_velocity = pop!(__overrides, "final_velocity"))
+  haskey(__overrides, "ramp_start") && (ramp_start = pop!(__overrides, "ramp_start"))
+  haskey(__overrides, "ramp_duration") && (ramp_duration = pop!(__overrides, "ramp_duration"))
+  haskey(__overrides, "pitch_perturbation") && (pitch_perturbation = pop!(__overrides, "pitch_perturbation"))
+  haskey(__overrides, "newtons_per_kilonewton") && (newtons_per_kilonewton = pop!(__overrides, "newtons_per_kilonewton"))
+  haskey(__overrides, "elevator_limit") && (elevator_limit = pop!(__overrides, "elevator_limit"))
+  haskey(__overrides, "pitch_limit") && (pitch_limit = pop!(__overrides, "pitch_limit"))
+  haskey(__overrides, "thrust_max") && (thrust_max = pop!(__overrides, "thrust_max"))
+  haskey(__overrides, "trim_init") && (trim_init = pop!(__overrides, "trim_init"))
+  haskey(__overrides, "u_trim") && (u_trim = pop!(__overrides, "u_trim"))
+
+  ### Deferred keyword defaults (defaults referencing other keyword arguments)
+  isnothing(trim_init) && (trim_init = F16ModelWorkshop.VelocityMPC.trim_states(initial_velocity, altitude))
+  isnothing(u_trim) && (u_trim = F16ModelWorkshop.VelocityMPC.trim_command(initial_velocity, altitude))
 
   ### Structural Parameters (functions)
 
@@ -109,103 +127,82 @@ lateral modes are stable.
 
   ### Symbolic Parameters
   __local__elevator_limit = elevator_limit
-  append!(__params, @parameters (elevator_limit::Real), [description = "Elevator travel either side of zero, deg."])
-  __initial_conditions[elevator_limit] = __local__elevator_limit
+  append!(__params, @parameters (elevator_limit::Real), [description = "Elevator limit, deg, symmetric."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, elevator_limit, __local__elevator_limit)
   __local__pitch_limit = pitch_limit
-  append!(__params, @parameters (pitch_limit::Real), [description = "Largest commanded pitch attitude either side of zero, rad (15 deg)."])
-  __initial_conditions[pitch_limit] = __local__pitch_limit
+  append!(__params, @parameters (pitch_limit::Real), [description = "Pitch-attitude command limit, rad (15 deg), symmetric."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, pitch_limit, __local__pitch_limit)
   __local__thrust_max = thrust_max
-  append!(__params, @parameters (thrust_max::Real), [description = "Largest commanded thrust, kN."])
-  __initial_conditions[thrust_max] = __local__thrust_max
+  append!(__params, @parameters (thrust_max::Real), [description = "Thrust limit, kN."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, thrust_max, __local__thrust_max)
 
   ### Final Parameters (assignments)
 
   ### Final Path Parameters
 
   ### Variables (declarations)
-  append!(__vars, @variables (vt_reference(t)::Real), [description = "Commanded airspeed on the continuous time base, so the reference can be plotted against the plant's trajectory."])
+  append!(__vars, @variables (vt_reference(t)::Real), [description = "Commanded airspeed on the continuous time base, for plotting."])
 
   ### Variables (assignments)
   __ovr_vt_reference = pop!(__overrides, "vt_reference", nothing); isnothing(__ovr_vt_reference) || push!(__eqs, vt_reference ~ __ovr_vt_reference)
-  __ovr_vt_reference__initial = pop!(__overrides, "vt_reference__initial", nothing); isnothing(__ovr_vt_reference__initial) || (__initial_conditions[vt_reference] = __ovr_vt_reference__initial)
-  __ovr_vt_reference__guess = pop!(__overrides, "vt_reference__guess", nothing)
+  __ovr_vt_reference__initial = pop!(__overrides, "vt_reference.initial", nothing); isnothing(__ovr_vt_reference__initial) || (__initial_conditions[vt_reference] = __ovr_vt_reference__initial)
+  __ovr_vt_reference__guess = pop!(__overrides, "vt_reference.guess", nothing)
 
   ### Constants
   __constants = Any[]
 
   ### Components
-  # Subcomponent f16plant of type F16ModelWorkshop.Plant.F16PlantModel
+  # Subcomponent f16plant of type F16ModelWorkshop.Plant.F16PlantFromState
   f16plant_overrides = __pop_subcomponent_overrides!(__overrides, "f16plant")
-  push!(__systems, @named f16plant = F16ModelWorkshop.Plant.F16PlantModel(; alt_init=trim_init[3], phi_init=trim_init[4], theta_init=trim_init[5] + pitch_perturbation, psi_init=trim_init[6], vt_init=trim_init[7], alpha_init=trim_init[8], beta_init=trim_init[9], P_init=trim_init[10], Q_init=trim_init[11], R_init=trim_init[12], f16plant_overrides...))
+  push!(__systems, @named f16plant = F16ModelWorkshop.Plant.F16PlantFromState(; x0=trim_init, theta_init=trim_init[5] + pitch_perturbation, __overrides = f16plant_overrides))
   # Subcomponent meas_select of type F16ModelWorkshop.VectorBlocks.VectorSelect
   meas_select_overrides = __pop_subcomponent_overrides!(__overrides, "meas_select")
-  push!(__systems, @named meas_select = F16ModelWorkshop.VectorBlocks.VectorSelect(; n=12, indices=[3, 5, 7], meas_select_overrides...))
+  push!(__systems, @named meas_select = F16ModelWorkshop.VectorBlocks.VectorSelect(; n=12, indices=[3, 5, 7], __overrides = meas_select_overrides))
   # Subcomponent sample of type F16ModelWorkshop.VectorBlocks.MultiSampler
   sample_overrides = __pop_subcomponent_overrides!(__overrides, "sample")
-  push!(__systems, @named sample = F16ModelWorkshop.VectorBlocks.MultiSampler(; n=3, sample_overrides...))
+  push!(__systems, @named sample = F16ModelWorkshop.VectorBlocks.MultiSampler(; n=3, __overrides = sample_overrides))
   # Subcomponent clock of type DiscreteComponents.PeriodicClock
   clock_overrides = __pop_subcomponent_overrides!(__overrides, "clock")
-  push!(__systems, @named clock = DiscreteComponents.PeriodicClock(; dt=Ts, clock_overrides...))
+  push!(__systems, @named clock = DiscreteComponents.PeriodicClock(; dt=Ts, __symbol_overrides(clock_overrides)...))
   # Subcomponent schedule of type F16ModelWorkshop.Tutorial.AutopilotGainSchedule
   schedule_overrides = __pop_subcomponent_overrides!(__overrides, "schedule")
-  push!(__systems, @named schedule = F16ModelWorkshop.Tutorial.AutopilotGainSchedule(; velocities=velocities, altitude=altitude, schedule_overrides...))
+  push!(__systems, @named schedule = F16ModelWorkshop.Tutorial.AutopilotGainSchedule(; velocities=velocities, altitude=altitude, __overrides = schedule_overrides))
   # Subcomponent pitch of type DiscreteComponents.DiscretePIDScheduled
   pitch_overrides = __pop_subcomponent_overrides!(__overrides, "pitch")
-  push!(__systems, @named pitch = DiscreteComponents.DiscretePIDScheduled(; with_I=false, with_D=true, with_ff=true, wd=Float64(0), initialization=DiscreteComponents.InitialCondition.InitialOutput(; y0=u_trim[2]), pitch_overrides...))
-  __bindings[pitch.y_max] = elevator_limit
-  __bindings[pitch.y_min] = -elevator_limit
-  # Now remove initial conditions in pitch that correspond to the bindings just added
-  __pitch_ics = ModelingToolkit.get_initial_conditions(pitch)
-  __no_namespace_pitch = ModelingToolkit.toggle_namespacing(pitch, false)
-  __pitch_y_max = Symbolics.unwrap(__no_namespace_pitch.y_max)::Symbolics.SymbolicT
-  delete!(__pitch_ics, __pitch_y_max)
-  __pitch_y_min = Symbolics.unwrap(__no_namespace_pitch.y_min)::Symbolics.SymbolicT
-  delete!(__pitch_ics, __pitch_y_min)
+  push!(__systems, @named pitch = DiscreteComponents.DiscretePIDScheduled(; with_I=false, with_D=true, with_ff=true, wd=Float64(0), y_max=elevator_limit, y_min=-elevator_limit, initialization=DiscreteComponents.InitialCondition.InitialOutput(; y0=u_trim[2]), __overrides = pitch_overrides))
+  __dyad_bind_final!(__bindings, pitch, Symbol[], :y_max, elevator_limit)
+  __dyad_bind_final!(__bindings, pitch, Symbol[], :y_min, -elevator_limit)
   # Subcomponent altitude_hold of type DiscreteComponents.DiscretePIDScheduled
   altitude_hold_overrides = __pop_subcomponent_overrides!(__overrides, "altitude_hold")
-  push!(__systems, @named altitude_hold = DiscreteComponents.DiscretePIDScheduled(; with_I=true, with_D=true, with_ff=true, wd=Float64(0), initialization=DiscreteComponents.InitialCondition.InitialOutput(; y0=trim_init[5]), altitude_hold_overrides...))
-  __bindings[altitude_hold.y_max] = pitch_limit
-  __bindings[altitude_hold.y_min] = -pitch_limit
-  # Now remove initial conditions in altitude_hold that correspond to the bindings just added
-  __altitude_hold_ics = ModelingToolkit.get_initial_conditions(altitude_hold)
-  __no_namespace_altitude_hold = ModelingToolkit.toggle_namespacing(altitude_hold, false)
-  __altitude_hold_y_max = Symbolics.unwrap(__no_namespace_altitude_hold.y_max)::Symbolics.SymbolicT
-  delete!(__altitude_hold_ics, __altitude_hold_y_max)
-  __altitude_hold_y_min = Symbolics.unwrap(__no_namespace_altitude_hold.y_min)::Symbolics.SymbolicT
-  delete!(__altitude_hold_ics, __altitude_hold_y_min)
+  push!(__systems, @named altitude_hold = DiscreteComponents.DiscretePIDScheduled(; with_I=true, with_D=true, with_ff=true, wd=Float64(0), y_max=pitch_limit, y_min=-pitch_limit, initialization=DiscreteComponents.InitialCondition.InitialOutput(; y0=trim_init[5]), __overrides = altitude_hold_overrides))
+  __dyad_bind_final!(__bindings, altitude_hold, Symbol[], :y_max, pitch_limit)
+  __dyad_bind_final!(__bindings, altitude_hold, Symbol[], :y_min, -pitch_limit)
   # Subcomponent autothrottle of type DiscreteComponents.DiscretePIDScheduled
   autothrottle_overrides = __pop_subcomponent_overrides!(__overrides, "autothrottle")
-  push!(__systems, @named autothrottle = DiscreteComponents.DiscretePIDScheduled(; with_I=true, with_D=false, with_ff=true, wp=0.5, initialization=DiscreteComponents.InitialCondition.InitialOutput(; y0=u_trim[1]), autothrottle_overrides...))
-  __bindings[autothrottle.y_max] = thrust_max
-  __bindings[autothrottle.y_min] = Float64(0)
-  # Now remove initial conditions in autothrottle that correspond to the bindings just added
-  __autothrottle_ics = ModelingToolkit.get_initial_conditions(autothrottle)
-  __no_namespace_autothrottle = ModelingToolkit.toggle_namespacing(autothrottle, false)
-  __autothrottle_y_max = Symbolics.unwrap(__no_namespace_autothrottle.y_max)::Symbolics.SymbolicT
-  delete!(__autothrottle_ics, __autothrottle_y_max)
-  __autothrottle_y_min = Symbolics.unwrap(__no_namespace_autothrottle.y_min)::Symbolics.SymbolicT
-  delete!(__autothrottle_ics, __autothrottle_y_min)
+  push!(__systems, @named autothrottle = DiscreteComponents.DiscretePIDScheduled(; with_I=true, with_D=false, with_ff=true, wp=0.5, y_max=thrust_max, y_min=Float64(0), initialization=DiscreteComponents.InitialCondition.InitialOutput(; y0=u_trim[1]), __overrides = autothrottle_overrides))
+  __dyad_bind_final!(__bindings, autothrottle, Symbol[], :y_max, thrust_max)
+  __dyad_bind_final!(__bindings, autothrottle, Symbol[], :y_min, Float64(0))
   # Subcomponent vt_cmd of type BlockComponents.Sources.Ramp
   vt_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "vt_cmd")
-  push!(__systems, @named vt_cmd = BlockComponents.Sources.Ramp(; offset=initial_velocity, height=final_velocity - initial_velocity, start_time=ramp_start, duration=ramp_duration, vt_cmd_overrides...))
+  push!(__systems, @named vt_cmd = BlockComponents.Sources.Ramp(; offset=initial_velocity, height=final_velocity - initial_velocity, start_time=ramp_start, duration=ramp_duration, __overrides = vt_cmd_overrides))
   # Subcomponent sr_vt of type DiscreteComponents.Sampler
   sr_vt_overrides = __pop_subcomponent_overrides!(__overrides, "sr_vt")
-  push!(__systems, @named sr_vt = DiscreteComponents.Sampler(; sr_vt_overrides...))
+  push!(__systems, @named sr_vt = DiscreteComponents.Sampler(; __overrides = sr_vt_overrides))
   # Subcomponent alt_cmd of type BlockComponents.Sources.Constant
   alt_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "alt_cmd")
-  push!(__systems, @named alt_cmd = BlockComponents.Sources.Constant(; k=altitude, alt_cmd_overrides...))
+  push!(__systems, @named alt_cmd = BlockComponents.Sources.Constant(; k=altitude, __overrides = alt_cmd_overrides))
   # Subcomponent sr_alt of type DiscreteComponents.Sampler
   sr_alt_overrides = __pop_subcomponent_overrides!(__overrides, "sr_alt")
-  push!(__systems, @named sr_alt = DiscreteComponents.Sampler(; sr_alt_overrides...))
+  push!(__systems, @named sr_alt = DiscreteComponents.Sampler(; __overrides = sr_alt_overrides))
   # Subcomponent zoh of type F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold
   zoh_overrides = __pop_subcomponent_overrides!(__overrides, "zoh")
-  push!(__systems, @named zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(; n=2, zoh_overrides...))
+  push!(__systems, @named zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(; n=2, __overrides = zoh_overrides))
   # Subcomponent cmd_map of type DiscreteComponents.Examples.MatrixGain
   cmd_map_overrides = __pop_subcomponent_overrides!(__overrides, "cmd_map")
-  push!(__systems, @named cmd_map = DiscreteComponents.Examples.MatrixGain(; ny=5, nu=2, K=[newtons_per_kilonewton Float64(0.0); Float64(0.0) Float64(1.0); Float64(0.0) Float64(0.0); Float64(0.0) Float64(0.0); Float64(0.0) Float64(0.0)], cmd_map_overrides...))
+  push!(__systems, @named cmd_map = DiscreteComponents.Examples.MatrixGain(; ny=5, nu=2, K=[newtons_per_kilonewton Float64(0.0); Float64(0.0) Float64(1.0); Float64(0.0) Float64(0.0); Float64(0.0) Float64(0.0); Float64(0.0) Float64(0.0)], __overrides = cmd_map_overrides))
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
 
   ### Guesses
   isnothing(__ovr_vt_reference__guess) || (__guesses[vt_reference] = __ovr_vt_reference__guess)
@@ -243,6 +240,6 @@ lateral modes are stable.
   push!(__eqs, connect(cmd_map.y, f16plant.u_in))
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export GainScheduledPIDDemo

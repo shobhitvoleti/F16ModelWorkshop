@@ -154,8 +154,7 @@ function register_pz_plugin!(state, slot)
 
     update! = function (sol, _w)
         T = feedback(elevator_return_ratio(sol))
-        # Keep the modes that determine the visible transient; very fast
-        # actuator/filter modes would otherwise collapse the useful scale.
+        # Drop fast actuator/filter modes, which would collapse the plot scale.
         p = filter(x -> abs(x) <= 10.0, poles(T))
         z = filter(x -> abs(x) <= 10.0, tzeros(T))
         pole_re[] = real.(p)
@@ -182,13 +181,13 @@ function register_loop_transfer_plugin!(state, slot)
     panel_note!(slot, channels; halign=:right, valign=:top)
 
     update! = function (sol, w)
-        # Return ratio broken at the plant input: one singular value per control
-        # channel. The largest is highlighted; the rest set the spread.
+        # Return ratio at the plant input: one singular value per control channel,
+        # the largest highlighted.
         sv, _ = sigma(sol.Cfb * sol.P, w)
         db = 20 .* log10.(sv)
         wv = collect(w)
-        # NaN separators draw every singular value as one line object, so the
-        # panel does not need to know the channel count until the design exists.
+        # NaN separators draw all singular values as one line object, so the channel
+        # count need not be known before the first design.
         joined_x = Float64[]
         joined_y = Float64[]
         for i in axes(db, 1)
@@ -237,9 +236,8 @@ function register_gang_of_four_plugin!(state, slot)
         ps, _ = sigma(PS, w)
         cs, _ = sigma(CS, w)
         w_obs[] = collect(w)
-        # Show the worst-case singular value at each frequency. S and T are
-        # 12×12 for this one-actuator return-ratio construction; PS and CS
-        # are rectangular and therefore each have one singular value.
+        # Worst-case singular value per frequency. S and T are 12×12 for this
+        # single-actuator construction; PS and CS are rectangular, one singular value each.
         s_obs[] = vec(maximum(s; dims=1))
         t_obs[] = vec(maximum(t; dims=1))
         ps_obs[] = vec(maximum(ps; dims=1))
@@ -291,9 +289,9 @@ end
 """
     launch_lqg_designer(spec; elevator_weight=0.33)
 
-Launch the F-16 interactive tuning dashboard. The slider modifies the elevator
-entry of the LQG input-weight vector (`q2_diag[2]`); all registered views are
-recomputed from the resulting design.
+Launch the F-16 interactive tuning dashboard and return its `LQGDesignerState`. The
+slider sets the elevator entry of the LQG input weight (`q2_diag[2]`); every registered
+view is recomputed from the resulting design.
 """
 function DyadControlSystems.launch_lqg_designer(spec::LQGAnalysisSpec; elevator_weight=0.33)
     set_theme!(Theme(
@@ -322,13 +320,12 @@ function DyadControlSystems.launch_lqg_designer(spec::LQGAnalysisSpec; elevator_
         nothing,
     )
 
-    # Header.
     Label(fig[1, 1], rich(rich("·8o· ", color=BLUE), "JuliaHub");
         halign=:left, fontsize=14, font=:bold)
     Label(fig[1, 2], "TOOLING"; halign=:right, color=BLUE, fontsize=13, font=:bold)
     Label(fig[2, 1:2], "Tune it live"; halign=:left, fontsize=36, font=:bold)
 
-    # Tuning row. A logarithmic weight grid gives useful resolution over decades.
+    # Tuning row: a logarithmic weight grid resolves the slider over decades.
     controls = fig[3, 1:2] = GridLayout()
     Label(controls[1, 1], "Q2 · INPUT PENALTY"; color=MUTED, font=:bold, halign=:left)
     weight_grid = sort!(unique!(vcat(
@@ -345,7 +342,7 @@ function DyadControlSystems.launch_lqg_designer(spec::LQGAnalysisSpec; elevator_
     colsize!(controls, 2, Fixed(230))
     colsize!(controls, 3, Fixed(110))
 
-    # Four independent view plugins in the 2×2 layout.
+    # 2×2 grid of view plugins.
     views = fig[4, 1:2] = GridLayout()
     register_step_plugin!(state, views[1, 1])
     register_pz_plugin!(state, views[1, 2])

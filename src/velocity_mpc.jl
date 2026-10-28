@@ -1,12 +1,11 @@
 """
 Design-time support for the velocity-scheduled MPC of tutorial step 8: the plant's
-symbolic linearization, straight-and-level trim at an airspeed, and the bank of
-`LinearMPC` controllers that `dyad/Tutorial/08_velocity_mpc.dyad` hands to
-`MPCComponents.Experimental`. The loop itself is Dyad; this module only supplies the
-numbers a Dyad structural parameter cannot compute on its own.
+symbolic linearization, straight-and-level trim, and the bank of `LinearMPC` controllers
+that `dyad/Tutorial/08_velocity_mpc.dyad` hands to `MPCComponents.Experimental`. The loop
+itself is Dyad; this module computes the structural parameters Dyad cannot.
 
-Controller units are kilonewtons of thrust and degrees of surface deflection; plant
-units are newtons and degrees. `CONTROL_UNITS` converts between them.
+Controller units are kN of thrust and degrees of deflection; the plant takes N and
+degrees. `CONTROL_UNITS` converts between them.
 """
 module VelocityMPC
 
@@ -25,8 +24,6 @@ export F16Dynamics, bank, build_bank, linear_model, member_design, reference_map
 
 "Public state order of the plant, matching `F16PlantModel.y_out`."
 const STATE_NAMES = (:npos, :epos, :alt, :phi, :theta, :psi, :vt, :alpha, :beta, :P, :Q, :R)
-"Control order of the plant's first four inputs; the leading-edge flap is held at zero."
-const CONTROL_NAMES = (:T, :el, :ail, :rud)
 "The ten regulated states: everything but the horizontal position, which never settles."
 const FLIGHT = 3:12
 "Index of true airspeed within `STATE_NAMES`."
@@ -88,12 +85,11 @@ end
     F16Dynamics(plant::ModelingToolkit.System)
     F16Dynamics(; xcg=0.35)
 
-Compile an F16 plant into nonlinear dynamics and a symbolic Jacobian function once.
-The keyword form builds `Plant.F16PlantModel` at the given CG; pass a `System` to use
-a plant configured elsewhere. Public state order is `STATE_NAMES`; inputs are thrust
-(N) and three surface deflections (degrees). Leading-edge flap is held at zero.
-`permutation` maps the public order onto the compiled system's unknowns, and
-`inverse_permutation` maps back.
+An F16 plant compiled once into nonlinear dynamics and a symbolic Jacobian. The keyword
+form builds `Plant.F16PlantModel` at CG `xcg`; pass a `System` to use a plant configured
+elsewhere. States follow `STATE_NAMES`; inputs are thrust (N), elevator, aileron and
+rudder (deg), with the leading-edge flap held at zero. `permutation` maps the public
+order onto the compiled unknowns; `inverse_permutation` maps back.
 """
 struct F16Dynamics{F,L,P}
     rhs::F
@@ -138,11 +134,12 @@ function (d::F16Dynamics)(x, u)
 end
 
 """
-    trim_point(dynamics, velocity; altitude=3000.0)
+    trim_point(dynamics, velocity; altitude=3000.0) -> NamedTuple
 
-Straight-and-level trim at fixed altitude and airspeed. Solve thrust, elevator,
-angle of attack, and pitch, and verify all ten flight-state derivatives. North
-position advances at airspeed and is deliberately excluded from equilibrium.
+Straight-and-level trim at `velocity` (m/s) and `altitude` (m): solve thrust, elevator,
+angle of attack and pitch, then verify all ten flight-state derivatives vanish. North
+position advances at airspeed and is excluded from the equilibrium. Returns
+`(; velocity, x, u, residual_norm)` with the 12 plant states `x` and 4 plant inputs `u`.
 """
 function trim_point(d::F16Dynamics, velocity; altitude=ALTITUDE)
     isfinite(velocity) && velocity > 0 || throw(ArgumentError("trim velocity must be positive and finite"))
@@ -154,8 +151,8 @@ function trim_point(d::F16Dynamics, velocity; altitude=ALTITUDE)
         u = [1e4*z[1], z[2], zero(z[1]), zero(z[1])]
         return x, u
     end
-    # Numerical differentiation avoids imposing dual-number support on the
-    # compiled ModelingToolkit function and its concrete parameter storage.
+    # Finite differences avoid requiring dual-number support from the compiled
+    # ModelingToolkit function and its concrete parameter storage.
     residual(z, _) = begin
         x, u = unpack(z)
         f = d(x, u)
@@ -172,10 +169,11 @@ function trim_point(d::F16Dynamics, velocity; altitude=ALTITUDE)
 end
 
 """
-    linear_model(dynamics, x, u; Ts=0.05)
+    linear_model(dynamics, x, u; Ts=0.05) -> NamedTuple
 
-Evaluate the symbolic linearization at a physical operating point, reorder it to
-`STATE_NAMES`, remove horizontal position, and discretize with a zero-order hold.
+The symbolic linearization at plant state `x` (12) and plant input `u` (4), in
+`STATE_NAMES` order: the continuous `Ac` (12×12) and `Bc` (12×4), and `A`, `B` for the
+regulated states `FLIGHT` under a zero-order hold of period `Ts`.
 """
 function linear_model(d::F16Dynamics, x, u; Ts=0.05)
     isfinite(Ts) && Ts > 0 || throw(ArgumentError("Ts must be positive and finite"))
@@ -190,18 +188,16 @@ function linear_model(d::F16Dynamics, x, u; Ts=0.05)
     return (; A=discrete.A, B=discrete.B, Ac=A, Bc=B, Ts=Float64(Ts))
 end
 
-# Compiling the plant and solving a trim are the two expensive steps here, and one Dyad
-# model asks for them from several independent structural parameters (the bank, the
-# plant's initial state, the reference gains). Memoizing on the arguments keeps a model
-# build to one symbolic linearization and one trim solve per flight condition.
+# Memoized on the arguments: one Dyad model requests the compiled plant and its trims
+# from several structural parameters (bank, initial state, reference gains), and both are
+# expensive.
 const _DYNAMICS = Dict{Float64,F16Dynamics}()
 const _TRIMS = Dict{NTuple{3,Float64},NamedTuple}()
 
 """
     dynamics(xcg=XCG) -> F16Dynamics
 
-The compiled plant dynamics at center of gravity `xcg`, built on first use and reused
-afterwards.
+The compiled plant at center of gravity `xcg`, built on first use and cached.
 """
 dynamics(xcg=XCG) = get!(() -> F16Dynamics(; xcg), _DYNAMICS, Float64(xcg))
 
@@ -213,10 +209,9 @@ end
 """
     trim_states(velocity=INITIAL_VELOCITY, altitude=ALTITUDE; xcg=XCG) -> Vector{Float64}
 
-The twelve absolute plant states `STATE_NAMES` of straight-and-level flight at
-`velocity` (m/s) and `altitude` (m). `VelocityMPCDemo` seeds the plant's `*_init`
-parameters and its reference gains from this, so the flight condition the loop starts
-from and the trims the bank is built around are one and the same solve.
+The twelve plant states `STATE_NAMES` of straight-and-level flight at `velocity` (m/s)
+and `altitude` (m). `VelocityMPCDemo` seeds the plant's `*_init` parameters from this; the
+bank and reference gains reuse the same cached trim solve.
 """
 trim_states(velocity=INITIAL_VELOCITY, altitude=ALTITUDE; xcg=XCG) =
     copy(_trim(velocity, altitude, xcg).x)
@@ -224,10 +219,9 @@ trim_states(velocity=INITIAL_VELOCITY, altitude=ALTITUDE; xcg=XCG) =
 """
     trim_command(velocity=INITIAL_VELOCITY, altitude=ALTITUDE; xcg=XCG) -> Vector{Float64}
 
-The trimmed command `[thrust (kN), elevator, aileron, rudder (deg)]` of the same flight
-condition, in the controller's units. `LinearMPCScheduledOptimizer.u0` takes this as
-the command assumed applied before the first tick, so the rate limits do not have to
-walk the thrust up from zero.
+The trimmed command `[thrust (kN), elevator, aileron, rudder (deg)]` (controller units) at
+`velocity` and `altitude`. `LinearMPCScheduledOptimizer.u0` takes it as the command applied
+before the first tick, so the rate limits need not ramp thrust up from zero.
 """
 trim_command(velocity=INITIAL_VELOCITY, altitude=ALTITUDE; xcg=XCG) =
     _trim(velocity, altitude, xcg).u ./ CONTROL_UNITS
@@ -259,28 +253,23 @@ end
     member_design(velocity, altitude=ALTITUDE, Ts=0.05; xcg=XCG, q=STATE_WEIGHTS,
                   sx=STATE_SCALES, r=COMMAND_WEIGHTS, su=COMMAND_SCALES) -> NamedTuple
 
-One bank member: the plant's linearization at the straight-and-level trim of `velocity`
-(m/s) and `altitude` (m), together with the quadratic cost built on it. States are the
-ten regulated states `STATE_NAMES[FLIGHT]` in plant units, commands are kilonewtons of
-thrust and degrees of deflection, and everything is in the absolute physical frame
-`bank` puts every member in rather than in deviation coordinates.
-
-The fields are
+One bank member: the linearization at the straight-and-level trim of `velocity` (m/s) and
+`altitude` (m) with its quadratic cost, in the absolute physical frame of `build_bank`
+(regulated states `STATE_NAMES[FLIGHT]` in plant units, commands in kN and deg), not
+deviation coordinates. Fields:
 
 - `velocity`, `x`, `u` — the flight condition, its ten regulated trim states, and its
-  trimmed command in controller units.
-- `A`, `B`, `f_offset` — the continuous model `ẋ = A x + B u + f_offset`, whose affine
-  term `-A x - B u` makes the trim an exact equilibrium.
+  trimmed command.
+- `A`, `B`, `f_offset` — the continuous model `ẋ = A x + B u + f_offset`; the offset
+  `-A x - B u` makes the trim an exact equilibrium.
 - `F`, `G`, `Ts` — the same model under a zero-order hold of period `Ts`.
-- `Q1`, `Q2` — the stage weights `diagm(q ./ sx.^2)` and `diagm(r ./ su.^2)`, penalizing
-  the state against a reference and the command *level* against `u`.
-- `eu` — the linear control cost `-Q2 u` that performs that centering in LinearMPC's
-  `0.5 u' Q2 u + eu'u` convention.
-- `Qf` — the terminal weight `are(Discrete, F, G, Q1, Q2)`, the cost-to-go of that same
-  stage cost.
-- `K` — the discrete LQR gain `lqr(Discrete, F, G, Q1, Q2)`. Because `Qf` is the
-  cost-to-go, the member's unconstrained optimum against a reference `ref` is
-  `u - K * (x_meas - ref)` for any horizon length.
+- `Q1 = diagm(q ./ sx.^2)`, `Q2 = diagm(r ./ su.^2)` — stage weights on the state against
+  a reference and on the command *level* against `u`.
+- `eu = -Q2 u` — the linear control cost that centers the command penalty on `u`, in
+  LinearMPC's `0.5 u' Q2 u + eu'u` convention.
+- `Qf = are(Discrete, F, G, Q1, Q2)` — the terminal weight, the stage cost's cost-to-go.
+- `K = lqr(Discrete, F, G, Q1, Q2)` — since `Qf` is the cost-to-go, the unconstrained
+  optimum against a reference `ref` is `u - K * (x_meas - ref)` for any horizon.
 """
 function member_design(velocity, altitude=ALTITUDE, Ts=0.05;
         xcg=XCG, q=STATE_WEIGHTS, sx=STATE_SCALES, r=COMMAND_WEIGHTS, su=COMMAND_SCALES)
@@ -311,8 +300,8 @@ end
     bank(velocities=KNOTS, altitude=ALTITUDE, initial_velocity=INITIAL_VELOCITY, Ts=0.05; kwargs...)
 
 The `MPCComponents.MPCRef` bank `VelocityMPCDemo` schedules on measured airspeed: one
-`member_design` per knot of `velocities`, all at `altitude`. See `build_bank` for what the
-members share and for the keyword arguments.
+`member_design` per knot of `velocities`, all at `altitude`. See `build_bank` for the
+shared design and keyword arguments.
 """
 function bank(velocities=KNOTS, altitude=ALTITUDE, initial_velocity=INITIAL_VELOCITY, Ts=0.05; kwargs...)
     grid = check_grid(velocities)
@@ -325,29 +314,26 @@ end
     build_bank(knots, conditions, initial, Ts=0.05; xcg, Np=40, q, sx, r, su, umin, umax,
                rate, measurement_noise=1e-6) -> MPCComponents.MPCRef
 
-A bank of constrained `LinearMPC` members, member `j` the `member_design` at the flight
-condition `conditions[j] = (velocity, altitude)` and filed under `knots[j]`. Steps 8 and 9
-both build their banks here; they differ only in the conditions and in how the members
-are scheduled.
+A bank of constrained `LinearMPC` members, member `j` being the `member_design` at
+`conditions[j] = (velocity, altitude)`, filed under `knots[j]`. Steps 8 and 9 both build
+their banks here; they differ only in the conditions and in how members are scheduled.
 
-All members share **one absolute physical frame** — states in plant units, commands in kN
-and degrees — because the scheduled components require one operating point and because
-it makes the weighted sum of the members' commands an absolute command. Each member
-carries its own affine offset `f_j = -A_j x_j - B_j u_j`, so it is exact at its own trim.
-`C` is the identity: references, output weights and measurements are plain states.
+All members share one absolute physical frame (states in plant units, commands in kN and
+deg): the scheduled components require a single operating point, and it makes the
+weighted sum of member commands an absolute command. Each member's affine offset
+`f_j = -A_j x_j - B_j u_j` makes it exact at its own trim. `C` is the identity, so
+references, output weights and measurements are plain states.
 
-The stage cost is `(x - r)' Q1 (x - r) + (u - u_j)' Q2 (u - u_j)`, with
-`Q1 = diagm(q ./ sx.^2)` and `Q2 = diagm(r ./ su.^2)` (Bryson scales `sx`, `su`). The
-centering on the member's own trimmed command `u_j` is LinearMPC's linear control cost
-`eu = -Q2 u_j`, so the penalty costs nothing at that trim. The terminal weight is the
-discrete Riccati cost-to-go of the same stage cost, so each member's unconstrained
-optimum is its infinite-horizon LQR for any horizon `Np`: the horizon buys constraint
-handling, not closed-loop behaviour.
+The stage cost is `(x - r)' Q1 (x - r) + (u - u_j)' Q2 (u - u_j)` with the Bryson weights
+of `member_design`; the centering on `u_j` is LinearMPC's linear cost `eu = -Q2 u_j`. The
+terminal weight is the discrete Riccati cost-to-go, so each member's unconstrained optimum
+is its infinite-horizon LQR for any `Np`: the horizon buys constraint handling, not
+closed-loop behaviour.
 
-`umin`/`umax` bound the command and `rate` its change per second; they are common to all
-members, so the convex blend of the members' commands respects them too. The observer
-starts at the trim of `initial = (velocity, altitude)`, and `measurement_noise` is small
-enough against the unit process covariance that the estimate is the measurement.
+`umin`/`umax` bound the command and `rate` its change per second. They are common to all
+members, so the convex blend of member commands respects them too. The observer starts at
+the trim of `initial = (velocity, altitude)`; `measurement_noise` is small against the
+unit process covariance, so the estimate is the measurement.
 """
 function build_bank(knots, conditions, initial, Ts=0.05;
         xcg=XCG, Np=40,
@@ -372,8 +358,7 @@ function build_bank(knots, conditions, initial, Ts=0.05;
         all(lower .<= design.u .<= upper) || throw(ArgumentError(
             "the trim command at $v m/s and $h m, $(design.u), is outside [umin, umax]"))
     end
-    # Only the model, its offset, the recentred control cost and the terminal weight vary
-    # between members; everything passed to build_linear_mpc_bank below is shared.
+    # Only these vary between members; the keyword arguments below are shared.
     members = Dict(k => (; d.A, d.B, d.f_offset, d.eu, d.Qf) for (k, d) in zip(grid, designs))
     Inu = Matrix{Float64}(I, 4, 4)
     Inx = Matrix{Float64}(I, 10, 10)

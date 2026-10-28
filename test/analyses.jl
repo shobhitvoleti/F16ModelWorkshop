@@ -4,12 +4,11 @@ using F16ModelWorkshop.Tutorial
 using F16ModelWorkshop.ScheduledPID
 using DyadInterface
 using DyadInterface: AnalysisSolutionMetadata, artifacts
-import ControlSystemsBase as CS
 import Plots
 import TOML
 
-# What Studio shows of an analysis is its artifacts. These tests check that each tutorial
-# analysis offers the artifacts its step refers to, and that they say what the step says.
+# Studio shows an analysis through its artifacts. These tests check that each tutorial
+# analysis offers the artifacts its step refers to, with the content the step describes.
 
 artifact_names(result) = [a.name for a in AnalysisSolutionMetadata(result).artifacts]
 
@@ -95,13 +94,20 @@ end
     @test "top.c" in files.file && "top.h" in files.file
 end
 
+# The numbers of a CSV table, one vector per line (the header's empty corner cell dropped).
+csv_numbers(path) = [parse.(Float64, filter(!isempty, split(line, ','))) for line in eachline(path)]
+
 @testset "envelope analysis rebuilds the committed trim table" begin
     dir = mktempdir()
     spec = F16ModelWorkshop.EnvelopeAnalysisSpec(; velocities = [140.0, 250.0],
         altitudes = [0.0, 9000.0], points = 4, table_dir = dir)
     result = DyadInterface.run_analysis(spec)
     @test length(result.nodes) == 9
-    @test read(artifacts(result, :TrimTable), String) ==
-          read(F16ModelWorkshop.asset_path("envelope_trim_alpha.csv"), String)
+    # Same grid, and the same trims to round-off: the last bits of a Newton solve vary
+    # with platform and package versions.
+    rebuilt = csv_numbers(artifacts(result, :TrimTable))
+    committed = csv_numbers(F16ModelWorkshop.asset_path("envelope_trim_alpha.csv"))
+    @test length.(rebuilt) == length.(committed)
+    @test reduce(vcat, rebuilt) ≈ reduce(vcat, committed) rtol = 1e-10
     @test artifacts(result, :Envelope) isa Plots.Plot
 end

@@ -1,13 +1,12 @@
 """
 Tutorial 2 — Linearization.
 
-Linearizes the open-loop F16 plant about the trim operating point, from the four control
-inputs with aerodynamic effect (uT, uEl, uAil, uRud — the leading-edge flap is inert in
-this plant) to the 12 measured outputs (yn..yR). It reuses the instrumented design model
-`LQGDemo` (03_lqg_continuous.dyad) and opens the feedback loop at the measurement
-outputs, so the plant keeps its trim command inputs while the controller feedback is
-severed — the result is the bare plant P, not the closed loop. Analysis-point names are
-scalar, one per channel (see the note in 03).
+Linearizes the open-loop F16 plant about trim, from the four control inputs with
+aerodynamic effect (uT, uEl, uAil, uRud; the leading-edge flap is inert in this plant) to
+the 12 measured outputs (yn..yR). It reuses the design model `LQGDemo` (step 3) with the
+loop opened at the 12 measurement analysis points: the plant keeps its trim command
+inputs and the controller feedback is cut, so the result is the bare plant P, not the
+closed loop.
 
 Output: poles, zeros, and Bode/step responses of the linearized plant.
 """

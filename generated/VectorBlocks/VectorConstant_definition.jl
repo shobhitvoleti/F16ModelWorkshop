@@ -5,7 +5,7 @@
 
 
 @doc Markdown.doc"""
-   VectorConstant(; name, n, k)
+   VectorConstant(; name, n, k, __overrides)
 
 Vector constant source, `y = k`: the `n`-wide analogue of `BlockComponents.Sources.Constant`.
 
@@ -20,7 +20,7 @@ Vector constant source, `y = k`: the `n`-wide analogue of `BlockComponents.Sourc
 
  * `y` - This connector represents a real signal as an output from a component ([`RealOutput`](@ref))
 """
-@component function VectorConstant(; name = nothing, n=1, k=zeros(n), kwargs...)
+@component function VectorConstant(; name = nothing, var"n"=1, var"k"=nothing, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -28,7 +28,7 @@ Vector constant source, `y = k`: the `n`-wide analogue of `BlockComponents.Sourc
     @named model = VectorConstant()
   """))
 
-  __overrides = __build_overrides(kwargs)
+  __overrides = Dict{String, Any}(__overrides)
   __params = Symbolics.SymbolicT[]
   __vars = Symbolics.SymbolicT[]
   __systems = System[]
@@ -37,6 +37,13 @@ Vector constant source, `y = k`: the `n`-wide analogue of `BlockComponents.Sourc
   __initialization_eqs = Equation[]
   __eqs = Equation[]
   __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Keyword argument overrides
+  haskey(__overrides, "n") && (n = pop!(__overrides, "n"))
+  haskey(__overrides, "k") && (k = pop!(__overrides, "k"))
+
+  ### Deferred keyword defaults (defaults referencing other keyword arguments)
+  isnothing(k) && (k = zeros(n))
 
   ### Structural Parameters (functions)
 
@@ -53,7 +60,7 @@ Vector constant source, `y = k`: the `n`-wide analogue of `BlockComponents.Sourc
   ### Symbolic Parameters
   __local__k = k
   append!(__params, @parameters (k[1:n]::Real), [description = "Constant output vector."])
-  __initial_conditions[k] = __local__k
+  __dyad_seed_parameter!(__initial_conditions, __bindings, k, __local__k)
 
   ### Final Parameters (assignments)
 
@@ -70,7 +77,7 @@ Vector constant source, `y = k`: the `n`-wide analogue of `BlockComponents.Sourc
   ### Components
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
 
   ### Guesses
 
@@ -83,6 +90,6 @@ Vector constant source, `y = k`: the `n`-wide analogue of `BlockComponents.Sourc
   push!(__eqs, y ~ k)
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export VectorConstant

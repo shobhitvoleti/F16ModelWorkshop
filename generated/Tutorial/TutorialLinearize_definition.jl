@@ -5,11 +5,113 @@
 
 
 using DyadInterface
-using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel, SpecializationLevel
-using ModelingToolkit: SymbolicT, toggle_namespacing
 using DyadControlSystems: AbstractLinearAnalysisSpec, LinearAnalysisSpec
-@kwdef mutable struct TutorialLinearizeSpec <: AbstractLinearAnalysisSpec
+@component function TutorialLinearize__System(; name = nothing, var"inputs"=["uT", "uEl", "uAil", "uRud"], var"outputs"=["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"], var"wl"=-1, var"wu"=-1, var"num_frequencies"=3000, var"duration"=-1, var"loop_openings"=["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"], var"t"=0.0, var"symbolic"=false, __overrides = Dict{String, Any}())
+  isnothing(name) && throw(ArgumentError("""
+    The `name` keyword must be provided. Please consider using the `@named` macro,
+    like so:
+  
+    @named model = TutorialLinearize__System()
+  """))
+
+  __overrides = Dict{String, Any}(__overrides)
+  __params = Symbolics.SymbolicT[]
+  __vars = Symbolics.SymbolicT[]
+  __systems = System[]
+  __guesses = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initial_conditions = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initialization_eqs = Equation[]
+  __eqs = Equation[]
+  __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Keyword argument overrides
+  haskey(__overrides, "inputs") && (inputs = pop!(__overrides, "inputs"))
+  haskey(__overrides, "outputs") && (outputs = pop!(__overrides, "outputs"))
+  haskey(__overrides, "wl") && (wl = pop!(__overrides, "wl"))
+  haskey(__overrides, "wu") && (wu = pop!(__overrides, "wu"))
+  haskey(__overrides, "num_frequencies") && (num_frequencies = pop!(__overrides, "num_frequencies"))
+  haskey(__overrides, "duration") && (duration = pop!(__overrides, "duration"))
+  haskey(__overrides, "loop_openings") && (loop_openings = pop!(__overrides, "loop_openings"))
+  haskey(__overrides, "t") && (t = pop!(__overrides, "t"))
+  haskey(__overrides, "symbolic") && (symbolic = pop!(__overrides, "symbolic"))
+
+  ### Structural Parameters (functions)
+
+  ### Structural Parameters (Final)
+
+  ### Path Parameters (functions)
+
+  ### Path Parameters (non-final)
+
+  ### Final Parameters (declarations)
+
+  ### Deferred assignment (default values that depend on final parameters)
+
+  ### Symbolic Parameters
+  __local__inputs = inputs
+  append!(__params, @parameters (inputs::Array{String, 1}))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, inputs, __local__inputs)
+  __local__outputs = outputs
+  append!(__params, @parameters (outputs::Array{String, 1}))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, outputs, __local__outputs)
+  __local__wl = wl
+  append!(__params, @parameters (wl::Float64))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, wl, __local__wl)
+  __local__wu = wu
+  append!(__params, @parameters (wu::Float64))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, wu, __local__wu)
+  __local__num_frequencies = num_frequencies
+  append!(__params, @parameters (num_frequencies::Int))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, num_frequencies, __local__num_frequencies)
+  __local__duration = duration
+  append!(__params, @parameters (duration::Float64))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, duration, __local__duration)
+  __local__loop_openings = loop_openings
+  append!(__params, @parameters (loop_openings::Array{String, 1}))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, loop_openings, __local__loop_openings)
+  __local__t = t
+  append!(__params, @parameters (t::Float64))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, t, __local__t)
+  __local__symbolic = symbolic
+  append!(__params, @parameters (symbolic::Bool))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, symbolic, __local__symbolic)
+
+  ### Final Parameters (assignments)
+
+  ### Final Path Parameters
+
+  ### Variables (declarations)
+
+  ### Variables (assignments)
+
+  ### Constants
+  __constants = Any[]
+
+  ### Components
+  # Subcomponent model of type F16ModelWorkshop.Tutorial.LQGDemo
+  model_overrides = __pop_subcomponent_overrides!(__overrides, "model")
+  push!(__systems, @named model = F16ModelWorkshop.Tutorial.LQGDemo(; __overrides = model_overrides))
+
+  ### Check there are no unmatched overrides
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
+
+  ### Guesses
+
+  ### Initialization Equations
+
+  ### Assertions
+  __assertions = []
+
+  ### Equations
+
+  # Return completely constructed System
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+end
+export TutorialLinearize__System
+
+@kwdef struct TutorialLinearize__Spec <: AbstractLinearAnalysisSpec
   name::Symbol = :TutorialLinearize
+  __overrides::Dict{SymbolicT, SymbolicT} = Dict{SymbolicT, SymbolicT}()
   var"inputs"::Array{String, 1} = ["uT", "uEl", "uAil", "uRud"]
   var"outputs"::Array{String, 1} = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"]
   var"wl"::Float64 = -1
@@ -21,31 +123,38 @@ using DyadControlSystems: AbstractLinearAnalysisSpec, LinearAnalysisSpec
   var"symbolic"::Bool = false
   # Tutorial 3 — Continuous LQG control.
   # 
-  # Design model built with vector connectors: the F16 plant (vector I/O) closed with
-  # an LQG regulator, trim folded in as a control offset. Analysis points must be
-  # SCALAR (LQGAnalysis counts each AP name as one channel, not a vector's N), so the
-  # vector signals are tapped through a demux/mux pair exactly at the 17 analysis
-  # points, and stay vector everywhere else — a clean bus instead of per-channel
-  # spaghetti:
+  # Design model: the F16 plant (vector I/O) closed with an LQG regulator, trim added as a
+  # control offset. Analysis points must be scalar, because LQGAnalysis counts each AP name
+  # as one channel, not a vector's N. The vector signals therefore pass through a demux/mux
+  # pair at the 17 analysis points and stay vector elsewhere:
   #   measurements: plant.y_out -> Demux4x3 -> 4x Demux3 -[yn..yR]-> 4x Mux3 -> Mux4x3 -> err
   #   controls:     controller  -> Demux5 -> (+trim) -[uT,uEl,uAil,uRud,uLef]-> Mux5 -> plant.u_in
-  #   (LEF carries no aero effect in the plant, so the synthesis returns a zero gain row for
-  #   it; it is kept as a design control so the controller has the plant's full 5 channels.)
+  # The leading-edge flap has no aero effect in the plant, so the synthesis returns a zero
+  # gain row for `uLef`; it stays a design control so the controller covers all 5 plant inputs.
   # 
-  # `TutorialLQG` linearizes the plant between these points and synthesizes the LQG
-  # gains; `TutorialLinearize` (02) linearizes the same instrumented model.
+  # `TutorialLQG` linearizes the plant between these points and synthesizes the LQG gains;
+  # `TutorialLinearize` (step 2) linearizes the same model.
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.LQGDemo(; name=:LQGDemo)
+  __system::System = TutorialLinearize__System(; name, var"inputs"=var"inputs", var"outputs"=var"outputs", var"wl"=var"wl", var"wu"=var"wu", var"num_frequencies"=var"num_frequencies", var"duration"=var"duration", var"loop_openings"=var"loop_openings", var"t"=var"t", var"symbolic"=var"symbolic")
 end
 
-function DyadInterface.run_analysis(spec::TutorialLinearizeSpec)
+function __dyad_base_analysis_spec(spec::TutorialLinearize__Spec)
   overrides = Dict{SymbolicT, SymbolicT}()
   no_namespace_model = toggle_namespacing(spec.model, false)
   
-  base_spec = LinearAnalysisSpec(;
-    name=:LinearAnalysis, overrides, inputs=spec.inputs, outputs=spec.outputs, wl=spec.wl, wu=spec.wu, num_frequencies=spec.num_frequencies, duration=spec.duration, loop_openings=spec.loop_openings, t=spec.t, symbolic=spec.symbolic, model=spec.model
+  merge!(overrides, spec.__overrides)
+  LinearAnalysisSpec(;
+    name=spec.name, overrides, __system=spec.__system, var"inputs"=spec.var"inputs", var"outputs"=spec.var"outputs", var"wl"=spec.var"wl", var"wu"=spec.var"wu", var"num_frequencies"=spec.var"num_frequencies", var"duration"=spec.var"duration", var"loop_openings"=spec.var"loop_openings", var"t"=spec.var"t", var"symbolic"=spec.var"symbolic", var"model"=spec.var"model"
   )
-  run_analysis(base_spec)
 end
 
-TutorialLinearize(;kwargs...) = run_analysis(TutorialLinearizeSpec(;kwargs...))
-export TutorialLinearize, TutorialLinearizeSpec
+function DyadInterface.run_analysis(spec::TutorialLinearize__Spec)
+  run_analysis(__dyad_base_analysis_spec(spec))
+end
+
+function DyadInterface.setup_analysis(spec::TutorialLinearize__Spec; kwargs...)
+  DyadInterface.setup_analysis(__dyad_base_analysis_spec(spec); kwargs...)
+end
+
+TutorialLinearize(;kwargs...) = run_analysis(TutorialLinearize__Spec(;kwargs...))
+export TutorialLinearize, TutorialLinearize__Spec

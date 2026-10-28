@@ -5,11 +5,93 @@
 
 
 using DyadInterface
-using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel, SpecializationLevel
-using ModelingToolkit: SymbolicT, toggle_namespacing
 using F16ModelWorkshop: AbstractFlightAnalysisSpec, FlightAnalysisSpec
-@kwdef mutable struct TutorialEnvelopeMPCSpec <: AbstractFlightAnalysisSpec
+@component function TutorialEnvelopeMPC__System(; name = nothing, var"stop"=80.0, var"panels"=["Airspeed (m/s): f16plant.vt, vt_reference", "Altitude (m): f16plant.alt, alt_reference", "Airspeed weights of the bank (140, 175, 210 m/s): sched_vt.w[1], sched_vt.w[2], sched_vt.w[3]", "Altitude weights of the bank (1000, 4000, 7000 m): sched_alt.w[1], sched_alt.w[2], sched_alt.w[3]", "Elevator (deg): f16plant.el", "Thrust (N): f16plant.T"], var"abstol"=0.000001, var"reltol"=0.000001, __overrides = Dict{String, Any}())
+  isnothing(name) && throw(ArgumentError("""
+    The `name` keyword must be provided. Please consider using the `@named` macro,
+    like so:
+  
+    @named model = TutorialEnvelopeMPC__System()
+  """))
+
+  __overrides = Dict{String, Any}(__overrides)
+  __params = Symbolics.SymbolicT[]
+  __vars = Symbolics.SymbolicT[]
+  __systems = System[]
+  __guesses = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initial_conditions = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initialization_eqs = Equation[]
+  __eqs = Equation[]
+  __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Keyword argument overrides
+  haskey(__overrides, "stop") && (stop = pop!(__overrides, "stop"))
+  haskey(__overrides, "panels") && (panels = pop!(__overrides, "panels"))
+  haskey(__overrides, "abstol") && (abstol = pop!(__overrides, "abstol"))
+  haskey(__overrides, "reltol") && (reltol = pop!(__overrides, "reltol"))
+
+  ### Structural Parameters (functions)
+
+  ### Structural Parameters (Final)
+
+  ### Path Parameters (functions)
+
+  ### Path Parameters (non-final)
+
+  ### Final Parameters (declarations)
+
+  ### Deferred assignment (default values that depend on final parameters)
+
+  ### Symbolic Parameters
+  __local__stop = stop
+  append!(__params, @parameters (stop::Float64), [description = "End time of the simulation, s."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, stop, __local__stop)
+  __local__panels = panels
+  append!(__params, @parameters (panels::Array{String, 1}), [description = "Panels of the `FlightResponse` figure, each `Title: signal, signal, ...`."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, panels, __local__panels)
+  __local__abstol = abstol
+  append!(__params, @parameters (abstol::Float64), [description = "Absolute tolerance of the ODE solver."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, abstol, __local__abstol)
+  __local__reltol = reltol
+  append!(__params, @parameters (reltol::Float64), [description = "Relative tolerance of the ODE solver."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, reltol, __local__reltol)
+
+  ### Final Parameters (assignments)
+
+  ### Final Path Parameters
+
+  ### Variables (declarations)
+
+  ### Variables (assignments)
+
+  ### Constants
+  __constants = Any[]
+
+  ### Components
+  # Subcomponent model of type F16ModelWorkshop.Tutorial.EnvelopeMPCDemo
+  model_overrides = __pop_subcomponent_overrides!(__overrides, "model")
+  push!(__systems, @named model = F16ModelWorkshop.Tutorial.EnvelopeMPCDemo(; __overrides = model_overrides))
+
+  ### Check there are no unmatched overrides
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
+
+  ### Guesses
+
+  ### Initialization Equations
+
+  ### Assertions
+  __assertions = []
+
+  ### Equations
+
+  # Return completely constructed System
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+end
+export TutorialEnvelopeMPC__System
+
+@kwdef struct TutorialEnvelopeMPC__Spec <: AbstractFlightAnalysisSpec
   name::Symbol = :TutorialEnvelopeMPC
+  __overrides::Dict{SymbolicT, SymbolicT} = Dict{SymbolicT, SymbolicT}()
   # End time of the simulation, s.
   var"stop"::Float64 = 80.0
   # Panels of the `FlightResponse` figure, each `Title: signal, signal, ...`.
@@ -20,16 +102,15 @@ using F16ModelWorkshop: AbstractFlightAnalysisSpec, FlightAnalysisSpec
   var"reltol"::Float64 = 0.000001
   # Tutorial 9 — Altitude- and velocity-scheduled linear MPC.
   # 
-  # Step 8 scheduled its bank on airspeed alone, at one altitude. Here the bank covers a
-  # rectangle of the flight envelope: one constrained `LinearMPC` member at every node of a
-  # `velocities × altitudes` grid, scheduled on both measured airspeed and measured altitude.
+  # Step 8's bank extended from one altitude to a rectangle of the flight envelope: one
+  # constrained `LinearMPC` member at every node of a `velocities × altitudes` grid, scheduled
+  # on measured airspeed and altitude.
   # 
   # `MPCComponents.Experimental.LinearMPCScheduler` takes one scalar scheduling variable, so
-  # the second axis is built from parts: one scheduler per axis turns its measurement into
-  # hat-function weights over that axis's knots, and `VectorBlocks.OuterProduct` multiplies
-  # the two weight vectors into the bilinear weights of the grid — at most four nonzero, one
-  # at a node. The observer and the optimizer only ever see a weight per member, so they are
-  # the same components as in step 8.
+  # each axis gets its own scheduler, and `VectorBlocks.OuterProduct` multiplies the two
+  # hat-function weight vectors into the bilinear weights of the grid (at most four nonzero).
+  # The observer and optimizer see one weight per member, so they are the same components as
+  # in step 8.
   # 
   # Signal flow (whole-array connections except where a channel is named):
   # 
@@ -43,35 +124,44 @@ using F16ModelWorkshop: AbstractFlightAnalysisSpec, FlightAnalysisSpec
   #   ref_map (10) --> optimizer.r
   #   optimizer.u (4) --> zoh --> cmd_map (5) --> f16plant.u_in
   # 
-  # The grid comes from one lookup-table asset, `envelope_trim_alpha.csv`
-  # (`DyadData.DyadInterpolationTable2D`): the bank's knots are its axes, and the trimmed angle
-  # of attack at each node is its value. In level flight that is also the trimmed pitch
-  # attitude. `EnvelopeMPC.write_trim_table()` regenerates it; editing its axes moves the grid.
+  # The grid comes from the lookup-table asset `envelope_trim_alpha.csv`
+  # (`DyadData.DyadInterpolationTable2D`): its axes are the bank's knots and its values the
+  # trimmed angle of attack at each node, which in level flight is also the trimmed pitch
+  # attitude. `EnvelopeMPC.write_trim_table()` regenerates it (analysis 9c).
   # 
-  # The bank (`F16ModelWorkshop.EnvelopeMPC.bank`) is step 8's member design at each node: the
-  # same absolute frame, cost, limits and per-member affine offset, flattened airspeed-fastest
-  # in the order `OuterProduct` emits its weights. `ref_map` puts the two commands on their own
-  # channels and the tabulated trims, weighted, on pitch and angle of attack, so those
-  # references are bilinear in airspeed and altitude.
+  # The bank (`F16ModelWorkshop.EnvelopeMPC.bank`) is step 8's member design (absolute frame,
+  # cost, limits, affine offset) at each node, flattened airspeed-fastest in the order
+  # `OuterProduct` emits its weights. `ref_map` puts the two commands on their own channels and
+  # the weighted tabulated trims on pitch and angle of attack, so those references are bilinear
+  # in airspeed and altitude.
   # 
-  # The bank is a coarse subset of the envelope. `EnvelopeMPC.envelope()` trims and linearizes
-  # the plant at 10 000 flight conditions in a few seconds; the scheduled components grow with
-  # the member count, which keeps the bank to tens of members (MPCComponents.jl#94).
+  # The bank is a coarse subset of the envelope: `EnvelopeMPC.envelope()` trims and linearizes
+  # 10 000 flight conditions in seconds, but the scheduled components grow with the member
+  # count, which keeps the bank to tens of members (MPCComponents.jl#94).
   # 
   # Scenario: trimmed at 150 m/s and 3000 m, commanded to 190 m/s and 4500 m on overlapping
   # ramps that cross a knot on each axis.
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.EnvelopeMPCDemo(; name=:EnvelopeMPCDemo)
+  __system::System = TutorialEnvelopeMPC__System(; name, var"stop"=var"stop", var"panels"=var"panels", var"abstol"=var"abstol", var"reltol"=var"reltol")
 end
 
-function DyadInterface.run_analysis(spec::TutorialEnvelopeMPCSpec)
+function __dyad_base_analysis_spec(spec::TutorialEnvelopeMPC__Spec)
   overrides = Dict{SymbolicT, SymbolicT}()
   no_namespace_model = toggle_namespacing(spec.model, false)
   
-  base_spec = FlightAnalysisSpec(;
-    name=:FlightAnalysis, overrides, stop=spec.stop, panels=spec.panels, abstol=spec.abstol, reltol=spec.reltol, model=spec.model
+  merge!(overrides, spec.__overrides)
+  FlightAnalysisSpec(;
+    name=spec.name, overrides, __system=spec.__system, var"stop"=spec.var"stop", var"panels"=spec.var"panels", var"abstol"=spec.var"abstol", var"reltol"=spec.var"reltol", var"model"=spec.var"model"
   )
-  run_analysis(base_spec)
 end
 
-TutorialEnvelopeMPC(;kwargs...) = run_analysis(TutorialEnvelopeMPCSpec(;kwargs...))
-export TutorialEnvelopeMPC, TutorialEnvelopeMPCSpec
+function DyadInterface.run_analysis(spec::TutorialEnvelopeMPC__Spec)
+  run_analysis(__dyad_base_analysis_spec(spec))
+end
+
+function DyadInterface.setup_analysis(spec::TutorialEnvelopeMPC__Spec; kwargs...)
+  DyadInterface.setup_analysis(__dyad_base_analysis_spec(spec); kwargs...)
+end
+
+TutorialEnvelopeMPC(;kwargs...) = run_analysis(TutorialEnvelopeMPC__Spec(;kwargs...))
+export TutorialEnvelopeMPC, TutorialEnvelopeMPC__Spec

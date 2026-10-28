@@ -5,7 +5,7 @@
 
 
 @doc Markdown.doc"""
-   F16PlantModel(; name, npos_init, epos_init, alt_init, phi_init, theta_init, psi_init, vt_init, alpha_init, beta_init, P_init, Q_init, R_init, xcg)
+   F16PlantModel(; name, npos_init, epos_init, alt_init, phi_init, theta_init, psi_init, vt_init, alpha_init, beta_init, P_init, Q_init, R_init, xcg, __overrides)
 
 F16 6-DOF plant with vector I/O and matrix aerodynamics
 
@@ -25,7 +25,7 @@ F16 6-DOF plant with vector I/O and matrix aerodynamics
 | `P_init`         |                          | --  |   0.0 |
 | `Q_init`         |                          | --  |   0.0 |
 | `R_init`         |                          | --  |   0.0 |
-| `xcg`         | CG position, fraction of cbar. 0.35 is the aerodynamic reference and leaves the aircraft statically unstable in pitch (Cma = +0.082/rad); moving it forward to 0.30 restores positive pitch stiffness.                         | --  |   0.35 |
+| `xcg`         | CG position, fraction of cbar. At the 0.35 reference the aircraft is statically unstable in pitch (Cma = +0.082/rad); 0.30 restores positive pitch stiffness.                         | --  |   0.35 |
 
 ## Connectors
 
@@ -85,7 +85,7 @@ F16 6-DOF plant with vector I/O and matrix aerodynamics
 | `N_tot`         |                          | --  |
 | `denom`         |                          | --  |
 """
-@component function F16PlantModel(; name = nothing, npos_init=Float64(0.0), epos_init=Float64(0.0), alt_init=Float64(1000.0), phi_init=Float64(0.0), theta_init=0.0591, psi_init=Float64(0.0), vt_init=152.4, alpha_init=0.0591, beta_init=Float64(0.0), P_init=Float64(0.0), Q_init=Float64(0.0), R_init=Float64(0.0), xcg=0.35, kwargs...)
+@component function F16PlantModel(; name = nothing, var"npos_init"=Float64(0.0), var"epos_init"=Float64(0.0), var"alt_init"=Float64(1000.0), var"phi_init"=Float64(0.0), var"theta_init"=0.0591, var"psi_init"=Float64(0.0), var"vt_init"=152.4, var"alpha_init"=0.0591, var"beta_init"=Float64(0.0), var"P_init"=Float64(0.0), var"Q_init"=Float64(0.0), var"R_init"=Float64(0.0), var"xcg"=0.35, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -93,7 +93,7 @@ F16 6-DOF plant with vector I/O and matrix aerodynamics
     @named model = F16PlantModel()
   """))
 
-  __overrides = __build_overrides(kwargs)
+  __overrides = Dict{String, Any}(__overrides)
   __params = Symbolics.SymbolicT[]
   __vars = Symbolics.SymbolicT[]
   __systems = System[]
@@ -102,6 +102,21 @@ F16 6-DOF plant with vector I/O and matrix aerodynamics
   __initialization_eqs = Equation[]
   __eqs = Equation[]
   __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Keyword argument overrides
+  haskey(__overrides, "npos_init") && (npos_init = pop!(__overrides, "npos_init"))
+  haskey(__overrides, "epos_init") && (epos_init = pop!(__overrides, "epos_init"))
+  haskey(__overrides, "alt_init") && (alt_init = pop!(__overrides, "alt_init"))
+  haskey(__overrides, "phi_init") && (phi_init = pop!(__overrides, "phi_init"))
+  haskey(__overrides, "theta_init") && (theta_init = pop!(__overrides, "theta_init"))
+  haskey(__overrides, "psi_init") && (psi_init = pop!(__overrides, "psi_init"))
+  haskey(__overrides, "vt_init") && (vt_init = pop!(__overrides, "vt_init"))
+  haskey(__overrides, "alpha_init") && (alpha_init = pop!(__overrides, "alpha_init"))
+  haskey(__overrides, "beta_init") && (beta_init = pop!(__overrides, "beta_init"))
+  haskey(__overrides, "P_init") && (P_init = pop!(__overrides, "P_init"))
+  haskey(__overrides, "Q_init") && (Q_init = pop!(__overrides, "Q_init"))
+  haskey(__overrides, "R_init") && (R_init = pop!(__overrides, "R_init"))
+  haskey(__overrides, "xcg") && (xcg = pop!(__overrides, "xcg"))
 
   ### Structural Parameters (functions)
 
@@ -134,45 +149,43 @@ F16 6-DOF plant with vector I/O and matrix aerodynamics
   ### Symbolic Parameters
   __local__npos_init = npos_init
   append!(__params, @parameters (npos_init::Real))
-  __initial_conditions[npos_init] = __local__npos_init
+  __dyad_seed_parameter!(__initial_conditions, __bindings, npos_init, __local__npos_init)
   __local__epos_init = epos_init
   append!(__params, @parameters (epos_init::Real))
-  __initial_conditions[epos_init] = __local__epos_init
+  __dyad_seed_parameter!(__initial_conditions, __bindings, epos_init, __local__epos_init)
   __local__alt_init = alt_init
   append!(__params, @parameters (alt_init::Real))
-  __initial_conditions[alt_init] = __local__alt_init
+  __dyad_seed_parameter!(__initial_conditions, __bindings, alt_init, __local__alt_init)
   __local__phi_init = phi_init
   append!(__params, @parameters (phi_init::Real))
-  __initial_conditions[phi_init] = __local__phi_init
+  __dyad_seed_parameter!(__initial_conditions, __bindings, phi_init, __local__phi_init)
   __local__theta_init = theta_init
   append!(__params, @parameters (theta_init::Real))
-  __initial_conditions[theta_init] = __local__theta_init
+  __dyad_seed_parameter!(__initial_conditions, __bindings, theta_init, __local__theta_init)
   __local__psi_init = psi_init
   append!(__params, @parameters (psi_init::Real))
-  __initial_conditions[psi_init] = __local__psi_init
+  __dyad_seed_parameter!(__initial_conditions, __bindings, psi_init, __local__psi_init)
   __local__vt_init = vt_init
   append!(__params, @parameters (vt_init::Real))
-  __initial_conditions[vt_init] = __local__vt_init
+  __dyad_seed_parameter!(__initial_conditions, __bindings, vt_init, __local__vt_init)
   __local__alpha_init = alpha_init
   append!(__params, @parameters (alpha_init::Real))
-  __initial_conditions[alpha_init] = __local__alpha_init
+  __dyad_seed_parameter!(__initial_conditions, __bindings, alpha_init, __local__alpha_init)
   __local__beta_init = beta_init
   append!(__params, @parameters (beta_init::Real))
-  __initial_conditions[beta_init] = __local__beta_init
+  __dyad_seed_parameter!(__initial_conditions, __bindings, beta_init, __local__beta_init)
   __local__P_init = P_init
   append!(__params, @parameters (P_init::Real))
-  __initial_conditions[P_init] = __local__P_init
+  __dyad_seed_parameter!(__initial_conditions, __bindings, P_init, __local__P_init)
   __local__Q_init = Q_init
   append!(__params, @parameters (Q_init::Real))
-  __initial_conditions[Q_init] = __local__Q_init
+  __dyad_seed_parameter!(__initial_conditions, __bindings, Q_init, __local__Q_init)
   __local__R_init = R_init
   append!(__params, @parameters (R_init::Real))
-  __initial_conditions[R_init] = __local__R_init
+  __dyad_seed_parameter!(__initial_conditions, __bindings, R_init, __local__R_init)
   __local__xcg = xcg
-  append!(__params, @parameters (xcg::Real), [description = "CG position, fraction of cbar. 0.35 is the aerodynamic reference and leaves the
-  append!(__params, @parameters (xcg::Real), [description =   aircraft statically unstable in pitch (Cma = +0.082/rad); moving it forward to 0.30
-  append!(__params, @parameters (xcg::Real), [description =   restores positive pitch stiffness."])
-  __initial_conditions[xcg] = __local__xcg
+  append!(__params, @parameters (xcg::Real), [description = "CG position, fraction of cbar. At the 0.35 reference the aircraft is statically\n  unstable in pitch (Cma = +0.082/rad); 0.30 restores positive pitch stiffness."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, xcg, __local__xcg)
 
   ### Final Parameters (assignments)
   __bindings[g] = 9.80665
@@ -248,161 +261,161 @@ F16 6-DOF plant with vector I/O and matrix aerodynamics
 
   ### Variables (assignments)
   __ovr_npos = pop!(__overrides, "npos", nothing); isnothing(__ovr_npos) || push!(__eqs, npos ~ __ovr_npos)
-  __ovr_npos__initial = pop!(__overrides, "npos__initial", nothing); __ic_npos = @something(__ovr_npos__initial, npos_init)
+  __ovr_npos__initial = pop!(__overrides, "npos.initial", nothing); __ic_npos = @something(__ovr_npos__initial, npos_init)
   ismissing(__ic_npos) || (__initial_conditions[npos] = __ic_npos)
-  __ovr_npos__guess = pop!(__overrides, "npos__guess", nothing)
+  __ovr_npos__guess = pop!(__overrides, "npos.guess", nothing)
   __ovr_epos = pop!(__overrides, "epos", nothing); isnothing(__ovr_epos) || push!(__eqs, epos ~ __ovr_epos)
-  __ovr_epos__initial = pop!(__overrides, "epos__initial", nothing); __ic_epos = @something(__ovr_epos__initial, epos_init)
+  __ovr_epos__initial = pop!(__overrides, "epos.initial", nothing); __ic_epos = @something(__ovr_epos__initial, epos_init)
   ismissing(__ic_epos) || (__initial_conditions[epos] = __ic_epos)
-  __ovr_epos__guess = pop!(__overrides, "epos__guess", nothing)
+  __ovr_epos__guess = pop!(__overrides, "epos.guess", nothing)
   __ovr_alt = pop!(__overrides, "alt", nothing); isnothing(__ovr_alt) || push!(__eqs, alt ~ __ovr_alt)
-  __ovr_alt__initial = pop!(__overrides, "alt__initial", nothing); __ic_alt = @something(__ovr_alt__initial, alt_init)
+  __ovr_alt__initial = pop!(__overrides, "alt.initial", nothing); __ic_alt = @something(__ovr_alt__initial, alt_init)
   ismissing(__ic_alt) || (__initial_conditions[alt] = __ic_alt)
-  __ovr_alt__guess = pop!(__overrides, "alt__guess", nothing)
+  __ovr_alt__guess = pop!(__overrides, "alt.guess", nothing)
   __ovr_phi = pop!(__overrides, "phi", nothing); isnothing(__ovr_phi) || push!(__eqs, phi ~ __ovr_phi)
-  __ovr_phi__initial = pop!(__overrides, "phi__initial", nothing); __ic_phi = @something(__ovr_phi__initial, phi_init)
+  __ovr_phi__initial = pop!(__overrides, "phi.initial", nothing); __ic_phi = @something(__ovr_phi__initial, phi_init)
   ismissing(__ic_phi) || (__initial_conditions[phi] = __ic_phi)
-  __ovr_phi__guess = pop!(__overrides, "phi__guess", nothing)
+  __ovr_phi__guess = pop!(__overrides, "phi.guess", nothing)
   __ovr_theta = pop!(__overrides, "theta", nothing); isnothing(__ovr_theta) || push!(__eqs, theta ~ __ovr_theta)
-  __ovr_theta__initial = pop!(__overrides, "theta__initial", nothing); __ic_theta = @something(__ovr_theta__initial, theta_init)
+  __ovr_theta__initial = pop!(__overrides, "theta.initial", nothing); __ic_theta = @something(__ovr_theta__initial, theta_init)
   ismissing(__ic_theta) || (__initial_conditions[theta] = __ic_theta)
-  __ovr_theta__guess = pop!(__overrides, "theta__guess", nothing)
+  __ovr_theta__guess = pop!(__overrides, "theta.guess", nothing)
   __ovr_psi = pop!(__overrides, "psi", nothing); isnothing(__ovr_psi) || push!(__eqs, psi ~ __ovr_psi)
-  __ovr_psi__initial = pop!(__overrides, "psi__initial", nothing); __ic_psi = @something(__ovr_psi__initial, psi_init)
+  __ovr_psi__initial = pop!(__overrides, "psi.initial", nothing); __ic_psi = @something(__ovr_psi__initial, psi_init)
   ismissing(__ic_psi) || (__initial_conditions[psi] = __ic_psi)
-  __ovr_psi__guess = pop!(__overrides, "psi__guess", nothing)
+  __ovr_psi__guess = pop!(__overrides, "psi.guess", nothing)
   __ovr_vt = pop!(__overrides, "vt", nothing); isnothing(__ovr_vt) || push!(__eqs, vt ~ __ovr_vt)
-  __ovr_vt__initial = pop!(__overrides, "vt__initial", nothing); __ic_vt = @something(__ovr_vt__initial, vt_init)
+  __ovr_vt__initial = pop!(__overrides, "vt.initial", nothing); __ic_vt = @something(__ovr_vt__initial, vt_init)
   ismissing(__ic_vt) || (__initial_conditions[vt] = __ic_vt)
-  __ovr_vt__guess = pop!(__overrides, "vt__guess", nothing)
+  __ovr_vt__guess = pop!(__overrides, "vt.guess", nothing)
   __ovr_alpha = pop!(__overrides, "alpha", nothing); isnothing(__ovr_alpha) || push!(__eqs, alpha ~ __ovr_alpha)
-  __ovr_alpha__initial = pop!(__overrides, "alpha__initial", nothing); __ic_alpha = @something(__ovr_alpha__initial, alpha_init)
+  __ovr_alpha__initial = pop!(__overrides, "alpha.initial", nothing); __ic_alpha = @something(__ovr_alpha__initial, alpha_init)
   ismissing(__ic_alpha) || (__initial_conditions[alpha] = __ic_alpha)
-  __ovr_alpha__guess = pop!(__overrides, "alpha__guess", nothing)
+  __ovr_alpha__guess = pop!(__overrides, "alpha.guess", nothing)
   __ovr_beta = pop!(__overrides, "beta", nothing); isnothing(__ovr_beta) || push!(__eqs, beta ~ __ovr_beta)
-  __ovr_beta__initial = pop!(__overrides, "beta__initial", nothing); __ic_beta = @something(__ovr_beta__initial, beta_init)
+  __ovr_beta__initial = pop!(__overrides, "beta.initial", nothing); __ic_beta = @something(__ovr_beta__initial, beta_init)
   ismissing(__ic_beta) || (__initial_conditions[beta] = __ic_beta)
-  __ovr_beta__guess = pop!(__overrides, "beta__guess", nothing)
+  __ovr_beta__guess = pop!(__overrides, "beta.guess", nothing)
   __ovr_P = pop!(__overrides, "P", nothing); isnothing(__ovr_P) || push!(__eqs, P ~ __ovr_P)
-  __ovr_P__initial = pop!(__overrides, "P__initial", nothing); __ic_P = @something(__ovr_P__initial, P_init)
+  __ovr_P__initial = pop!(__overrides, "P.initial", nothing); __ic_P = @something(__ovr_P__initial, P_init)
   ismissing(__ic_P) || (__initial_conditions[P] = __ic_P)
-  __ovr_P__guess = pop!(__overrides, "P__guess", nothing)
+  __ovr_P__guess = pop!(__overrides, "P.guess", nothing)
   __ovr_Q = pop!(__overrides, "Q", nothing); isnothing(__ovr_Q) || push!(__eqs, Q ~ __ovr_Q)
-  __ovr_Q__initial = pop!(__overrides, "Q__initial", nothing); __ic_Q = @something(__ovr_Q__initial, Q_init)
+  __ovr_Q__initial = pop!(__overrides, "Q.initial", nothing); __ic_Q = @something(__ovr_Q__initial, Q_init)
   ismissing(__ic_Q) || (__initial_conditions[Q] = __ic_Q)
-  __ovr_Q__guess = pop!(__overrides, "Q__guess", nothing)
+  __ovr_Q__guess = pop!(__overrides, "Q.guess", nothing)
   __ovr_R = pop!(__overrides, "R", nothing); isnothing(__ovr_R) || push!(__eqs, R ~ __ovr_R)
-  __ovr_R__initial = pop!(__overrides, "R__initial", nothing); __ic_R = @something(__ovr_R__initial, R_init)
+  __ovr_R__initial = pop!(__overrides, "R.initial", nothing); __ic_R = @something(__ovr_R__initial, R_init)
   ismissing(__ic_R) || (__initial_conditions[R] = __ic_R)
-  __ovr_R__guess = pop!(__overrides, "R__guess", nothing)
+  __ovr_R__guess = pop!(__overrides, "R.guess", nothing)
   __ovr_T = pop!(__overrides, "T", nothing); isnothing(__ovr_T) || push!(__eqs, T ~ __ovr_T)
-  __ovr_T__initial = pop!(__overrides, "T__initial", nothing); isnothing(__ovr_T__initial) || (__initial_conditions[T] = __ovr_T__initial)
-  __ovr_T__guess = pop!(__overrides, "T__guess", nothing)
+  __ovr_T__initial = pop!(__overrides, "T.initial", nothing); isnothing(__ovr_T__initial) || (__initial_conditions[T] = __ovr_T__initial)
+  __ovr_T__guess = pop!(__overrides, "T.guess", nothing)
   __ovr_el = pop!(__overrides, "el", nothing); isnothing(__ovr_el) || push!(__eqs, el ~ __ovr_el)
-  __ovr_el__initial = pop!(__overrides, "el__initial", nothing); isnothing(__ovr_el__initial) || (__initial_conditions[el] = __ovr_el__initial)
-  __ovr_el__guess = pop!(__overrides, "el__guess", nothing)
+  __ovr_el__initial = pop!(__overrides, "el.initial", nothing); isnothing(__ovr_el__initial) || (__initial_conditions[el] = __ovr_el__initial)
+  __ovr_el__guess = pop!(__overrides, "el.guess", nothing)
   __ovr_ail = pop!(__overrides, "ail", nothing); isnothing(__ovr_ail) || push!(__eqs, ail ~ __ovr_ail)
-  __ovr_ail__initial = pop!(__overrides, "ail__initial", nothing); isnothing(__ovr_ail__initial) || (__initial_conditions[ail] = __ovr_ail__initial)
-  __ovr_ail__guess = pop!(__overrides, "ail__guess", nothing)
+  __ovr_ail__initial = pop!(__overrides, "ail.initial", nothing); isnothing(__ovr_ail__initial) || (__initial_conditions[ail] = __ovr_ail__initial)
+  __ovr_ail__guess = pop!(__overrides, "ail.guess", nothing)
   __ovr_rud = pop!(__overrides, "rud", nothing); isnothing(__ovr_rud) || push!(__eqs, rud ~ __ovr_rud)
-  __ovr_rud__initial = pop!(__overrides, "rud__initial", nothing); isnothing(__ovr_rud__initial) || (__initial_conditions[rud] = __ovr_rud__initial)
-  __ovr_rud__guess = pop!(__overrides, "rud__guess", nothing)
+  __ovr_rud__initial = pop!(__overrides, "rud.initial", nothing); isnothing(__ovr_rud__initial) || (__initial_conditions[rud] = __ovr_rud__initial)
+  __ovr_rud__guess = pop!(__overrides, "rud.guess", nothing)
   __ovr_lef = pop!(__overrides, "lef", nothing); isnothing(__ovr_lef) || push!(__eqs, lef ~ __ovr_lef)
-  __ovr_lef__initial = pop!(__overrides, "lef__initial", nothing); isnothing(__ovr_lef__initial) || (__initial_conditions[lef] = __ovr_lef__initial)
-  __ovr_lef__guess = pop!(__overrides, "lef__guess", nothing)
+  __ovr_lef__initial = pop!(__overrides, "lef.initial", nothing); isnothing(__ovr_lef__initial) || (__initial_conditions[lef] = __ovr_lef__initial)
+  __ovr_lef__guess = pop!(__overrides, "lef.guess", nothing)
   __ovr_el_rad = pop!(__overrides, "el_rad", nothing); isnothing(__ovr_el_rad) || push!(__eqs, el_rad ~ __ovr_el_rad)
-  __ovr_el_rad__initial = pop!(__overrides, "el_rad__initial", nothing); isnothing(__ovr_el_rad__initial) || (__initial_conditions[el_rad] = __ovr_el_rad__initial)
-  __ovr_el_rad__guess = pop!(__overrides, "el_rad__guess", nothing)
+  __ovr_el_rad__initial = pop!(__overrides, "el_rad.initial", nothing); isnothing(__ovr_el_rad__initial) || (__initial_conditions[el_rad] = __ovr_el_rad__initial)
+  __ovr_el_rad__guess = pop!(__overrides, "el_rad.guess", nothing)
   __ovr_ail_rad = pop!(__overrides, "ail_rad", nothing); isnothing(__ovr_ail_rad) || push!(__eqs, ail_rad ~ __ovr_ail_rad)
-  __ovr_ail_rad__initial = pop!(__overrides, "ail_rad__initial", nothing); isnothing(__ovr_ail_rad__initial) || (__initial_conditions[ail_rad] = __ovr_ail_rad__initial)
-  __ovr_ail_rad__guess = pop!(__overrides, "ail_rad__guess", nothing)
+  __ovr_ail_rad__initial = pop!(__overrides, "ail_rad.initial", nothing); isnothing(__ovr_ail_rad__initial) || (__initial_conditions[ail_rad] = __ovr_ail_rad__initial)
+  __ovr_ail_rad__guess = pop!(__overrides, "ail_rad.guess", nothing)
   __ovr_rud_rad = pop!(__overrides, "rud_rad", nothing); isnothing(__ovr_rud_rad) || push!(__eqs, rud_rad ~ __ovr_rud_rad)
-  __ovr_rud_rad__initial = pop!(__overrides, "rud_rad__initial", nothing); isnothing(__ovr_rud_rad__initial) || (__initial_conditions[rud_rad] = __ovr_rud_rad__initial)
-  __ovr_rud_rad__guess = pop!(__overrides, "rud_rad__guess", nothing)
+  __ovr_rud_rad__initial = pop!(__overrides, "rud_rad.initial", nothing); isnothing(__ovr_rud_rad__initial) || (__initial_conditions[rud_rad] = __ovr_rud_rad__initial)
+  __ovr_rud_rad__guess = pop!(__overrides, "rud_rad.guess", nothing)
   __ovr_lef_rad = pop!(__overrides, "lef_rad", nothing); isnothing(__ovr_lef_rad) || push!(__eqs, lef_rad ~ __ovr_lef_rad)
-  __ovr_lef_rad__initial = pop!(__overrides, "lef_rad__initial", nothing); isnothing(__ovr_lef_rad__initial) || (__initial_conditions[lef_rad] = __ovr_lef_rad__initial)
-  __ovr_lef_rad__guess = pop!(__overrides, "lef_rad__guess", nothing)
+  __ovr_lef_rad__initial = pop!(__overrides, "lef_rad.initial", nothing); isnothing(__ovr_lef_rad__initial) || (__initial_conditions[lef_rad] = __ovr_lef_rad__initial)
+  __ovr_lef_rad__guess = pop!(__overrides, "lef_rad.guess", nothing)
   __ovr_sa = pop!(__overrides, "sa", nothing); isnothing(__ovr_sa) || push!(__eqs, sa ~ __ovr_sa)
-  __ovr_sa__initial = pop!(__overrides, "sa__initial", nothing); isnothing(__ovr_sa__initial) || (__initial_conditions[sa] = __ovr_sa__initial)
-  __ovr_sa__guess = pop!(__overrides, "sa__guess", nothing)
+  __ovr_sa__initial = pop!(__overrides, "sa.initial", nothing); isnothing(__ovr_sa__initial) || (__initial_conditions[sa] = __ovr_sa__initial)
+  __ovr_sa__guess = pop!(__overrides, "sa.guess", nothing)
   __ovr_ca = pop!(__overrides, "ca", nothing); isnothing(__ovr_ca) || push!(__eqs, ca ~ __ovr_ca)
-  __ovr_ca__initial = pop!(__overrides, "ca__initial", nothing); isnothing(__ovr_ca__initial) || (__initial_conditions[ca] = __ovr_ca__initial)
-  __ovr_ca__guess = pop!(__overrides, "ca__guess", nothing)
+  __ovr_ca__initial = pop!(__overrides, "ca.initial", nothing); isnothing(__ovr_ca__initial) || (__initial_conditions[ca] = __ovr_ca__initial)
+  __ovr_ca__guess = pop!(__overrides, "ca.guess", nothing)
   __ovr_sb = pop!(__overrides, "sb", nothing); isnothing(__ovr_sb) || push!(__eqs, sb ~ __ovr_sb)
-  __ovr_sb__initial = pop!(__overrides, "sb__initial", nothing); isnothing(__ovr_sb__initial) || (__initial_conditions[sb] = __ovr_sb__initial)
-  __ovr_sb__guess = pop!(__overrides, "sb__guess", nothing)
+  __ovr_sb__initial = pop!(__overrides, "sb.initial", nothing); isnothing(__ovr_sb__initial) || (__initial_conditions[sb] = __ovr_sb__initial)
+  __ovr_sb__guess = pop!(__overrides, "sb.guess", nothing)
   __ovr_cb = pop!(__overrides, "cb", nothing); isnothing(__ovr_cb) || push!(__eqs, cb ~ __ovr_cb)
-  __ovr_cb__initial = pop!(__overrides, "cb__initial", nothing); isnothing(__ovr_cb__initial) || (__initial_conditions[cb] = __ovr_cb__initial)
-  __ovr_cb__guess = pop!(__overrides, "cb__guess", nothing)
+  __ovr_cb__initial = pop!(__overrides, "cb.initial", nothing); isnothing(__ovr_cb__initial) || (__initial_conditions[cb] = __ovr_cb__initial)
+  __ovr_cb__guess = pop!(__overrides, "cb.guess", nothing)
   __ovr_st = pop!(__overrides, "st", nothing); isnothing(__ovr_st) || push!(__eqs, st ~ __ovr_st)
-  __ovr_st__initial = pop!(__overrides, "st__initial", nothing); isnothing(__ovr_st__initial) || (__initial_conditions[st] = __ovr_st__initial)
-  __ovr_st__guess = pop!(__overrides, "st__guess", nothing)
+  __ovr_st__initial = pop!(__overrides, "st.initial", nothing); isnothing(__ovr_st__initial) || (__initial_conditions[st] = __ovr_st__initial)
+  __ovr_st__guess = pop!(__overrides, "st.guess", nothing)
   __ovr_ct = pop!(__overrides, "ct", nothing); isnothing(__ovr_ct) || push!(__eqs, ct ~ __ovr_ct)
-  __ovr_ct__initial = pop!(__overrides, "ct__initial", nothing); isnothing(__ovr_ct__initial) || (__initial_conditions[ct] = __ovr_ct__initial)
-  __ovr_ct__guess = pop!(__overrides, "ct__guess", nothing)
+  __ovr_ct__initial = pop!(__overrides, "ct.initial", nothing); isnothing(__ovr_ct__initial) || (__initial_conditions[ct] = __ovr_ct__initial)
+  __ovr_ct__guess = pop!(__overrides, "ct.guess", nothing)
   __ovr_tt = pop!(__overrides, "tt", nothing); isnothing(__ovr_tt) || push!(__eqs, tt ~ __ovr_tt)
-  __ovr_tt__initial = pop!(__overrides, "tt__initial", nothing); isnothing(__ovr_tt__initial) || (__initial_conditions[tt] = __ovr_tt__initial)
-  __ovr_tt__guess = pop!(__overrides, "tt__guess", nothing)
+  __ovr_tt__initial = pop!(__overrides, "tt.initial", nothing); isnothing(__ovr_tt__initial) || (__initial_conditions[tt] = __ovr_tt__initial)
+  __ovr_tt__guess = pop!(__overrides, "tt.guess", nothing)
   __ovr_sphi = pop!(__overrides, "sphi", nothing); isnothing(__ovr_sphi) || push!(__eqs, sphi ~ __ovr_sphi)
-  __ovr_sphi__initial = pop!(__overrides, "sphi__initial", nothing); isnothing(__ovr_sphi__initial) || (__initial_conditions[sphi] = __ovr_sphi__initial)
-  __ovr_sphi__guess = pop!(__overrides, "sphi__guess", nothing)
+  __ovr_sphi__initial = pop!(__overrides, "sphi.initial", nothing); isnothing(__ovr_sphi__initial) || (__initial_conditions[sphi] = __ovr_sphi__initial)
+  __ovr_sphi__guess = pop!(__overrides, "sphi.guess", nothing)
   __ovr_cphi = pop!(__overrides, "cphi", nothing); isnothing(__ovr_cphi) || push!(__eqs, cphi ~ __ovr_cphi)
-  __ovr_cphi__initial = pop!(__overrides, "cphi__initial", nothing); isnothing(__ovr_cphi__initial) || (__initial_conditions[cphi] = __ovr_cphi__initial)
-  __ovr_cphi__guess = pop!(__overrides, "cphi__guess", nothing)
+  __ovr_cphi__initial = pop!(__overrides, "cphi.initial", nothing); isnothing(__ovr_cphi__initial) || (__initial_conditions[cphi] = __ovr_cphi__initial)
+  __ovr_cphi__guess = pop!(__overrides, "cphi.guess", nothing)
   __ovr_spsi = pop!(__overrides, "spsi", nothing); isnothing(__ovr_spsi) || push!(__eqs, spsi ~ __ovr_spsi)
-  __ovr_spsi__initial = pop!(__overrides, "spsi__initial", nothing); isnothing(__ovr_spsi__initial) || (__initial_conditions[spsi] = __ovr_spsi__initial)
-  __ovr_spsi__guess = pop!(__overrides, "spsi__guess", nothing)
+  __ovr_spsi__initial = pop!(__overrides, "spsi.initial", nothing); isnothing(__ovr_spsi__initial) || (__initial_conditions[spsi] = __ovr_spsi__initial)
+  __ovr_spsi__guess = pop!(__overrides, "spsi.guess", nothing)
   __ovr_cpsi = pop!(__overrides, "cpsi", nothing); isnothing(__ovr_cpsi) || push!(__eqs, cpsi ~ __ovr_cpsi)
-  __ovr_cpsi__initial = pop!(__overrides, "cpsi__initial", nothing); isnothing(__ovr_cpsi__initial) || (__initial_conditions[cpsi] = __ovr_cpsi__initial)
-  __ovr_cpsi__guess = pop!(__overrides, "cpsi__guess", nothing)
+  __ovr_cpsi__initial = pop!(__overrides, "cpsi.initial", nothing); isnothing(__ovr_cpsi__initial) || (__initial_conditions[cpsi] = __ovr_cpsi__initial)
+  __ovr_cpsi__guess = pop!(__overrides, "cpsi.guess", nothing)
   __ovr_U = pop!(__overrides, "U", nothing); isnothing(__ovr_U) || push!(__eqs, U ~ __ovr_U)
-  __ovr_U__initial = pop!(__overrides, "U__initial", nothing); isnothing(__ovr_U__initial) || (__initial_conditions[U] = __ovr_U__initial)
-  __ovr_U__guess = pop!(__overrides, "U__guess", nothing)
+  __ovr_U__initial = pop!(__overrides, "U.initial", nothing); isnothing(__ovr_U__initial) || (__initial_conditions[U] = __ovr_U__initial)
+  __ovr_U__guess = pop!(__overrides, "U.guess", nothing)
   __ovr_V_body = pop!(__overrides, "V_body", nothing); isnothing(__ovr_V_body) || push!(__eqs, V_body ~ __ovr_V_body)
-  __ovr_V_body__initial = pop!(__overrides, "V_body__initial", nothing); isnothing(__ovr_V_body__initial) || (__initial_conditions[V_body] = __ovr_V_body__initial)
-  __ovr_V_body__guess = pop!(__overrides, "V_body__guess", nothing)
+  __ovr_V_body__initial = pop!(__overrides, "V_body.initial", nothing); isnothing(__ovr_V_body__initial) || (__initial_conditions[V_body] = __ovr_V_body__initial)
+  __ovr_V_body__guess = pop!(__overrides, "V_body.guess", nothing)
   __ovr_W = pop!(__overrides, "W", nothing); isnothing(__ovr_W) || push!(__eqs, W ~ __ovr_W)
-  __ovr_W__initial = pop!(__overrides, "W__initial", nothing); isnothing(__ovr_W__initial) || (__initial_conditions[W] = __ovr_W__initial)
-  __ovr_W__guess = pop!(__overrides, "W__guess", nothing)
+  __ovr_W__initial = pop!(__overrides, "W.initial", nothing); isnothing(__ovr_W__initial) || (__initial_conditions[W] = __ovr_W__initial)
+  __ovr_W__guess = pop!(__overrides, "W.guess", nothing)
   __ovr_rho = pop!(__overrides, "rho", nothing); isnothing(__ovr_rho) || push!(__eqs, rho ~ __ovr_rho)
-  __ovr_rho__initial = pop!(__overrides, "rho__initial", nothing); isnothing(__ovr_rho__initial) || (__initial_conditions[rho] = __ovr_rho__initial)
-  __ovr_rho__guess = pop!(__overrides, "rho__guess", nothing)
+  __ovr_rho__initial = pop!(__overrides, "rho.initial", nothing); isnothing(__ovr_rho__initial) || (__initial_conditions[rho] = __ovr_rho__initial)
+  __ovr_rho__guess = pop!(__overrides, "rho.guess", nothing)
   __ovr_qbar = pop!(__overrides, "qbar", nothing); isnothing(__ovr_qbar) || push!(__eqs, qbar ~ __ovr_qbar)
-  __ovr_qbar__initial = pop!(__overrides, "qbar__initial", nothing); isnothing(__ovr_qbar__initial) || (__initial_conditions[qbar] = __ovr_qbar__initial)
-  __ovr_qbar__guess = pop!(__overrides, "qbar__guess", nothing)
+  __ovr_qbar__initial = pop!(__overrides, "qbar.initial", nothing); isnothing(__ovr_qbar__initial) || (__initial_conditions[qbar] = __ovr_qbar__initial)
+  __ovr_qbar__guess = pop!(__overrides, "qbar.guess", nothing)
   __ovr_x_lon = pop!(__overrides, "x_lon", nothing); isnothing(__ovr_x_lon) || push!(__eqs, x_lon ~ __ovr_x_lon)
-  __ovr_x_lon__initial = pop!(__overrides, "x_lon__initial", nothing); isnothing(__ovr_x_lon__initial) || (__initial_conditions[x_lon] = __ovr_x_lon__initial)
-  __ovr_x_lon__guess = pop!(__overrides, "x_lon__guess", nothing)
+  __ovr_x_lon__initial = pop!(__overrides, "x_lon.initial", nothing); isnothing(__ovr_x_lon__initial) || (__initial_conditions[x_lon] = __ovr_x_lon__initial)
+  __ovr_x_lon__guess = pop!(__overrides, "x_lon.guess", nothing)
   __ovr_x_lat = pop!(__overrides, "x_lat", nothing); isnothing(__ovr_x_lat) || push!(__eqs, x_lat ~ __ovr_x_lat)
-  __ovr_x_lat__initial = pop!(__overrides, "x_lat__initial", nothing); isnothing(__ovr_x_lat__initial) || (__initial_conditions[x_lat] = __ovr_x_lat__initial)
-  __ovr_x_lat__guess = pop!(__overrides, "x_lat__guess", nothing)
+  __ovr_x_lat__initial = pop!(__overrides, "x_lat.initial", nothing); isnothing(__ovr_x_lat__initial) || (__initial_conditions[x_lat] = __ovr_x_lat__initial)
+  __ovr_x_lat__guess = pop!(__overrides, "x_lat.guess", nothing)
   __ovr_C_lon = pop!(__overrides, "C_lon", nothing); isnothing(__ovr_C_lon) || push!(__eqs, C_lon ~ __ovr_C_lon)
-  __ovr_C_lon__initial = pop!(__overrides, "C_lon__initial", nothing); isnothing(__ovr_C_lon__initial) || (__initial_conditions[C_lon] = __ovr_C_lon__initial)
-  __ovr_C_lon__guess = pop!(__overrides, "C_lon__guess", nothing)
+  __ovr_C_lon__initial = pop!(__overrides, "C_lon.initial", nothing); isnothing(__ovr_C_lon__initial) || (__initial_conditions[C_lon] = __ovr_C_lon__initial)
+  __ovr_C_lon__guess = pop!(__overrides, "C_lon.guess", nothing)
   __ovr_C_lat = pop!(__overrides, "C_lat", nothing); isnothing(__ovr_C_lat) || push!(__eqs, C_lat ~ __ovr_C_lat)
-  __ovr_C_lat__initial = pop!(__overrides, "C_lat__initial", nothing); isnothing(__ovr_C_lat__initial) || (__initial_conditions[C_lat] = __ovr_C_lat__initial)
-  __ovr_C_lat__guess = pop!(__overrides, "C_lat__guess", nothing)
+  __ovr_C_lat__initial = pop!(__overrides, "C_lat.initial", nothing); isnothing(__ovr_C_lat__initial) || (__initial_conditions[C_lat] = __ovr_C_lat__initial)
+  __ovr_C_lat__guess = pop!(__overrides, "C_lat.guess", nothing)
   __ovr_Udot = pop!(__overrides, "Udot", nothing); isnothing(__ovr_Udot) || push!(__eqs, Udot ~ __ovr_Udot)
-  __ovr_Udot__initial = pop!(__overrides, "Udot__initial", nothing); isnothing(__ovr_Udot__initial) || (__initial_conditions[Udot] = __ovr_Udot__initial)
-  __ovr_Udot__guess = pop!(__overrides, "Udot__guess", nothing)
+  __ovr_Udot__initial = pop!(__overrides, "Udot.initial", nothing); isnothing(__ovr_Udot__initial) || (__initial_conditions[Udot] = __ovr_Udot__initial)
+  __ovr_Udot__guess = pop!(__overrides, "Udot.guess", nothing)
   __ovr_Vdot = pop!(__overrides, "Vdot", nothing); isnothing(__ovr_Vdot) || push!(__eqs, Vdot ~ __ovr_Vdot)
-  __ovr_Vdot__initial = pop!(__overrides, "Vdot__initial", nothing); isnothing(__ovr_Vdot__initial) || (__initial_conditions[Vdot] = __ovr_Vdot__initial)
-  __ovr_Vdot__guess = pop!(__overrides, "Vdot__guess", nothing)
+  __ovr_Vdot__initial = pop!(__overrides, "Vdot.initial", nothing); isnothing(__ovr_Vdot__initial) || (__initial_conditions[Vdot] = __ovr_Vdot__initial)
+  __ovr_Vdot__guess = pop!(__overrides, "Vdot.guess", nothing)
   __ovr_Wdot = pop!(__overrides, "Wdot", nothing); isnothing(__ovr_Wdot) || push!(__eqs, Wdot ~ __ovr_Wdot)
-  __ovr_Wdot__initial = pop!(__overrides, "Wdot__initial", nothing); isnothing(__ovr_Wdot__initial) || (__initial_conditions[Wdot] = __ovr_Wdot__initial)
-  __ovr_Wdot__guess = pop!(__overrides, "Wdot__guess", nothing)
+  __ovr_Wdot__initial = pop!(__overrides, "Wdot.initial", nothing); isnothing(__ovr_Wdot__initial) || (__initial_conditions[Wdot] = __ovr_Wdot__initial)
+  __ovr_Wdot__guess = pop!(__overrides, "Wdot.guess", nothing)
   __ovr_L_tot = pop!(__overrides, "L_tot", nothing); isnothing(__ovr_L_tot) || push!(__eqs, L_tot ~ __ovr_L_tot)
-  __ovr_L_tot__initial = pop!(__overrides, "L_tot__initial", nothing); isnothing(__ovr_L_tot__initial) || (__initial_conditions[L_tot] = __ovr_L_tot__initial)
-  __ovr_L_tot__guess = pop!(__overrides, "L_tot__guess", nothing)
+  __ovr_L_tot__initial = pop!(__overrides, "L_tot.initial", nothing); isnothing(__ovr_L_tot__initial) || (__initial_conditions[L_tot] = __ovr_L_tot__initial)
+  __ovr_L_tot__guess = pop!(__overrides, "L_tot.guess", nothing)
   __ovr_M_tot = pop!(__overrides, "M_tot", nothing); isnothing(__ovr_M_tot) || push!(__eqs, M_tot ~ __ovr_M_tot)
-  __ovr_M_tot__initial = pop!(__overrides, "M_tot__initial", nothing); isnothing(__ovr_M_tot__initial) || (__initial_conditions[M_tot] = __ovr_M_tot__initial)
-  __ovr_M_tot__guess = pop!(__overrides, "M_tot__guess", nothing)
+  __ovr_M_tot__initial = pop!(__overrides, "M_tot.initial", nothing); isnothing(__ovr_M_tot__initial) || (__initial_conditions[M_tot] = __ovr_M_tot__initial)
+  __ovr_M_tot__guess = pop!(__overrides, "M_tot.guess", nothing)
   __ovr_N_tot = pop!(__overrides, "N_tot", nothing); isnothing(__ovr_N_tot) || push!(__eqs, N_tot ~ __ovr_N_tot)
-  __ovr_N_tot__initial = pop!(__overrides, "N_tot__initial", nothing); isnothing(__ovr_N_tot__initial) || (__initial_conditions[N_tot] = __ovr_N_tot__initial)
-  __ovr_N_tot__guess = pop!(__overrides, "N_tot__guess", nothing)
+  __ovr_N_tot__initial = pop!(__overrides, "N_tot.initial", nothing); isnothing(__ovr_N_tot__initial) || (__initial_conditions[N_tot] = __ovr_N_tot__initial)
+  __ovr_N_tot__guess = pop!(__overrides, "N_tot.guess", nothing)
   __ovr_denom = pop!(__overrides, "denom", nothing); isnothing(__ovr_denom) || push!(__eqs, denom ~ __ovr_denom)
-  __ovr_denom__initial = pop!(__overrides, "denom__initial", nothing); isnothing(__ovr_denom__initial) || (__initial_conditions[denom] = __ovr_denom__initial)
-  __ovr_denom__guess = pop!(__overrides, "denom__guess", nothing)
+  __ovr_denom__initial = pop!(__overrides, "denom.initial", nothing); isnothing(__ovr_denom__initial) || (__initial_conditions[denom] = __ovr_denom__initial)
+  __ovr_denom__guess = pop!(__overrides, "denom.guess", nothing)
 
   ### Constants
   __constants = Any[]
@@ -410,7 +423,7 @@ F16 6-DOF plant with vector I/O and matrix aerodynamics
   ### Components
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
 
   ### Guesses
   isnothing(__ovr_npos__guess) || (__guesses[npos] = __ovr_npos__guess)
@@ -537,6 +550,6 @@ F16 6-DOF plant with vector I/O and matrix aerodynamics
   push!(__eqs, ModelingToolkit.D_nounits(psi) ~ (Q * sphi + R * cphi) / ct)
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export F16PlantModel

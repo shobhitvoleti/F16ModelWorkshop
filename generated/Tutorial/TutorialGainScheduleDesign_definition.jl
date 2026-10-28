@@ -5,48 +5,131 @@
 
 
 using DyadInterface
-using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel, SpecializationLevel
-using ModelingToolkit: SymbolicT, toggle_namespacing
 using F16ModelWorkshop: AbstractGainScheduleAnalysisSpec, GainScheduleAnalysisSpec
-@kwdef mutable struct TutorialGainScheduleDesignSpec <: AbstractGainScheduleAnalysisSpec
+@component function TutorialGainScheduleDesign__System(; name = nothing, var"velocities"=[140.0, 152.4, 170.0], var"altitude"=3000.0, var"fixed_point"=2, __overrides = Dict{String, Any}())
+  isnothing(name) && throw(ArgumentError("""
+    The `name` keyword must be provided. Please consider using the `@named` macro,
+    like so:
+  
+    @named model = TutorialGainScheduleDesign__System()
+  """))
+
+  __overrides = Dict{String, Any}(__overrides)
+  __params = Symbolics.SymbolicT[]
+  __vars = Symbolics.SymbolicT[]
+  __systems = System[]
+  __guesses = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initial_conditions = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initialization_eqs = Equation[]
+  __eqs = Equation[]
+  __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Keyword argument overrides
+  haskey(__overrides, "velocities") && (velocities = pop!(__overrides, "velocities"))
+  haskey(__overrides, "altitude") && (altitude = pop!(__overrides, "altitude"))
+  haskey(__overrides, "fixed_point") && (fixed_point = pop!(__overrides, "fixed_point"))
+
+  ### Structural Parameters (functions)
+
+  ### Structural Parameters (Final)
+
+  ### Path Parameters (functions)
+
+  ### Path Parameters (non-final)
+
+  ### Final Parameters (declarations)
+
+  ### Deferred assignment (default values that depend on final parameters)
+
+  ### Symbolic Parameters
+  __local__velocities = velocities
+  append!(__params, @parameters (velocities::Array{Float64, 1}), [description = "Airspeeds of the design points, m/s, strictly increasing."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, velocities, __local__velocities)
+  __local__altitude = altitude
+  append!(__params, @parameters (altitude::Float64), [description = "Altitude of the design points, m."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, altitude, __local__altitude)
+  __local__fixed_point = fixed_point
+  append!(__params, @parameters (fixed_point::Int), [description = "Design point whose gains the fixed-gain comparison uses at every design point."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, fixed_point, __local__fixed_point)
+
+  ### Final Parameters (assignments)
+
+  ### Final Path Parameters
+
+  ### Variables (declarations)
+
+  ### Variables (assignments)
+
+  ### Constants
+  __constants = Any[]
+
+  ### Components
+  # Subcomponent model of type F16ModelWorkshop.Tutorial.AutopilotGainSchedule
+  model_overrides = __pop_subcomponent_overrides!(__overrides, "model")
+  push!(__systems, @named model = F16ModelWorkshop.Tutorial.AutopilotGainSchedule(; __overrides = model_overrides))
+
+  ### Check there are no unmatched overrides
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
+
+  ### Guesses
+
+  ### Initialization Equations
+
+  ### Assertions
+  __assertions = []
+
+  ### Equations
+
+  # Return completely constructed System
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+end
+export TutorialGainScheduleDesign__System
+
+@kwdef struct TutorialGainScheduleDesign__Spec <: AbstractGainScheduleAnalysisSpec
   name::Symbol = :TutorialGainScheduleDesign
+  __overrides::Dict{SymbolicT, SymbolicT} = Dict{SymbolicT, SymbolicT}()
   # Airspeeds of the design points, m/s, strictly increasing.
   var"velocities"::Array{Float64, 1} = [140.0, 152.4, 170.0]
   # Altitude of the design points, m.
   var"altitude"::Float64 = 3000.0
   # Design point whose gains the fixed-gain comparison uses at every design point.
   var"fixed_point"::Int = 2
-  # Gain schedule of the step-7 autopilot, with dynamic pressure as the scheduling variable.
+  # Gain schedule of the step-7 autopilot, interpolated in dynamic pressure.
   # 
-  # The schedule is the gain-scheduling procedure of Stevens & Lewis, *Aircraft Control and
-  # Simulation*. The loops are designed at a few straight-and-level design points, one per
-  # airspeed of `velocities` at `altitude`, by `F16ModelWorkshop.ScheduledPID.loop_design`; the
-  # gains of every design point are tabulated, one column of `gains` per point; and the
-  # schedule interpolates the table linearly in the dynamic pressure ``q̄`` computed from the
-  # sampled altitude and airspeed. Below the first and above the last design point it holds
-  # the end columns.
+  # The gain-scheduling procedure of Stevens & Lewis, *Aircraft Control and Simulation*:
+  # `F16ModelWorkshop.ScheduledPID.loop_design` designs the loops at straight-and-level design
+  # points, one per airspeed of `velocities` at `altitude`; `gains` holds one column per point;
+  # the table is interpolated linearly in the ``q̄`` of the sampled altitude and airspeed, and
+  # held at its end columns outside the design points.
   # 
-  # ``q̄`` is the scheduling variable because the effectiveness of every aerodynamic control
-  # is proportional to it. From the first design point to the last, ``q̄`` grows by 47 % and the
-  # pitch gain falls by 26 %, which keeps the pitch loop's crossover frequency and phase
-  # margin.
+  # ``q̄`` is the scheduling variable because every aerodynamic force and moment, and so every
+  # control's effectiveness, is proportional to it. From the first design point to the last,
+  # ``q̄`` grows by 47 % and the pitch gain falls by 26 %, keeping the pitch loop's crossover
+  # frequency and phase margin.
   # 
-  # The outputs are the standard-form gains of the three PID controllers of
-  # `GainScheduledPIDDemo` and the trimmed pitch attitude, elevator and thrust they add as
-  # feed-forward, in the order of `ScheduledPID.SCHEDULE_ROWS`. The controllers contain no
-  # scheduling logic; they only receive these signals.
+  # Outputs, in the order of `ScheduledPID.SCHEDULE_ROWS`: the standard-form gains of
+  # `GainScheduledPIDDemo`'s three PID controllers, and the trims they add as feed-forward.
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.AutopilotGainSchedule(; name=:AutopilotGainSchedule)
+  __system::System = TutorialGainScheduleDesign__System(; name, var"velocities"=var"velocities", var"altitude"=var"altitude", var"fixed_point"=var"fixed_point")
 end
 
-function DyadInterface.run_analysis(spec::TutorialGainScheduleDesignSpec)
+function __dyad_base_analysis_spec(spec::TutorialGainScheduleDesign__Spec)
   overrides = Dict{SymbolicT, SymbolicT}()
   no_namespace_model = toggle_namespacing(spec.model, false)
   
-  base_spec = GainScheduleAnalysisSpec(;
-    name=:GainScheduleAnalysis, overrides, velocities=spec.velocities, altitude=spec.altitude, fixed_point=spec.fixed_point, model=spec.model
+  merge!(overrides, spec.__overrides)
+  GainScheduleAnalysisSpec(;
+    name=spec.name, overrides, __system=spec.__system, var"velocities"=spec.var"velocities", var"altitude"=spec.var"altitude", var"fixed_point"=spec.var"fixed_point", var"model"=spec.var"model"
   )
-  run_analysis(base_spec)
 end
 
-TutorialGainScheduleDesign(;kwargs...) = run_analysis(TutorialGainScheduleDesignSpec(;kwargs...))
-export TutorialGainScheduleDesign, TutorialGainScheduleDesignSpec
+function DyadInterface.run_analysis(spec::TutorialGainScheduleDesign__Spec)
+  run_analysis(__dyad_base_analysis_spec(spec))
+end
+
+function DyadInterface.setup_analysis(spec::TutorialGainScheduleDesign__Spec; kwargs...)
+  DyadInterface.setup_analysis(__dyad_base_analysis_spec(spec); kwargs...)
+end
+
+TutorialGainScheduleDesign(;kwargs...) = run_analysis(TutorialGainScheduleDesign__Spec(;kwargs...))
+export TutorialGainScheduleDesign, TutorialGainScheduleDesign__Spec

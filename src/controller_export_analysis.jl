@@ -1,16 +1,14 @@
-# Controller export, paired with the `partial analysis` in
-# dyad/controller_export_analysis.dyad. Defined before the generated code, which
-# references the `*Spec` type; the design analyses it runs are generated, so they are
-# looked up when it runs.
+# Controller export (dyad/controller_export_analysis.dyad). The design analyses it runs
+# are generated, so they are looked up at run time.
 
 abstract type AbstractControllerExportAnalysisSpec <: AbstractAnalysisSpec end
 
 """
     ControllerExportAnalysisSpec(; design = "TutorialLQG", file = "assets/controller.toml", add_trim = false)
 
-Run the LQG design analysis `design` of `F16ModelWorkshop.Tutorial` and write its
-feedback controller to `file` (relative to the package root), with the trim controls as
-the output offset `y0` when `add_trim` is set.
+Run the LQG design analysis `design` of `F16ModelWorkshop.Tutorial` and write its feedback
+controller to `file` (relative to the package root), with the trim controls as output
+offset `y0` when `add_trim` is set.
 """
 @kwdef mutable struct ControllerExportAnalysisSpec <: AbstractControllerExportAnalysisSpec
     name::Symbol = :ControllerExportAnalysis
@@ -19,13 +17,13 @@ the output offset `y0` when `add_trim` is set.
     file::String = "assets/controller.toml"
     add_trim::Bool = false
     overrides::_Overrides = _Overrides()
+    __system::Union{Nothing, System} = nothing   # handed over by Dyad-generated specs; unused
 end
 
 """
     ControllerExportAnalysisSolution
 
-The design analysis' solution (`inner`), the written `file` and the `controller` table
-written to it.
+The design analysis' solution (`inner`), the written `file` and its `controller` table.
 """
 struct ControllerExportAnalysisSolution{S} <: AbstractAnalysisSolution
     spec::ControllerExportAnalysisSpec

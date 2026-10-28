@@ -5,14 +5,14 @@
 
 
 @doc Markdown.doc"""
-   OuterProduct(; name, n1, n2)
+   OuterProduct(; name, n1, n2, __overrides)
 
 Outer product of two vectors, flattened with the first index fastest:
 `y[(j - 1) * n1 + i] = u1[i] * u2[j]`.
 
 Turns the hat-function weights of two one-dimensional schedulers into the bilinear
-weights of the two-dimensional grid they span. Both inputs sum to one, so the output
-does too, and at most four of its entries are nonzero.
+weights of the grid they span. Both inputs sum to one, so the output does too, with at
+most four nonzero entries.
 
 ## Parameters:
 
@@ -28,7 +28,7 @@ does too, and at most four of its entries are nonzero.
  * `u2` - This connector represents a real signal as an input to a component ([`RealInput`](@ref))
  * `y` - This connector represents a real signal as an output from a component ([`RealOutput`](@ref))
 """
-@component function OuterProduct(; name = nothing, n1=1, n2=1, kwargs...)
+@component function OuterProduct(; name = nothing, var"n1"=1, var"n2"=1, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -36,7 +36,7 @@ does too, and at most four of its entries are nonzero.
     @named model = OuterProduct()
   """))
 
-  __overrides = __build_overrides(kwargs)
+  __overrides = Dict{String, Any}(__overrides)
   __params = Symbolics.SymbolicT[]
   __vars = Symbolics.SymbolicT[]
   __systems = System[]
@@ -45,6 +45,10 @@ does too, and at most four of its entries are nonzero.
   __initialization_eqs = Equation[]
   __eqs = Equation[]
   __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Keyword argument overrides
+  haskey(__overrides, "n1") && (n1 = pop!(__overrides, "n1"))
+  haskey(__overrides, "n2") && (n2 = pop!(__overrides, "n2"))
 
   ### Structural Parameters (functions)
 
@@ -78,7 +82,7 @@ does too, and at most four of its entries are nonzero.
   ### Components
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
 
   ### Guesses
 
@@ -97,6 +101,6 @@ does too, and at most four of its entries are nonzero.
   end
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export OuterProduct

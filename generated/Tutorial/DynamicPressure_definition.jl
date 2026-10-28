@@ -5,13 +5,12 @@
 
 
 @doc Markdown.doc"""
-   DynamicPressure(; name)
+   DynamicPressure(; name, __overrides)
 
 Dynamic pressure from altitude and true airspeed.
 
-``q̄ = \tfrac{1}{2} ρ(h) V^2`` with the density of `F16PlantModel`'s troposphere model,
-``ρ = 1.225 (1 - 0.0065 h / 288.15)^{4.256}``. It is what an air-data computer hands a
-gain schedule: every aerodynamic force and moment of the plant is proportional to it.
+``q̄ = \tfrac{1}{2} ρ(h) V^2``, with the troposphere density of `F16PlantModel`,
+``ρ = 1.225 (1 - 0.0065 h / 288.15)^{4.256}``.
 
 ## Connectors
 
@@ -19,7 +18,7 @@ gain schedule: every aerodynamic force and moment of the plant is proportional t
  * `V` - This connector represents a real signal as an input to a component ([`RealInput`](@ref))
  * `qbar` - This connector represents a real signal as an output from a component ([`RealOutput`](@ref))
 """
-@component function DynamicPressure(; name = nothing, kwargs...)
+@component function DynamicPressure(; name = nothing, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -27,7 +26,7 @@ gain schedule: every aerodynamic force and moment of the plant is proportional t
     @named model = DynamicPressure()
   """))
 
-  __overrides = __build_overrides(kwargs)
+  __overrides = Dict{String, Any}(__overrides)
   __params = Symbolics.SymbolicT[]
   __vars = Symbolics.SymbolicT[]
   __systems = System[]
@@ -68,7 +67,7 @@ gain schedule: every aerodynamic force and moment of the plant is proportional t
   ### Components
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
 
   ### Guesses
 
@@ -81,6 +80,6 @@ gain schedule: every aerodynamic force and moment of the plant is proportional t
   push!(__eqs, qbar ~ 0.5 * 1.225 * (1 - 0.0065 * h / 288.15) ^ 4.256 * V ^ 2)
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export DynamicPressure

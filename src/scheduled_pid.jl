@@ -3,20 +3,20 @@ Design-time support for the gain-scheduled PID autopilot of tutorial step 7: the
 longitudinal model at each design point, the per-point loop design, and the gain table
 that `dyad/Tutorial/07_gain_scheduled_pid.dyad` interpolates on dynamic pressure.
 
-The design follows the gain-scheduling procedure of Stevens & Lewis, *Aircraft Control and
-Simulation*: linearize the aircraft at several straight-and-level flight conditions, repeat
-one fixed-structure design at each, tabulate the gains, and interpolate them on the
-dynamic pressure `q̄ = ½ρV²`, which sets the effectiveness of every aerodynamic control.
-The loops are the book's classical longitudinal autopilot, closed inner loop first:
+The design follows Stevens & Lewis, *Aircraft Control and Simulation*: linearize at several
+straight-and-level flight conditions, repeat one fixed-structure design at each, tabulate
+the gains, and interpolate them on dynamic pressure `q̄ = ½ρV²`, which sets every
+aerodynamic control's effectiveness. The loops form the book's classical longitudinal
+autopilot, inner loop first:
 
-1. pitch-attitude hold, elevator from pitch attitude, PD (the derivative is the pitch-rate
+1. pitch-attitude hold: elevator from pitch attitude, PD (the derivative is pitch-rate
    damping);
-2. altitude hold around it, pitch-attitude command from altitude, PID;
-3. autothrottle around both, thrust from airspeed, PI.
+2. altitude hold: pitch-attitude command from altitude, PID;
+3. autothrottle: thrust from airspeed, PI.
 
-Every loop is designed for the same gain-crossover frequency and phase margin at every
-design point, so the scheduled gains keep the loop shapes fixed while `q̄` changes. Trim,
-plant and linearization come from `VelocityMPC`, so steps 7 and 8 fly one aircraft.
+Each loop has the same crossover frequency and phase margin at every design point, so the
+schedule holds the loop shapes fixed as `q̄` changes. Trim, plant and linearization come
+from `VelocityMPC`, so steps 7 and 8 fly the same aircraft.
 """
 module ScheduledPID
 
@@ -133,18 +133,18 @@ end
 """
     loop_design(velocity, altitude=VelocityMPC.ALTITUDE) -> NamedTuple
 
-The autopilot at one design point, inner loop first:
+The autopilot at one design point: the flight condition `velocity`, `altitude` and, inner
+loop first,
 
-- `pitch` — elevator from pitch attitude, a PD. The elevator's positive deflection pitches
-  the nose down, so the design runs on the sign-flipped plant and `K` comes out negative.
-- `altitude` — pitch-attitude command from altitude, a PID designed on the plant with the
-  pitch loop closed.
-- `speed` — thrust from airspeed, a PI designed on the plant with both loops closed.
-- `model` — the `longitudinal_model` it was designed on, and the trims `theta_trim` (rad),
-  `el_trim` (deg) and `T_trim` (kN).
-- `loops` — the loop transfer functions `pitch`, `altitude` and `speed`, each broken at its
-  controller's output with the inner loops closed. They include the derivative filter,
-  which the design leaves out, so their margins sit a few degrees off the `*_LOOP` values.
+- `pitch` — elevator from pitch attitude, a PD. Positive elevator pitches the nose down,
+  so the design runs on the sign-flipped plant and `K` comes out negative.
+- `altitude_hold` — pitch-attitude command from altitude, a PID designed with the pitch
+  loop closed.
+- `speed` — thrust from airspeed, a PI designed with both loops closed.
+- `model` — the `longitudinal_model` designed on, with trims `theta_trim` (rad), `el_trim`
+  (deg) and `T_trim` (kN).
+- `loops` — the `loop_transfers` of this design. They include the derivative filter the
+  design leaves out, so their margins sit a few degrees off the `*_LOOP` values.
 """
 function loop_design(velocity, altitude = VelocityMPC.ALTITUDE)
     P = longitudinal_model(velocity, altitude)
@@ -221,7 +221,7 @@ The sampled-data autopilot at one flight condition: `model` (a `longitudinal_mod
 under a zero-order hold of period `Ts`, closed by the three `discrete_controller`s whose
 gains are a column of `gain_table` in the order of `SCHEDULE_ROWS`. The column need not
 come from the same flight condition, which is how a schedule is checked between and
-around its design points. The loop is stable when every pole lies inside the unit circle.
+around its design points.
 """
 function closed_loop(model, column, Ts = 0.05)
     length(column) == length(SCHEDULE_ROWS) ||

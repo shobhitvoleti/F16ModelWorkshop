@@ -31,9 +31,9 @@ end
     @test maximum(abs, standard) ≈ 1.5
 end
 
-# Stevens & Lewis: the same design repeated at every design point. Every loop must come
-# out with the crossover and margin it was designed for, at every point; the derivative
-# filter, which the design leaves out, may move them only a little.
+# Stevens & Lewis: one design repeated at every design point. Each loop must meet its
+# designed crossover and margin at every point; the derivative filter, which the design
+# omits, may shift them slightly.
 @testset "every design point meets the loop specifications" begin
     specs = (pitch = ScheduledPID.PITCH_LOOP, altitude = ScheduledPID.ALTITUDE_LOOP,
         speed = ScheduledPID.SPEED_LOOP)
@@ -45,11 +45,10 @@ end
             # The pitch loop's unstable airframe pole makes `margin` unwrap its phase by a turn.
             @test mod(pm[1], 360) ≈ spec.margin atol = 5
         end
-        # The airframe is unstable in pitch, so the pitch loop has a lower gain margin: below
-        # some fraction of its gain the loop no longer holds the aircraft.
+        # The unstable airframe gives the pitch loop a lower gain margin: below some fraction
+        # of its gain the loop no longer holds the aircraft.
         @test CS.margin(design.loops.pitch)[2][1] < 0.5
-        # Elevator effectiveness grows with dynamic pressure; the pitch gain is negative
-        # because positive elevator pitches the nose down.
+        # Negative because positive elevator pitches the nose down.
         @test design.pitch.K < 0
         @test design.altitude_hold.K > 0 && design.speed.K > 0
     end
@@ -73,10 +72,10 @@ end
     @test_throws "at least two knots" gain_table([152.4])
 end
 
-# Stevens & Lewis: the gains at each design point must also hold the aircraft near it.
-# The sampled-data loop, with the controllers discretized as `DiscretePIDScheduled` runs
-# them, is checked with every design point's gains on every design point's plant, and with
-# the interpolated gains at airspeeds between and beyond the design points.
+# Stevens & Lewis: each design point's gains must also hold the aircraft near it. The
+# sampled-data loop, discretized as `DiscretePIDScheduled` runs it, is checked with every
+# design point's gains on every design point's plant, and with interpolated gains between
+# and beyond the design points.
 @testset "schedule is stable between and around the design points" begin
     table = gain_table()
     knots = knot_pressures()
@@ -105,8 +104,7 @@ end
     end
 end
 
-# The closed loop: a solved trajectory, not just a model that builds. The manoeuvre is
-# step 8's, so the two controllers are held to the same tolerances.
+# Step 8's manoeuvre, so both controllers are held to the same tolerances.
 @testset "gain-scheduled PID tracks the airspeed ramp" begin
     result = F16ModelWorkshop.Tutorial.TutorialGainScheduledPID()
     sol = result.sol
@@ -119,7 +117,7 @@ end
     # The schedule's dynamic pressure is the plant's.
     @test sol[p.qbar] ≈ dynamic_pressure.(sol[p.alt], sol[p.vt]) rtol = 1e-12
 
-    # Accelerated onto the commanded 160 m/s while holding altitude and wings level.
+    # Commanded 160 m/s, holding altitude and wings level.
     @test sol[p.vt][end] ≈ 160.0 atol = 0.5
     @test sol[p.alt][end] ≈ 3000.0 atol = 10.0
     @test maximum(abs, sol[p.phi]) < 0.02

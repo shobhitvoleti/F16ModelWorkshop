@@ -1,12 +1,10 @@
 """
 Tutorial 4 — Discrete (sampled-data) closed-loop LQG.
 
-Sampled version of `LQGDemo` (03): the continuous LQG controller is replaced by the
-clocked `DiscreteStateSpace`, fed the ZOH-discretized matrices from the applied
-`discrete_controller.toml` asset (designed by `TutorialDiscreteLQG` at
-Ts = ControllerTs). Trim is folded into the controller output operating point `y0`,
-also carried by that asset, so `controller.y` is the absolute control command — no
-external feedforward.
+Sampled version of `LQGDemo` (step 3): the controller is the clocked `DiscreteStateSpace`
+with the ZOH-discretized matrices of `discrete_controller.toml` (designed by
+`TutorialDiscreteLQG` at Ts = ControllerTs). That asset also carries the trim as the
+output operating point `y0`, so `controller.y` is the absolute control command.
 
 Signal flow (all vector ports):
   ref - measurement --> err (12 ch)
@@ -15,23 +13,21 @@ Signal flow (all vector ports):
 
 The 100 Hz clock is planted on one controller input; the controller's block clock
 carries it to the other eleven, and clock inference to the sampler and hold.
-
-Scenario: 10 deg initial pitch perturbation about trim.
 """
 component DiscreteClosedLoopDemo
-  "Vector-I/O F16 plant; 10 deg initial pitch perturbation about trim."
+  "Vector-I/O F16 plant, started 10 deg nose-up of trim."
   f16plant = F16ModelWorkshop.Plant.F16PlantModel(apply "dyad://F16ModelWorkshop/trim_point.toml", theta_init = 0.17453292519943295) {^f16plant}
-  "Discrete (ZOH) LQG controller as a clocked state-space block; trim folded into the output operating point y0."
+  "Discrete LQG controller; trim is folded into its output operating point `y0`."
   controller = DiscreteComponents.DiscreteStateSpace(nx = 12, nu = 12, ny = 5, apply "dyad://F16ModelWorkshop/discrete_controller.toml") {^controller}
-  "Controller sample clock (100 Hz), planted on one controller input."
+  "Controller sample clock (100 Hz)."
   clk = DiscreteComponents.PeriodicClock(dt = ControllerTs) {^clk}
-  "Reference set-points for the 12 measured states (vector source)."
+  "Reference set-points for the 12 measured states."
   ref = F16ModelWorkshop.VectorBlocks.VectorConstant(n = 12, apply "dyad://F16ModelWorkshop/trim_reference.toml") {^ref}
-  "Tracking error block: error = ref - measurement (12 ch)."
+  "Tracking error: ref - measurement (12 ch)."
   err = F16ModelWorkshop.VectorBlocks.VectorAdd(n = 12, k1 = 1, k2 = -1) {^err}
-  "Vector sampler bridging continuous error -> clocked controller input (12 ch)."
+  "Samples the continuous error onto the controller clock (12 ch)."
   sample = F16ModelWorkshop.VectorBlocks.MultiSampler(n = 12) {^sample}
-  "Vector zero-order hold bridging clocked controller output -> continuous control (5 ch)."
+  "Holds each controller output between ticks as continuous control (5 ch)."
   zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(n = 5) {^zoh}
 relations
   connect(ref.y, err.u1) {^id8}
@@ -43,81 +39,20 @@ relations
   connect(clk.y, controller.u[1]) {^id14}
 metadata {
   "_links": {
-    "f16plant": {
-      "Dyad": {
-        "placement": {
-          "diagram": {"iconName": "default", "x1": 280, "y1": 146, "x2": 380, "y2": 246, "rot": 0}
-        },
-        "tags": []
-      }
-    },
-    "controller": {
-      "Dyad": {
-        "placement": {
-          "diagram": {"iconName": "default", "x1": 360, "y1": 370, "x2": 260, "y2": 470, "rot": 0}
-        },
-        "tags": []
-      }
-    },
-    "clk": {
-      "Dyad": {"placement": {"diagram": {"x1": 510, "y1": 520, "x2": 610, "y2": 620}}}
-    },
-    "ref": {
-      "Dyad": {
-        "placement": {
-          "diagram": {"iconName": "default", "x1": 390, "y1": 70, "x2": 490, "y2": 170, "rot": 0}
-        },
-        "tags": []
-      }
-    },
-    "err": {
-      "Dyad": {
-        "placement": {
-          "diagram": {"iconName": "default", "x1": 520, "y1": 120, "x2": 620, "y2": 220, "rot": 0}
-        },
-        "tags": []
-      }
-    },
-    "sample": {
-      "Dyad": {
-        "placement": {
-          "diagram": {"iconName": "default", "x1": 610, "y1": 370, "x2": 510, "y2": 470, "rot": 0}
-        },
-        "tags": []
-      }
-    },
-    "zoh": {
-      "Dyad": {
-        "placement": {
-          "diagram": {"iconName": "default", "x1": 210, "y1": 370, "x2": 110, "y2": 470, "rot": 0}
-        },
-        "tags": []
-      }
-    },
-    "id8": {
-      "Dyad": {
-        "edges": [{"S": 1, "M": [{"x": 510, "y": 120}, {"x": 510, "y": 143}], "E": 2}],
-        "renderStyle": "standard"
-      }
-    },
-    "id9": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id10": {
-      "Dyad": {
-        "edges": [{"S": 1, "M": [{"x": 630, "y": 170}, {"x": 630, "y": 420}], "E": 2}],
-        "renderStyle": "standard"
-      }
-    },
+    "f16plant": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1000, "y1": 250, "x2": 1100, "y2": 350, "rot": 0}}}},
+    "controller": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 600, "y1": 250, "x2": 700, "y2": 350, "rot": 0}}}},
+    "clk": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 600, "y1": 380, "x2": 700, "y2": 480, "rot": 0}}}},
+    "ref": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 50, "y1": 223, "x2": 150, "y2": 323, "rot": 0}}}},
+    "err": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 230, "y1": 250, "x2": 330, "y2": 350, "rot": 0}}}},
+    "sample": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 400, "y1": 250, "x2": 500, "y2": 350, "rot": 0}}}},
+    "zoh": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 800, "y1": 250, "x2": 900, "y2": 350, "rot": 0}}}},
+    "id8": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id9": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1160, "y": 300}, {"x": 1160, "y": 540}, {"x": 180, "y": 540}, {"x": 180, "y": 326}], "E": 2}], "renderStyle": "standard"}},
+    "id10": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
     "id11": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id12": {"Dyad": {"renderStyle": "standard", "edges": [{"S": 1, "E": 2, "M": []}]}},
-    "id13": {
-      "Dyad": {"edges": [{"S": 1, "M": [{"x": 80, "y": 420}, {"x": 80, "y": 196}], "E": 2}]}
-    },
-    "id14": {
-      "Dyad": {
-        "edges": [{"S": 1, "M": [{"x": 390, "y": 570}, {"x": 390, "y": 420}], "E": 2}],
-        "path": {}
-      }
-    }
+    "id12": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id13": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id14": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 560, "y": 430}, {"x": 560, "y": 300}], "E": 2}], "renderStyle": "standard"}}
   }
 }
 end

@@ -5,14 +5,14 @@
 
 
 @doc Markdown.doc"""
-   PIDScheduledMatchesStandard(; name, Ts, K, Ti, Td, y_limit)
+   PIDScheduledMatchesStandard(; name, Ts, K, Ti, Td, y_limit, __overrides)
 
-`DiscreteComponents.DiscretePIDScheduled` with constant gain inputs is `DiscreteComponents.DiscretePIDStandard`.
+`DiscreteComponents.DiscretePIDScheduled` with constant gain inputs matches `DiscreteComponents.DiscretePIDStandard`.
 
-Both controllers see the same sampled reference and measurement, two sines, and the same
-gains, the scheduled one as input signals and the standard one as parameters. The output
-limit is reached by both sines' peaks, so the anti-windup tracking is exercised too. The
-held outputs must agree at every tick.
+Both controllers get the same sampled sine reference and measurement and the same gains:
+as input signals to the scheduled one, as parameters to the standard one. The sine peaks
+reach the output limit, so anti-windup tracking is exercised. The held outputs must agree
+at every tick.
 
 ## Parameters:
 
@@ -31,7 +31,7 @@ held outputs must agree at every tick.
 | `y_standard`         | Held output of `standard`.                         | --  |
 | `y_scheduled`         | Held output of `scheduled`.                         | --  |
 """
-@component function PIDScheduledMatchesStandard(; name = nothing, Ts=0.05, K=Float64(2.0), Ti=1.5, Td=0.4, y_limit=1.5, kwargs...)
+@component function PIDScheduledMatchesStandard(; name = nothing, var"Ts"=0.05, var"K"=Float64(2.0), var"Ti"=1.5, var"Td"=0.4, var"y_limit"=1.5, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -39,7 +39,7 @@ held outputs must agree at every tick.
     @named model = PIDScheduledMatchesStandard()
   """))
 
-  __overrides = __build_overrides(kwargs)
+  __overrides = Dict{String, Any}(__overrides)
   __params = Symbolics.SymbolicT[]
   __vars = Symbolics.SymbolicT[]
   __systems = System[]
@@ -48,6 +48,13 @@ held outputs must agree at every tick.
   __initialization_eqs = Equation[]
   __eqs = Equation[]
   __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Keyword argument overrides
+  haskey(__overrides, "Ts") && (Ts = pop!(__overrides, "Ts"))
+  haskey(__overrides, "K") && (K = pop!(__overrides, "K"))
+  haskey(__overrides, "Ti") && (Ti = pop!(__overrides, "Ti"))
+  haskey(__overrides, "Td") && (Td = pop!(__overrides, "Td"))
+  haskey(__overrides, "y_limit") && (y_limit = pop!(__overrides, "y_limit"))
 
   ### Structural Parameters (functions)
 
@@ -64,16 +71,16 @@ held outputs must agree at every tick.
   ### Symbolic Parameters
   __local__K = K
   append!(__params, @parameters (K::Real), [description = "Proportional gain."])
-  __initial_conditions[K] = __local__K
+  __dyad_seed_parameter!(__initial_conditions, __bindings, K, __local__K)
   __local__Ti = Ti
   append!(__params, @parameters (Ti::Real), [description = "Integral time, s."])
-  __initial_conditions[Ti] = __local__Ti
+  __dyad_seed_parameter!(__initial_conditions, __bindings, Ti, __local__Ti)
   __local__Td = Td
   append!(__params, @parameters (Td::Real), [description = "Derivative time, s."])
-  __initial_conditions[Td] = __local__Td
+  __dyad_seed_parameter!(__initial_conditions, __bindings, Td, __local__Td)
   __local__y_limit = y_limit
   append!(__params, @parameters (y_limit::Real), [description = "Output limit either side of zero."])
-  __initial_conditions[y_limit] = __local__y_limit
+  __dyad_seed_parameter!(__initial_conditions, __bindings, y_limit, __local__y_limit)
 
   ### Final Parameters (assignments)
 
@@ -85,11 +92,11 @@ held outputs must agree at every tick.
 
   ### Variables (assignments)
   __ovr_y_standard = pop!(__overrides, "y_standard", nothing); isnothing(__ovr_y_standard) || push!(__eqs, y_standard ~ __ovr_y_standard)
-  __ovr_y_standard__initial = pop!(__overrides, "y_standard__initial", nothing); isnothing(__ovr_y_standard__initial) || (__initial_conditions[y_standard] = __ovr_y_standard__initial)
-  __ovr_y_standard__guess = pop!(__overrides, "y_standard__guess", nothing)
+  __ovr_y_standard__initial = pop!(__overrides, "y_standard.initial", nothing); isnothing(__ovr_y_standard__initial) || (__initial_conditions[y_standard] = __ovr_y_standard__initial)
+  __ovr_y_standard__guess = pop!(__overrides, "y_standard.guess", nothing)
   __ovr_y_scheduled = pop!(__overrides, "y_scheduled", nothing); isnothing(__ovr_y_scheduled) || push!(__eqs, y_scheduled ~ __ovr_y_scheduled)
-  __ovr_y_scheduled__initial = pop!(__overrides, "y_scheduled__initial", nothing); isnothing(__ovr_y_scheduled__initial) || (__initial_conditions[y_scheduled] = __ovr_y_scheduled__initial)
-  __ovr_y_scheduled__guess = pop!(__overrides, "y_scheduled__guess", nothing)
+  __ovr_y_scheduled__initial = pop!(__overrides, "y_scheduled.initial", nothing); isnothing(__ovr_y_scheduled__initial) || (__initial_conditions[y_scheduled] = __ovr_y_scheduled__initial)
+  __ovr_y_scheduled__guess = pop!(__overrides, "y_scheduled.guess", nothing)
 
   ### Constants
   __constants = Any[]
@@ -97,67 +104,47 @@ held outputs must agree at every tick.
   ### Components
   # Subcomponent ref of type BlockComponents.Sources.Sine
   ref_overrides = __pop_subcomponent_overrides!(__overrides, "ref")
-  push!(__systems, @named ref = BlockComponents.Sources.Sine(; amplitude=Float64(1.0), frequency=0.2, ref_overrides...))
+  push!(__systems, @named ref = BlockComponents.Sources.Sine(; amplitude=Float64(1.0), frequency=0.2, __overrides = ref_overrides))
   # Subcomponent meas of type BlockComponents.Sources.Sine
   meas_overrides = __pop_subcomponent_overrides!(__overrides, "meas")
-  push!(__systems, @named meas = BlockComponents.Sources.Sine(; amplitude=0.5, frequency=0.45, phase=Float64(1.0), meas_overrides...))
+  push!(__systems, @named meas = BlockComponents.Sources.Sine(; amplitude=0.5, frequency=0.45, phase=Float64(1.0), __overrides = meas_overrides))
   # Subcomponent gain_src of type F16ModelWorkshop.VectorBlocks.VectorConstant
   gain_src_overrides = __pop_subcomponent_overrides!(__overrides, "gain_src")
-  push!(__systems, @named gain_src = F16ModelWorkshop.VectorBlocks.VectorConstant(; n=3, k=[K, Ti, Td], gain_src_overrides...))
+  push!(__systems, @named gain_src = F16ModelWorkshop.VectorBlocks.VectorConstant(; n=3, k=[K, Ti, Td], __overrides = gain_src_overrides))
   # Subcomponent gain_sample of type F16ModelWorkshop.VectorBlocks.MultiSampler
   gain_sample_overrides = __pop_subcomponent_overrides!(__overrides, "gain_sample")
-  push!(__systems, @named gain_sample = F16ModelWorkshop.VectorBlocks.MultiSampler(; n=3, gain_sample_overrides...))
+  push!(__systems, @named gain_sample = F16ModelWorkshop.VectorBlocks.MultiSampler(; n=3, __overrides = gain_sample_overrides))
   # Subcomponent ref_sample of type DiscreteComponents.Sampler
   ref_sample_overrides = __pop_subcomponent_overrides!(__overrides, "ref_sample")
-  push!(__systems, @named ref_sample = DiscreteComponents.Sampler(; ref_sample_overrides...))
+  push!(__systems, @named ref_sample = DiscreteComponents.Sampler(; __overrides = ref_sample_overrides))
   # Subcomponent meas_sample of type DiscreteComponents.Sampler
   meas_sample_overrides = __pop_subcomponent_overrides!(__overrides, "meas_sample")
-  push!(__systems, @named meas_sample = DiscreteComponents.Sampler(; meas_sample_overrides...))
+  push!(__systems, @named meas_sample = DiscreteComponents.Sampler(; __overrides = meas_sample_overrides))
   # Subcomponent clock of type DiscreteComponents.PeriodicClock
   clock_overrides = __pop_subcomponent_overrides!(__overrides, "clock")
-  push!(__systems, @named clock = DiscreteComponents.PeriodicClock(; dt=Ts, clock_overrides...))
+  push!(__systems, @named clock = DiscreteComponents.PeriodicClock(; dt=Ts, __symbol_overrides(clock_overrides)...))
   # Subcomponent standard of type DiscreteComponents.DiscretePIDStandard
   standard_overrides = __pop_subcomponent_overrides!(__overrides, "standard")
-  push!(__systems, @named standard = DiscreteComponents.DiscretePIDStandard(; standard_overrides...))
-  __bindings[standard.K] = K
-  __bindings[standard.Ti] = Ti
-  __bindings[standard.Td] = Td
-  __bindings[standard.y_max] = y_limit
-  __bindings[standard.y_min] = -y_limit
-  # Now remove initial conditions in standard that correspond to the bindings just added
-  __standard_ics = ModelingToolkit.get_initial_conditions(standard)
-  __no_namespace_standard = ModelingToolkit.toggle_namespacing(standard, false)
-  __standard_K = Symbolics.unwrap(__no_namespace_standard.K)::Symbolics.SymbolicT
-  delete!(__standard_ics, __standard_K)
-  __standard_Ti = Symbolics.unwrap(__no_namespace_standard.Ti)::Symbolics.SymbolicT
-  delete!(__standard_ics, __standard_Ti)
-  __standard_Td = Symbolics.unwrap(__no_namespace_standard.Td)::Symbolics.SymbolicT
-  delete!(__standard_ics, __standard_Td)
-  __standard_y_max = Symbolics.unwrap(__no_namespace_standard.y_max)::Symbolics.SymbolicT
-  delete!(__standard_ics, __standard_y_max)
-  __standard_y_min = Symbolics.unwrap(__no_namespace_standard.y_min)::Symbolics.SymbolicT
-  delete!(__standard_ics, __standard_y_min)
+  push!(__systems, @named standard = DiscreteComponents.DiscretePIDStandard(; K=K, Ti=Ti, Td=Td, y_max=y_limit, y_min=-y_limit, __overrides = standard_overrides))
+  __dyad_bind_final!(__bindings, standard, Symbol[], :K, K)
+  __dyad_bind_final!(__bindings, standard, Symbol[], :Ti, Ti)
+  __dyad_bind_final!(__bindings, standard, Symbol[], :Td, Td)
+  __dyad_bind_final!(__bindings, standard, Symbol[], :y_max, y_limit)
+  __dyad_bind_final!(__bindings, standard, Symbol[], :y_min, -y_limit)
   # Subcomponent scheduled of type DiscreteComponents.DiscretePIDScheduled
   scheduled_overrides = __pop_subcomponent_overrides!(__overrides, "scheduled")
-  push!(__systems, @named scheduled = DiscreteComponents.DiscretePIDScheduled(; scheduled_overrides...))
-  __bindings[scheduled.y_max] = y_limit
-  __bindings[scheduled.y_min] = -y_limit
-  # Now remove initial conditions in scheduled that correspond to the bindings just added
-  __scheduled_ics = ModelingToolkit.get_initial_conditions(scheduled)
-  __no_namespace_scheduled = ModelingToolkit.toggle_namespacing(scheduled, false)
-  __scheduled_y_max = Symbolics.unwrap(__no_namespace_scheduled.y_max)::Symbolics.SymbolicT
-  delete!(__scheduled_ics, __scheduled_y_max)
-  __scheduled_y_min = Symbolics.unwrap(__no_namespace_scheduled.y_min)::Symbolics.SymbolicT
-  delete!(__scheduled_ics, __scheduled_y_min)
+  push!(__systems, @named scheduled = DiscreteComponents.DiscretePIDScheduled(; y_max=y_limit, y_min=-y_limit, __overrides = scheduled_overrides))
+  __dyad_bind_final!(__bindings, scheduled, Symbol[], :y_max, y_limit)
+  __dyad_bind_final!(__bindings, scheduled, Symbol[], :y_min, -y_limit)
   # Subcomponent zoh of type F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold
   zoh_overrides = __pop_subcomponent_overrides!(__overrides, "zoh")
-  push!(__systems, @named zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(; n=2, zoh_overrides...))
+  push!(__systems, @named zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(; n=2, __overrides = zoh_overrides))
   # Subcomponent intg of type BlockComponents.Continuous.Integrator
   intg_overrides = __pop_subcomponent_overrides!(__overrides, "intg")
-  push!(__systems, @named intg = BlockComponents.Continuous.Integrator(; intg_overrides...))
+  push!(__systems, @named intg = BlockComponents.Continuous.Integrator(; __overrides = intg_overrides))
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
 
   ### Guesses
   isnothing(__ovr_y_standard__guess) || (__guesses[y_standard] = __ovr_y_standard__guess)
@@ -184,6 +171,6 @@ held outputs must agree at every tick.
   push!(__eqs, connect(zoh.y[1], intg.u))
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export PIDScheduledMatchesStandard

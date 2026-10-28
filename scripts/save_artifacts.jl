@@ -1,5 +1,6 @@
-# Run tutorial analyses and save what Studio would show for each: every figure as a PNG
-# and every table as a CSV, under results/<analysis>/.
+# Run tutorial analyses and save what Studio shows for each: every figure as a PNG and
+# every table as a CSV, under results/<analysis>/. Prints each analysis' run time, the
+# artifacts saved, and any that could not be built.
 #
 #   julia --project=. scripts/save_artifacts.jl TutorialGainScheduleDesign TutorialGainScheduledPID
 #
@@ -8,11 +9,10 @@
 
 ENV["GKSwstype"] = get(ENV, "GKSwstype", "100")
 using DyadInterface, F16ModelWorkshop, F16ModelWorkshop.Tutorial, Plots
-import DataFrames
 using DyadInterface: AnalysisSolutionMetadata, ArtifactType, artifacts
 
-# DyadControlSystems' `LinearAnalysis` builds its `RGAPlot` without returning for the F-16's
-# 4-input, 12-output plant, so this script does not ask for it.
+# DyadControlSystems' `LinearAnalysis` never finishes building its `RGAPlot` for the F-16's
+# 4-input, 12-output plant, so it is skipped.
 const DOES_NOT_FINISH = (:RGAPlot,)
 
 writes_files(name) = endswith(name, "Export") || endswith(name, "Table") || startswith(name, "TutorialVisualize")

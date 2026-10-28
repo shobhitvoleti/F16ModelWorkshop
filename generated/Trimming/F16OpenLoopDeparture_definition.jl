@@ -5,25 +5,21 @@
 
 
 @doc Markdown.doc"""
-   F16OpenLoopDeparture(; name)
+   F16OpenLoopDeparture(; name, __overrides)
 
 Open-loop pitch departure from trim.
 
-Identical to `F16OpenLoopTrim` except that `theta_init` is nudged 1 degree above the
-trim attitude and the horizon is long enough for the consequence to be unmistakable.
+`F16OpenLoopTrim` with `theta_init` 1 degree above the trim attitude and a longer horizon.
+At the reference CG the airframe is statically unstable in pitch (Cma = +0.082/rad): a real
+pole at about +0.095 rad/s doubles a perturbation every 7.3 s. This is why the aircraft
+needs the regulator of tutorial steps 3 and 4.
 
-At the reference CG the F-16 is statically unstable in pitch (Cma = +0.082/rad), which
-puts a real pole at roughly +0.09 rad/s — a perturbation doubles about every 7.6 s and
-never comes back. Where `F16OpenLoopTrim` shows that the trim point is an equilibrium,
-this shows that it is an unstable one, which is the reason the aircraft needs the
-regulator designed in tutorial steps 3 and 4.
-
-Set `plant.xcg = 0.30` to move the CG forward of the aerodynamic reference and watch
-the same perturbation decay instead.
+`plant.xcg = 0.30` makes the airframe statically stable, but these held controls trim it
+only at the 0.35 reference: at 0.30 they pitch it nose-down into a dive.
 
 Signal flow: Constants -> Mux5 -> F16PlantModel
 """
-@component function F16OpenLoopDeparture(; name = nothing, kwargs...)
+@component function F16OpenLoopDeparture(; name = nothing, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -31,7 +27,7 @@ Signal flow: Constants -> Mux5 -> F16PlantModel
     @named model = F16OpenLoopDeparture()
   """))
 
-  __overrides = __build_overrides(kwargs)
+  __overrides = Dict{String, Any}(__overrides)
   __params = Symbolics.SymbolicT[]
   __vars = Symbolics.SymbolicT[]
   __systems = System[]
@@ -69,28 +65,28 @@ Signal flow: Constants -> Mux5 -> F16PlantModel
   ### Components
   # Subcomponent T_cmd of type BlockComponents.Sources.Constant
   T_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "T_cmd")
-  push!(__systems, @named T_cmd = BlockComponents.Sources.Constant(; k=10794.89, T_cmd_overrides...))
+  push!(__systems, @named T_cmd = BlockComponents.Sources.Constant(; k=10794.89, __overrides = T_cmd_overrides))
   # Subcomponent el_cmd of type BlockComponents.Sources.Constant
   el_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "el_cmd")
-  push!(__systems, @named el_cmd = BlockComponents.Sources.Constant(; k=-0.6949, el_cmd_overrides...))
+  push!(__systems, @named el_cmd = BlockComponents.Sources.Constant(; k=-0.6949, __overrides = el_cmd_overrides))
   # Subcomponent ail_cmd of type BlockComponents.Sources.Constant
   ail_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "ail_cmd")
-  push!(__systems, @named ail_cmd = BlockComponents.Sources.Constant(; k=Float64(0.0), ail_cmd_overrides...))
+  push!(__systems, @named ail_cmd = BlockComponents.Sources.Constant(; k=Float64(0.0), __overrides = ail_cmd_overrides))
   # Subcomponent rud_cmd of type BlockComponents.Sources.Constant
   rud_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "rud_cmd")
-  push!(__systems, @named rud_cmd = BlockComponents.Sources.Constant(; k=Float64(0.0), rud_cmd_overrides...))
+  push!(__systems, @named rud_cmd = BlockComponents.Sources.Constant(; k=Float64(0.0), __overrides = rud_cmd_overrides))
   # Subcomponent lef_cmd of type BlockComponents.Sources.Constant
   lef_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "lef_cmd")
-  push!(__systems, @named lef_cmd = BlockComponents.Sources.Constant(; k=Float64(0.0), lef_cmd_overrides...))
+  push!(__systems, @named lef_cmd = BlockComponents.Sources.Constant(; k=Float64(0.0), __overrides = lef_cmd_overrides))
   # Subcomponent mux of type F16ModelWorkshop.Utils.Mux5
   mux_overrides = __pop_subcomponent_overrides!(__overrides, "mux")
-  push!(__systems, @named mux = F16ModelWorkshop.Utils.Mux5(; mux_overrides...))
+  push!(__systems, @named mux = F16ModelWorkshop.Utils.Mux5(; __overrides = mux_overrides))
   # Subcomponent plant of type F16ModelWorkshop.Plant.F16PlantModel
   plant_overrides = __pop_subcomponent_overrides!(__overrides, "plant")
-  push!(__systems, @named plant = F16ModelWorkshop.Plant.F16PlantModel(; alt_init=Float64(3000.0), vt_init=152.4, alpha_init=0.059129, theta_init=0.076582, beta_init=Float64(0.0), phi_init=Float64(0.0), psi_init=Float64(0.0), P_init=Float64(0.0), Q_init=Float64(0.0), R_init=Float64(0.0), plant_overrides...))
+  push!(__systems, @named plant = F16ModelWorkshop.Plant.F16PlantModel(; alt_init=Float64(3000.0), vt_init=152.4, alpha_init=0.059129, theta_init=0.076582, beta_init=Float64(0.0), phi_init=Float64(0.0), psi_init=Float64(0.0), P_init=Float64(0.0), Q_init=Float64(0.0), R_init=Float64(0.0), __overrides = plant_overrides))
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
 
   ### Guesses
 
@@ -108,6 +104,6 @@ Signal flow: Constants -> Mux5 -> F16PlantModel
   push!(__eqs, connect(mux.y, plant.u_in))
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export F16OpenLoopDeparture

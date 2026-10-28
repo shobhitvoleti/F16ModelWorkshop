@@ -1,17 +1,17 @@
-# Checks on the bank of tutorial step 8 (`Tutorial.VelocityMPCDemo`), run by
-# test/velocity_mpc.jl. Each drives the scheduled MPC components with constant signals in place
-# of the plant, because a bank's members have no public accessor (MPCComponents.jl#48).
+# Checks on the step-8 bank (`Tutorial.VelocityMPCDemo`), run by test/velocity_mpc.jl.
+# Constant signals stand in for the plant because a bank's members have no public
+# accessor (MPCComponents.jl#48).
 
 """
-Every bank member returns its own trim command when it is already at its own trim.
+Every bank member returns its own trim command when already at its own trim.
 
-Measurement and reference are both the trimmed state of `velocity`; the bank's observer and
-`u0` start at that trim. The held commands must equal
-`VelocityMPC.trim_command(velocity, altitude)` at every tick. At a knot of `velocities` only
-that knot's member is active, so the tests build one model per knot (`velocity = 140.0` etc.).
+Measurement and reference are both the trimmed state of `velocity`, and the observer and
+`u0` start there. The held commands must equal `VelocityMPC.trim_command(velocity, altitude)`
+at every tick. At a knot only that knot's member is active, so the tests build one model
+per knot (`velocity = 140.0` etc.).
 """
 test component VelocityMPCHoldsTrim
-  "Airspeed knot under test; both the bank's operating point and the flight condition fed in."
+  "Airspeed knot under test, m/s: the bank's operating point and the flight condition fed in."
   structural parameter velocity::Real = 152.4
   "Altitude every knot is trimmed at, m."
   structural parameter altitude::Real = 3000.0
@@ -23,17 +23,17 @@ test component VelocityMPCHoldsTrim
   structural parameter n_states::Integer = 10
   "The bank of controllers, started at the trim of `velocity` so the observer needs no transient."
   structural parameter mpc_bank::MPCComponents.MPCRef = F16ModelWorkshop.VelocityMPC.bank(velocities, altitude, velocity, Ts)
-  "Trimmed states of the flight condition under test, all twelve of them."
+  "All twelve trimmed states of the flight condition under test."
   structural parameter trim_full::Real[12] = F16ModelWorkshop.VelocityMPC.trim_states(velocity, altitude)
   "Trimmed command of that flight condition, [kN, deg, deg, deg]: both `u0` and the expected output."
   structural parameter u_trim::Real[4] = F16ModelWorkshop.VelocityMPC.trim_command(velocity, altitude)
   "The trimmed state, held constant in place of a plant."
   state_src = F16ModelWorkshop.VectorBlocks.VectorConstant(n = 12, k = trim_full) {^state_src}
-  "The ten regulated states out of the twelve: everything but the horizontal position."
+  "The ten regulated states: all but the horizontal position."
   state_select = F16ModelWorkshop.VectorBlocks.VectorSelect(n = 12, indices = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {^state_select}
   "Measurement clock crossing: the constant state, sampled at `Ts`."
   meas_sample = F16ModelWorkshop.VectorBlocks.MultiSampler(n = n_states) {^meas_sample}
-  "Reference clock crossing: the same constant state, so the setpoint is where the aircraft already is."
+  "Reference clock crossing: the same state, so the setpoint is where the aircraft already is."
   ref_sample = F16ModelWorkshop.VectorBlocks.MultiSampler(n = n_states) {^ref_sample}
   "Controller sample clock, planted on the airspeed channel."
   clock = DiscreteComponents.PeriodicClock(dt = Ts) {^clock}
@@ -41,16 +41,13 @@ test component VelocityMPCHoldsTrim
   scheduler = MPCComponents.Experimental.LinearMPCScheduler(rho_grid = velocities) {^scheduler}
   "Weight-blended state observer of the bank."
   observer = MPCComponents.Experimental.LinearMPCScheduledObserver(mpc = mpc_bank) {^observer}
-  "Weight-blended constrained optimizer; `u0` is the trimmed command, the command the test expects back."
+  "Weight-blended constrained optimizer; `u0` is the trimmed command the test expects back."
   optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(mpc = mpc_bank, u0 = u_trim) {^optimizer}
   "Command clock crossing, so the solved commands can be read from the solution."
   zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(n = 4) {^zoh}
   "Hold for the solver status: clocked signals cannot be read back from the solution."
   zoh_flag = DiscreteComponents.ZeroOrderHold(initial_condition = 1.0) {^zoh_flag}
-  """
-  Continuous consumer of the held thrust: provides a real ODE state so the otherwise
-   purely-clocked model is not state-empty (an empty u0 crashes the auto-dt initializer).
-  """
+  "Continuous consumer of the held thrust, giving the clocked model an ODE state (an empty u0 crashes the auto-dt initializer)."
   intg = BlockComponents.Continuous.Integrator() {^intg}
   "Held thrust command, kN."
   variable T_cmd::Real
@@ -125,14 +122,14 @@ end
 """
 Every bank member's unconstrained optimum is the discrete LQR of its own stage cost.
 
-The reference is the trimmed state of `velocity` and the measurement is that state plus `dx`.
+The reference is the trimmed state of `velocity`; the measurement is that state plus `dx`.
 Each member's terminal weight is the Riccati cost-to-go of its stage cost, so for any horizon
 `Np` it must return `u_trim - K*dx`, with `K` from `VelocityMPC.member_design`. `dx` keeps
 that command inside the box and slew limits. The reference airspeed schedules the bank, so at
 a knot only that knot's member is active.
 """
 test component VelocityMPCMemberIsLQR
-  "Airspeed knot under test; both the bank's operating point and the flight condition fed in."
+  "Airspeed knot under test, m/s: the bank's operating point and the flight condition fed in."
   structural parameter velocity::Real = 152.4
   "Altitude every knot is trimmed at, m."
   structural parameter altitude::Real = 3000.0
@@ -146,21 +143,20 @@ test component VelocityMPCMemberIsLQR
   structural parameter Np::Integer = 40
   """
   Constant offset added to the measured state: 0.006 of the Bryson scales
-   `F16ModelWorkshop.VelocityMPC.STATE_SCALES`. At that size the LQR move `K*dx` stays
-   under a quarter of every per-tick slew limit at all three knots and leaves the command
-   far inside its box, so the optimum is interior and the quadratic program is solving the
-   unconstrained problem.
+  `F16ModelWorkshop.VelocityMPC.STATE_SCALES`. The LQR move `K*dx` then stays under a
+  quarter of every per-tick slew limit at all three knots and far inside the command box,
+  so the optimum is interior and the QP solves the unconstrained problem.
   """
   structural parameter dx::Real[10] = [0.6, 0.0006, 0.0006, 0.0006, 0.06, 0.0006, 0.0006, 0.0012, 0.0012, 0.0012]
   "The bank of controllers, started at the trim of `velocity` so the observer needs no transient."
   structural parameter mpc_bank::MPCComponents.MPCRef = F16ModelWorkshop.VelocityMPC.bank(velocities, altitude, velocity, Ts, Np = Np)
-  "Trimmed states of the flight condition under test, all twelve of them."
+  "All twelve trimmed states of the flight condition under test."
   structural parameter trim_full::Real[12] = F16ModelWorkshop.VelocityMPC.trim_states(velocity, altitude)
-  "Trimmed command of that flight condition, [kN, deg, deg, deg]: `u0`, and the command the expected output is measured from."
+  "Trimmed command of that flight condition, [kN, deg, deg, deg]: `u0` and the baseline of the expected output."
   structural parameter u_trim::Real[4] = F16ModelWorkshop.VelocityMPC.trim_command(velocity, altitude)
   "The trimmed state, held constant in place of a plant."
   state_src = F16ModelWorkshop.VectorBlocks.VectorConstant(n = 12, k = trim_full) {^state_src}
-  "The ten regulated states out of the twelve: everything but the horizontal position."
+  "The ten regulated states: all but the horizontal position."
   state_select = F16ModelWorkshop.VectorBlocks.VectorSelect(n = 12, indices = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {^state_select}
   "The constant state offset the measurement carries."
   perturbation = F16ModelWorkshop.VectorBlocks.VectorConstant(n = n_states, k = dx) {^perturbation}
@@ -182,10 +178,7 @@ test component VelocityMPCMemberIsLQR
   zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(n = 4) {^zoh}
   "Hold for the solver status: clocked signals cannot be read back from the solution."
   zoh_flag = DiscreteComponents.ZeroOrderHold(initial_condition = 1.0) {^zoh_flag}
-  """
-  Continuous consumer of the held thrust: provides a real ODE state so the otherwise
-   purely-clocked model is not state-empty (an empty u0 crashes the auto-dt initializer).
-  """
+  "Continuous consumer of the held thrust, giving the clocked model an ODE state (an empty u0 crashes the auto-dt initializer)."
   intg = BlockComponents.Continuous.Integrator() {^intg}
   "Held thrust command, kN."
   variable T_cmd::Real

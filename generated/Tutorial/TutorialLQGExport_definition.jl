@@ -5,11 +5,89 @@
 
 
 using DyadInterface
-using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel, SpecializationLevel
-using ModelingToolkit: SymbolicT, toggle_namespacing
 using F16ModelWorkshop: AbstractControllerExportAnalysisSpec, ControllerExportAnalysisSpec
-@kwdef mutable struct TutorialLQGExportSpec <: AbstractControllerExportAnalysisSpec
+@component function TutorialLQGExport__System(; name = nothing, var"design"="TutorialLQG", var"file"="assets/controller.toml", var"add_trim"=false, __overrides = Dict{String, Any}())
+  isnothing(name) && throw(ArgumentError("""
+    The `name` keyword must be provided. Please consider using the `@named` macro,
+    like so:
+  
+    @named model = TutorialLQGExport__System()
+  """))
+
+  __overrides = Dict{String, Any}(__overrides)
+  __params = Symbolics.SymbolicT[]
+  __vars = Symbolics.SymbolicT[]
+  __systems = System[]
+  __guesses = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initial_conditions = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initialization_eqs = Equation[]
+  __eqs = Equation[]
+  __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Keyword argument overrides
+  haskey(__overrides, "design") && (design = pop!(__overrides, "design"))
+  haskey(__overrides, "file") && (file = pop!(__overrides, "file"))
+  haskey(__overrides, "add_trim") && (add_trim = pop!(__overrides, "add_trim"))
+
+  ### Structural Parameters (functions)
+
+  ### Structural Parameters (Final)
+
+  ### Path Parameters (functions)
+
+  ### Path Parameters (non-final)
+
+  ### Final Parameters (declarations)
+
+  ### Deferred assignment (default values that depend on final parameters)
+
+  ### Symbolic Parameters
+  __local__design = design
+  append!(__params, @parameters (design::String), [description = "Name of the LQG design analysis in `F16ModelWorkshop.Tutorial`."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, design, __local__design)
+  __local__file = file
+  append!(__params, @parameters (file::String), [description = "Asset the controller is written to, relative to the project root."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, file, __local__file)
+  __local__add_trim = add_trim
+  append!(__params, @parameters (add_trim::Bool), [description = "Whether to add the trim controls as the controller's output offset `y0`."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, add_trim, __local__add_trim)
+
+  ### Final Parameters (assignments)
+
+  ### Final Path Parameters
+
+  ### Variables (declarations)
+
+  ### Variables (assignments)
+
+  ### Constants
+  __constants = Any[]
+
+  ### Components
+  # Subcomponent model of type F16ModelWorkshop.Tutorial.LQGDemo
+  model_overrides = __pop_subcomponent_overrides!(__overrides, "model")
+  push!(__systems, @named model = F16ModelWorkshop.Tutorial.LQGDemo(; __overrides = model_overrides))
+
+  ### Check there are no unmatched overrides
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
+
+  ### Guesses
+
+  ### Initialization Equations
+
+  ### Assertions
+  __assertions = []
+
+  ### Equations
+
+  # Return completely constructed System
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+end
+export TutorialLQGExport__System
+
+@kwdef struct TutorialLQGExport__Spec <: AbstractControllerExportAnalysisSpec
   name::Symbol = :TutorialLQGExport
+  __overrides::Dict{SymbolicT, SymbolicT} = Dict{SymbolicT, SymbolicT}()
   # Name of the LQG design analysis in `F16ModelWorkshop.Tutorial`.
   var"design"::String = "TutorialLQG"
   # Asset the controller is written to, relative to the project root.
@@ -18,31 +96,38 @@ using F16ModelWorkshop: AbstractControllerExportAnalysisSpec, ControllerExportAn
   var"add_trim"::Bool = false
   # Tutorial 3 — Continuous LQG control.
   # 
-  # Design model built with vector connectors: the F16 plant (vector I/O) closed with
-  # an LQG regulator, trim folded in as a control offset. Analysis points must be
-  # SCALAR (LQGAnalysis counts each AP name as one channel, not a vector's N), so the
-  # vector signals are tapped through a demux/mux pair exactly at the 17 analysis
-  # points, and stay vector everywhere else — a clean bus instead of per-channel
-  # spaghetti:
+  # Design model: the F16 plant (vector I/O) closed with an LQG regulator, trim added as a
+  # control offset. Analysis points must be scalar, because LQGAnalysis counts each AP name
+  # as one channel, not a vector's N. The vector signals therefore pass through a demux/mux
+  # pair at the 17 analysis points and stay vector elsewhere:
   #   measurements: plant.y_out -> Demux4x3 -> 4x Demux3 -[yn..yR]-> 4x Mux3 -> Mux4x3 -> err
   #   controls:     controller  -> Demux5 -> (+trim) -[uT,uEl,uAil,uRud,uLef]-> Mux5 -> plant.u_in
-  #   (LEF carries no aero effect in the plant, so the synthesis returns a zero gain row for
-  #   it; it is kept as a design control so the controller has the plant's full 5 channels.)
+  # The leading-edge flap has no aero effect in the plant, so the synthesis returns a zero
+  # gain row for `uLef`; it stays a design control so the controller covers all 5 plant inputs.
   # 
-  # `TutorialLQG` linearizes the plant between these points and synthesizes the LQG
-  # gains; `TutorialLinearize` (02) linearizes the same instrumented model.
+  # `TutorialLQG` linearizes the plant between these points and synthesizes the LQG gains;
+  # `TutorialLinearize` (step 2) linearizes the same model.
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.LQGDemo(; name=:LQGDemo)
+  __system::System = TutorialLQGExport__System(; name, var"design"=var"design", var"file"=var"file", var"add_trim"=var"add_trim")
 end
 
-function DyadInterface.run_analysis(spec::TutorialLQGExportSpec)
+function __dyad_base_analysis_spec(spec::TutorialLQGExport__Spec)
   overrides = Dict{SymbolicT, SymbolicT}()
   no_namespace_model = toggle_namespacing(spec.model, false)
   
-  base_spec = ControllerExportAnalysisSpec(;
-    name=:ControllerExportAnalysis, overrides, design=spec.design, file=spec.file, add_trim=spec.add_trim, model=spec.model
+  merge!(overrides, spec.__overrides)
+  ControllerExportAnalysisSpec(;
+    name=spec.name, overrides, __system=spec.__system, var"design"=spec.var"design", var"file"=spec.var"file", var"add_trim"=spec.var"add_trim", var"model"=spec.var"model"
   )
-  run_analysis(base_spec)
 end
 
-TutorialLQGExport(;kwargs...) = run_analysis(TutorialLQGExportSpec(;kwargs...))
-export TutorialLQGExport, TutorialLQGExportSpec
+function DyadInterface.run_analysis(spec::TutorialLQGExport__Spec)
+  run_analysis(__dyad_base_analysis_spec(spec))
+end
+
+function DyadInterface.setup_analysis(spec::TutorialLQGExport__Spec; kwargs...)
+  DyadInterface.setup_analysis(__dyad_base_analysis_spec(spec); kwargs...)
+end
+
+TutorialLQGExport(;kwargs...) = run_analysis(TutorialLQGExport__Spec(;kwargs...))
+export TutorialLQGExport, TutorialLQGExport__Spec

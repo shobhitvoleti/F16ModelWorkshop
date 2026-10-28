@@ -5,11 +5,93 @@
 
 
 using DyadInterface
-using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel, SpecializationLevel
-using ModelingToolkit: SymbolicT, toggle_namespacing
 using F16ModelWorkshop: AbstractEnvelopeAnalysisSpec, EnvelopeAnalysisSpec
-@kwdef mutable struct TutorialEnvelopeSpec <: AbstractEnvelopeAnalysisSpec
+@component function TutorialEnvelope__System(; name = nothing, var"velocities"=[140.0, 250.0], var"altitudes"=[0.0, 9000.0], var"points"=100, var"table_dir"="", __overrides = Dict{String, Any}())
+  isnothing(name) && throw(ArgumentError("""
+    The `name` keyword must be provided. Please consider using the `@named` macro,
+    like so:
+  
+    @named model = TutorialEnvelope__System()
+  """))
+
+  __overrides = Dict{String, Any}(__overrides)
+  __params = Symbolics.SymbolicT[]
+  __vars = Symbolics.SymbolicT[]
+  __systems = System[]
+  __guesses = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initial_conditions = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initialization_eqs = Equation[]
+  __eqs = Equation[]
+  __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Keyword argument overrides
+  haskey(__overrides, "velocities") && (velocities = pop!(__overrides, "velocities"))
+  haskey(__overrides, "altitudes") && (altitudes = pop!(__overrides, "altitudes"))
+  haskey(__overrides, "points") && (points = pop!(__overrides, "points"))
+  haskey(__overrides, "table_dir") && (table_dir = pop!(__overrides, "table_dir"))
+
+  ### Structural Parameters (functions)
+
+  ### Structural Parameters (Final)
+
+  ### Path Parameters (functions)
+
+  ### Path Parameters (non-final)
+
+  ### Final Parameters (declarations)
+
+  ### Deferred assignment (default values that depend on final parameters)
+
+  ### Symbolic Parameters
+  __local__velocities = velocities
+  append!(__params, @parameters (velocities::Array{Float64, 1}), [description = "Lowest and highest airspeed of the grid, m/s."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, velocities, __local__velocities)
+  __local__altitudes = altitudes
+  append!(__params, @parameters (altitudes::Array{Float64, 1}), [description = "Lowest and highest altitude of the grid, m."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, altitudes, __local__altitudes)
+  __local__points = points
+  append!(__params, @parameters (points::Int), [description = "Grid points along each axis."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, points, __local__points)
+  __local__table_dir = table_dir
+  append!(__params, @parameters (table_dir::String), [description = "Directory to rewrite the lookup table in at its own nodes, relative to the project root; empty to leave it."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, table_dir, __local__table_dir)
+
+  ### Final Parameters (assignments)
+
+  ### Final Path Parameters
+
+  ### Variables (declarations)
+
+  ### Variables (assignments)
+
+  ### Constants
+  __constants = Any[]
+
+  ### Components
+  # Subcomponent model of type F16ModelWorkshop.Plant.F16PlantModel
+  model_overrides = __pop_subcomponent_overrides!(__overrides, "model")
+  push!(__systems, @named model = F16ModelWorkshop.Plant.F16PlantModel(; __overrides = model_overrides))
+
+  ### Check there are no unmatched overrides
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
+
+  ### Guesses
+
+  ### Initialization Equations
+
+  ### Assertions
+  __assertions = []
+
+  ### Equations
+
+  # Return completely constructed System
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+end
+export TutorialEnvelope__System
+
+@kwdef struct TutorialEnvelope__Spec <: AbstractEnvelopeAnalysisSpec
   name::Symbol = :TutorialEnvelope
+  __overrides::Dict{SymbolicT, SymbolicT} = Dict{SymbolicT, SymbolicT}()
   # Lowest and highest airspeed of the grid, m/s.
   var"velocities"::Array{Float64, 1} = [140.0, 250.0]
   # Lowest and highest altitude of the grid, m.
@@ -20,17 +102,26 @@ using F16ModelWorkshop: AbstractEnvelopeAnalysisSpec, EnvelopeAnalysisSpec
   var"table_dir"::String = ""
   # F16 6-DOF plant with vector I/O and matrix aerodynamics
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Plant.F16PlantModel(; name=:F16PlantModel)
+  __system::System = TutorialEnvelope__System(; name, var"velocities"=var"velocities", var"altitudes"=var"altitudes", var"points"=var"points", var"table_dir"=var"table_dir")
 end
 
-function DyadInterface.run_analysis(spec::TutorialEnvelopeSpec)
+function __dyad_base_analysis_spec(spec::TutorialEnvelope__Spec)
   overrides = Dict{SymbolicT, SymbolicT}()
   no_namespace_model = toggle_namespacing(spec.model, false)
   
-  base_spec = EnvelopeAnalysisSpec(;
-    name=:EnvelopeAnalysis, overrides, velocities=spec.velocities, altitudes=spec.altitudes, points=spec.points, table_dir=spec.table_dir, model=spec.model
+  merge!(overrides, spec.__overrides)
+  EnvelopeAnalysisSpec(;
+    name=spec.name, overrides, __system=spec.__system, var"velocities"=spec.var"velocities", var"altitudes"=spec.var"altitudes", var"points"=spec.var"points", var"table_dir"=spec.var"table_dir", var"model"=spec.var"model"
   )
-  run_analysis(base_spec)
 end
 
-TutorialEnvelope(;kwargs...) = run_analysis(TutorialEnvelopeSpec(;kwargs...))
-export TutorialEnvelope, TutorialEnvelopeSpec
+function DyadInterface.run_analysis(spec::TutorialEnvelope__Spec)
+  run_analysis(__dyad_base_analysis_spec(spec))
+end
+
+function DyadInterface.setup_analysis(spec::TutorialEnvelope__Spec; kwargs...)
+  DyadInterface.setup_analysis(__dyad_base_analysis_spec(spec); kwargs...)
+end
+
+TutorialEnvelope(;kwargs...) = run_analysis(TutorialEnvelope__Spec(;kwargs...))
+export TutorialEnvelope, TutorialEnvelope__Spec

@@ -5,16 +5,16 @@
 
 
 @doc Markdown.doc"""
-   F16OpenLoopTrim(; name)
+   F16OpenLoopTrim(; name, __overrides)
 
-The trimmed plant flown open loop: the 3000 m / 152.4 m/s trim controls held constant.
+Open-loop plant at the 3000 m / 152.4 m/s trim, with the trim controls held constant.
 
-Started at the trim it stays close to it over the 10 s horizon: the trim is an equilibrium.
-`F16OpenLoopDeparture` shows that it is an unstable one.
+Started at the trim, it stays close to it over the 10 s horizon: the trim is an
+equilibrium. `F16OpenLoopDeparture` shows it is an unstable one.
 
 Signal flow: Constants -> Mux5 -> F16PlantModel
 """
-@component function F16OpenLoopTrim(; name = nothing, kwargs...)
+@component function F16OpenLoopTrim(; name = nothing, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -22,7 +22,7 @@ Signal flow: Constants -> Mux5 -> F16PlantModel
     @named model = F16OpenLoopTrim()
   """))
 
-  __overrides = __build_overrides(kwargs)
+  __overrides = Dict{String, Any}(__overrides)
   __params = Symbolics.SymbolicT[]
   __vars = Symbolics.SymbolicT[]
   __systems = System[]
@@ -60,28 +60,28 @@ Signal flow: Constants -> Mux5 -> F16PlantModel
   ### Components
   # Subcomponent T_cmd of type BlockComponents.Sources.Constant
   T_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "T_cmd")
-  push!(__systems, @named T_cmd = BlockComponents.Sources.Constant(; k=10794.89, T_cmd_overrides...))
+  push!(__systems, @named T_cmd = BlockComponents.Sources.Constant(; k=10794.89, __overrides = T_cmd_overrides))
   # Subcomponent el_cmd of type BlockComponents.Sources.Constant
   el_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "el_cmd")
-  push!(__systems, @named el_cmd = BlockComponents.Sources.Constant(; k=-0.6949, el_cmd_overrides...))
+  push!(__systems, @named el_cmd = BlockComponents.Sources.Constant(; k=-0.6949, __overrides = el_cmd_overrides))
   # Subcomponent ail_cmd of type BlockComponents.Sources.Constant
   ail_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "ail_cmd")
-  push!(__systems, @named ail_cmd = BlockComponents.Sources.Constant(; k=Float64(0.0), ail_cmd_overrides...))
+  push!(__systems, @named ail_cmd = BlockComponents.Sources.Constant(; k=Float64(0.0), __overrides = ail_cmd_overrides))
   # Subcomponent rud_cmd of type BlockComponents.Sources.Constant
   rud_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "rud_cmd")
-  push!(__systems, @named rud_cmd = BlockComponents.Sources.Constant(; k=Float64(0.0), rud_cmd_overrides...))
+  push!(__systems, @named rud_cmd = BlockComponents.Sources.Constant(; k=Float64(0.0), __overrides = rud_cmd_overrides))
   # Subcomponent lef_cmd of type BlockComponents.Sources.Constant
   lef_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "lef_cmd")
-  push!(__systems, @named lef_cmd = BlockComponents.Sources.Constant(; k=Float64(0.0), lef_cmd_overrides...))
+  push!(__systems, @named lef_cmd = BlockComponents.Sources.Constant(; k=Float64(0.0), __overrides = lef_cmd_overrides))
   # Subcomponent mux of type F16ModelWorkshop.Utils.Mux5
   mux_overrides = __pop_subcomponent_overrides!(__overrides, "mux")
-  push!(__systems, @named mux = F16ModelWorkshop.Utils.Mux5(; mux_overrides...))
+  push!(__systems, @named mux = F16ModelWorkshop.Utils.Mux5(; __overrides = mux_overrides))
   # Subcomponent plant of type F16ModelWorkshop.Plant.F16PlantModel
   plant_overrides = __pop_subcomponent_overrides!(__overrides, "plant")
-  push!(__systems, @named plant = F16ModelWorkshop.Plant.F16PlantModel(; alt_init=Float64(3000.0), vt_init=152.4, alpha_init=0.059129, theta_init=0.059129, beta_init=Float64(0.0), phi_init=Float64(0.0), psi_init=Float64(0.0), P_init=Float64(0.0), Q_init=Float64(0.0), R_init=Float64(0.0), plant_overrides...))
+  push!(__systems, @named plant = F16ModelWorkshop.Plant.F16PlantModel(; alt_init=Float64(3000.0), vt_init=152.4, alpha_init=0.059129, theta_init=0.059129, beta_init=Float64(0.0), phi_init=Float64(0.0), psi_init=Float64(0.0), P_init=Float64(0.0), Q_init=Float64(0.0), R_init=Float64(0.0), __overrides = plant_overrides))
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
 
   ### Guesses
 
@@ -99,6 +99,6 @@ Signal flow: Constants -> Mux5 -> F16PlantModel
   push!(__eqs, connect(mux.y, plant.u_in))
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export F16OpenLoopTrim

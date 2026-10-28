@@ -5,20 +5,19 @@
 
 
 @doc Markdown.doc"""
-   EnvelopeMPCDemo(; name, trim_table, velocities, altitudes, initial_velocity, initial_altitude, final_velocity, final_altitude, ramp_start, vt_ramp_duration, alt_ramp_duration, Ts, backend, n_states, mpc_bank, trim_init, u_trim, reference_gains)
+   EnvelopeMPCDemo(; name, trim_table, velocities, altitudes, initial_velocity, initial_altitude, final_velocity, final_altitude, ramp_start, vt_ramp_duration, alt_ramp_duration, Ts, backend, n_states, mpc_bank, trim_init, u_trim, reference_gains, __overrides)
 
 Tutorial 9 — Altitude- and velocity-scheduled linear MPC.
 
-Step 8 scheduled its bank on airspeed alone, at one altitude. Here the bank covers a
-rectangle of the flight envelope: one constrained `LinearMPC` member at every node of a
-`velocities × altitudes` grid, scheduled on both measured airspeed and measured altitude.
+Step 8's bank extended from one altitude to a rectangle of the flight envelope: one
+constrained `LinearMPC` member at every node of a `velocities × altitudes` grid, scheduled
+on measured airspeed and altitude.
 
 `MPCComponents.Experimental.LinearMPCScheduler` takes one scalar scheduling variable, so
-the second axis is built from parts: one scheduler per axis turns its measurement into
-hat-function weights over that axis's knots, and `VectorBlocks.OuterProduct` multiplies
-the two weight vectors into the bilinear weights of the grid — at most four nonzero, one
-at a node. The observer and the optimizer only ever see a weight per member, so they are
-the same components as in step 8.
+each axis gets its own scheduler, and `VectorBlocks.OuterProduct` multiplies the two
+hat-function weight vectors into the bilinear weights of the grid (at most four nonzero).
+The observer and optimizer see one weight per member, so they are the same components as
+in step 8.
 
 Signal flow (whole-array connections except where a channel is named):
 
@@ -32,20 +31,20 @@ Signal flow (whole-array connections except where a channel is named):
   ref_map (10) --> optimizer.r
   optimizer.u (4) --> zoh --> cmd_map (5) --> f16plant.u_in
 
-The grid comes from one lookup-table asset, `envelope_trim_alpha.csv`
-(`DyadData.DyadInterpolationTable2D`): the bank's knots are its axes, and the trimmed angle
-of attack at each node is its value. In level flight that is also the trimmed pitch
-attitude. `EnvelopeMPC.write_trim_table()` regenerates it; editing its axes moves the grid.
+The grid comes from the lookup-table asset `envelope_trim_alpha.csv`
+(`DyadData.DyadInterpolationTable2D`): its axes are the bank's knots and its values the
+trimmed angle of attack at each node, which in level flight is also the trimmed pitch
+attitude. `EnvelopeMPC.write_trim_table()` regenerates it (analysis 9c).
 
-The bank (`F16ModelWorkshop.EnvelopeMPC.bank`) is step 8's member design at each node: the
-same absolute frame, cost, limits and per-member affine offset, flattened airspeed-fastest
-in the order `OuterProduct` emits its weights. `ref_map` puts the two commands on their own
-channels and the tabulated trims, weighted, on pitch and angle of attack, so those
-references are bilinear in airspeed and altitude.
+The bank (`F16ModelWorkshop.EnvelopeMPC.bank`) is step 8's member design (absolute frame,
+cost, limits, affine offset) at each node, flattened airspeed-fastest in the order
+`OuterProduct` emits its weights. `ref_map` puts the two commands on their own channels and
+the weighted tabulated trims on pitch and angle of attack, so those references are bilinear
+in airspeed and altitude.
 
-The bank is a coarse subset of the envelope. `EnvelopeMPC.envelope()` trims and linearizes
-the plant at 10 000 flight conditions in a few seconds; the scheduled components grow with
-the member count, which keeps the bank to tens of members (MPCComponents.jl#94).
+The bank is a coarse subset of the envelope: `EnvelopeMPC.envelope()` trims and linearizes
+10 000 flight conditions in seconds, but the scheduled components grow with the member
+count, which keeps the bank to tens of members (MPCComponents.jl#94).
 
 Scenario: trimmed at 150 m/s and 3000 m, commanded to 190 m/s and 4500 m on overlapping
 ramps that cross a knot on each axis.
@@ -54,27 +53,27 @@ ramps that cross a knot on each axis.
 
 | Name         | Description                         | Units  |   Default value |
 | ------------ | ----------------------------------- | ------ | --------------- |
-| `trim_table`         | Trimmed angle of attack at each node of the scheduling grid, rad; its axes are the bank's knots.                         | --  |   DyadData.Dy...me="alpha") |
+| `trim_table`         | Trimmed angle of attack at each grid node, rad; its axes are the bank's knots.                         | --  |   DyadData.Dy...me="alpha") |
 | `velocities`         | Airspeed knots of the bank, m/s: the trim table's first axis.                         | --  |   trim_table["vt"] |
 | `altitudes`         | Altitude knots of the bank, m: the trim table's second axis.                         | --  |   trim_table["alt"] |
-| `initial_velocity`         | Airspeed the loop starts trimmed at, m/s.                         | --  |   150.0 |
-| `initial_altitude`         | Altitude the loop starts trimmed at, m.                         | --  |   3000.0 |
-| `final_velocity`         | Airspeed the reference ramp ends at, m/s.                         | --  |   190.0 |
-| `final_altitude`         | Altitude the reference ramp ends at, m.                         | --  |   4500.0 |
-| `ramp_start`         | Time both reference ramps begin, s.                         | --  |   2.0 |
-| `vt_ramp_duration`         | Length of the airspeed ramp, s.                         | --  |   20.0 |
-| `alt_ramp_duration`         | Length of the altitude ramp, s.                         | --  |   60.0 |
+| `initial_velocity`         | Initial trimmed airspeed, m/s.                         | --  |   150.0 |
+| `initial_altitude`         | Initial trimmed altitude, m.                         | --  |   3000.0 |
+| `final_velocity`         | Final commanded airspeed, m/s.                         | --  |   190.0 |
+| `final_altitude`         | Final commanded altitude, m.                         | --  |   4500.0 |
+| `ramp_start`         | Start time of both ramps, s.                         | --  |   2.0 |
+| `vt_ramp_duration`         | Airspeed ramp duration, s.                         | --  |   20.0 |
+| `alt_ramp_duration`         | Altitude ramp duration, s.                         | --  |   60.0 |
 | `Ts`         | Controller sample period, s.                         | --  |   0.05 |
 | `backend`         | QP solver backend: Auto compiles one C library per member when a C compiler is available.                         | --  |   MPCComponen...kend.Auto() |
 | `n_states`         | Number of regulated states.                         | --  |   10 |
 | `n_velocities`         | Number of airspeed knots (derived).                         | --  |   size(velocities, 1) |
 | `n_altitudes`         | Number of altitude knots (derived).                         | --  |   size(altitudes, 1) |
 | `n_members`         | Number of bank members (derived).                         | --  |   n_velocitie...n_altitudes |
-| `n_reference_inputs`         | Width of the reference map's input: two commands and one weight per member (derived).                         | --  |   n_members + 2 |
-| `mpc_bank`         | The bank, one member per node of the grid.                         | --  |   F16ModelWor...titude, Ts) |
-| `trim_init`         | Trimmed states of the flight condition the loop starts from.                         | --  |   F16ModelWor...l_altitude) |
-| `u_trim`         | Trimmed command of that flight condition, [kN, deg, deg, deg].                         | --  |   F16ModelWor...l_altitude) |
-| `reference_gains`         | Reference map from [commanded airspeed; commanded altitude; member weights] to the ten references.                         | --  |   F16ModelWor...trim_table) |
+| `n_reference_inputs`         | Reference-map inputs: two commands plus one weight per member (derived).                         | --  |   n_members + 2 |
+| `mpc_bank`         | Controller bank, one member per grid node.                         | --  |   F16ModelWor...titude, Ts) |
+| `trim_init`         | Trimmed initial states.                         | --  |   F16ModelWor...l_altitude) |
+| `u_trim`         | Trimmed initial command [kN, deg, deg, deg].                         | --  |   F16ModelWor...l_altitude) |
+| `reference_gains`         | Reference map, [commanded airspeed; commanded altitude; member weights] to the ten references.                         | --  |   F16ModelWor...trim_table) |
 
 ## Variables
 
@@ -84,7 +83,7 @@ ramps that cross a knot on each axis.
 | `vt_reference`         | Commanded airspeed on the continuous time base, for plotting.                         | --  |
 | `alt_reference`         | Commanded altitude on the continuous time base, for plotting.                         | --  |
 """
-@component function EnvelopeMPCDemo(; name = nothing, trim_table=DyadData.DyadInterpolationTable2D("dyad://F16ModelWorkshop/envelope_trim_alpha.csv"; axis1_name="vt", axis2_name="alt", data_name="alpha"), initial_velocity=Float64(150.0), initial_altitude=Float64(3000.0), final_velocity=Float64(190.0), final_altitude=Float64(4500.0), ramp_start=Float64(2.0), vt_ramp_duration=Float64(20.0), alt_ramp_duration=Float64(60.0), Ts=0.05, backend=MPCComponents.Backend.Auto(), n_states=10, velocities=trim_table["vt"], altitudes=trim_table["alt"], reference_gains=F16ModelWorkshop.EnvelopeMPC.reference_map(trim_table), trim_init=F16ModelWorkshop.VelocityMPC.trim_states(initial_velocity, initial_altitude), u_trim=F16ModelWorkshop.VelocityMPC.trim_command(initial_velocity, initial_altitude), mpc_bank=F16ModelWorkshop.EnvelopeMPC.bank(velocities, altitudes, initial_velocity, initial_altitude, Ts), kwargs...)
+@component function EnvelopeMPCDemo(; name = nothing, var"trim_table"=DyadData.DyadInterpolationTable2D("dyad://F16ModelWorkshop/envelope_trim_alpha.csv"; axis1_name="vt", axis2_name="alt", data_name="alpha"), var"initial_velocity"=Float64(150.0), var"initial_altitude"=Float64(3000.0), var"final_velocity"=Float64(190.0), var"final_altitude"=Float64(4500.0), var"ramp_start"=Float64(2.0), var"vt_ramp_duration"=Float64(20.0), var"alt_ramp_duration"=Float64(60.0), var"Ts"=0.05, var"backend"=MPCComponents.Backend.Auto(), var"n_states"=10, var"velocities"=nothing, var"altitudes"=nothing, var"reference_gains"=nothing, var"trim_init"=nothing, var"u_trim"=nothing, var"mpc_bank"=nothing, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -92,7 +91,7 @@ ramps that cross a knot on each axis.
     @named model = EnvelopeMPCDemo()
   """))
 
-  __overrides = __build_overrides(kwargs)
+  __overrides = Dict{String, Any}(__overrides)
   __params = Symbolics.SymbolicT[]
   __vars = Symbolics.SymbolicT[]
   __systems = System[]
@@ -101,6 +100,33 @@ ramps that cross a knot on each axis.
   __initialization_eqs = Equation[]
   __eqs = Equation[]
   __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Keyword argument overrides
+  haskey(__overrides, "trim_table") && (trim_table = pop!(__overrides, "trim_table"))
+  haskey(__overrides, "initial_velocity") && (initial_velocity = pop!(__overrides, "initial_velocity"))
+  haskey(__overrides, "initial_altitude") && (initial_altitude = pop!(__overrides, "initial_altitude"))
+  haskey(__overrides, "final_velocity") && (final_velocity = pop!(__overrides, "final_velocity"))
+  haskey(__overrides, "final_altitude") && (final_altitude = pop!(__overrides, "final_altitude"))
+  haskey(__overrides, "ramp_start") && (ramp_start = pop!(__overrides, "ramp_start"))
+  haskey(__overrides, "vt_ramp_duration") && (vt_ramp_duration = pop!(__overrides, "vt_ramp_duration"))
+  haskey(__overrides, "alt_ramp_duration") && (alt_ramp_duration = pop!(__overrides, "alt_ramp_duration"))
+  haskey(__overrides, "Ts") && (Ts = pop!(__overrides, "Ts"))
+  haskey(__overrides, "backend") && (backend = pop!(__overrides, "backend"))
+  haskey(__overrides, "n_states") && (n_states = pop!(__overrides, "n_states"))
+  haskey(__overrides, "velocities") && (velocities = pop!(__overrides, "velocities"))
+  haskey(__overrides, "altitudes") && (altitudes = pop!(__overrides, "altitudes"))
+  haskey(__overrides, "reference_gains") && (reference_gains = pop!(__overrides, "reference_gains"))
+  haskey(__overrides, "trim_init") && (trim_init = pop!(__overrides, "trim_init"))
+  haskey(__overrides, "u_trim") && (u_trim = pop!(__overrides, "u_trim"))
+  haskey(__overrides, "mpc_bank") && (mpc_bank = pop!(__overrides, "mpc_bank"))
+
+  ### Deferred keyword defaults (defaults referencing other keyword arguments)
+  isnothing(velocities) && (velocities = trim_table["vt"])
+  isnothing(altitudes) && (altitudes = trim_table["alt"])
+  isnothing(reference_gains) && (reference_gains = F16ModelWorkshop.EnvelopeMPC.reference_map(trim_table))
+  isnothing(trim_init) && (trim_init = F16ModelWorkshop.VelocityMPC.trim_states(initial_velocity, initial_altitude))
+  isnothing(u_trim) && (u_trim = F16ModelWorkshop.VelocityMPC.trim_command(initial_velocity, initial_altitude))
+  isnothing(mpc_bank) && (mpc_bank = F16ModelWorkshop.EnvelopeMPC.bank(velocities, altitudes, initial_velocity, initial_altitude, Ts))
 
   ### Structural Parameters (functions)
 
@@ -131,73 +157,73 @@ ramps that cross a knot on each axis.
 
   ### Variables (assignments)
   __ovr_exitflag = pop!(__overrides, "exitflag", nothing); isnothing(__ovr_exitflag) || push!(__eqs, exitflag ~ __ovr_exitflag)
-  __ovr_exitflag__initial = pop!(__overrides, "exitflag__initial", nothing); isnothing(__ovr_exitflag__initial) || (__initial_conditions[exitflag] = __ovr_exitflag__initial)
-  __ovr_exitflag__guess = pop!(__overrides, "exitflag__guess", nothing)
+  __ovr_exitflag__initial = pop!(__overrides, "exitflag.initial", nothing); isnothing(__ovr_exitflag__initial) || (__initial_conditions[exitflag] = __ovr_exitflag__initial)
+  __ovr_exitflag__guess = pop!(__overrides, "exitflag.guess", nothing)
   __ovr_vt_reference = pop!(__overrides, "vt_reference", nothing); isnothing(__ovr_vt_reference) || push!(__eqs, vt_reference ~ __ovr_vt_reference)
-  __ovr_vt_reference__initial = pop!(__overrides, "vt_reference__initial", nothing); isnothing(__ovr_vt_reference__initial) || (__initial_conditions[vt_reference] = __ovr_vt_reference__initial)
-  __ovr_vt_reference__guess = pop!(__overrides, "vt_reference__guess", nothing)
+  __ovr_vt_reference__initial = pop!(__overrides, "vt_reference.initial", nothing); isnothing(__ovr_vt_reference__initial) || (__initial_conditions[vt_reference] = __ovr_vt_reference__initial)
+  __ovr_vt_reference__guess = pop!(__overrides, "vt_reference.guess", nothing)
   __ovr_alt_reference = pop!(__overrides, "alt_reference", nothing); isnothing(__ovr_alt_reference) || push!(__eqs, alt_reference ~ __ovr_alt_reference)
-  __ovr_alt_reference__initial = pop!(__overrides, "alt_reference__initial", nothing); isnothing(__ovr_alt_reference__initial) || (__initial_conditions[alt_reference] = __ovr_alt_reference__initial)
-  __ovr_alt_reference__guess = pop!(__overrides, "alt_reference__guess", nothing)
+  __ovr_alt_reference__initial = pop!(__overrides, "alt_reference.initial", nothing); isnothing(__ovr_alt_reference__initial) || (__initial_conditions[alt_reference] = __ovr_alt_reference__initial)
+  __ovr_alt_reference__guess = pop!(__overrides, "alt_reference.guess", nothing)
 
   ### Constants
   __constants = Any[]
 
   ### Components
-  # Subcomponent f16plant of type F16ModelWorkshop.Plant.F16PlantModel
+  # Subcomponent f16plant of type F16ModelWorkshop.Plant.F16PlantFromState
   f16plant_overrides = __pop_subcomponent_overrides!(__overrides, "f16plant")
-  push!(__systems, @named f16plant = F16ModelWorkshop.Plant.F16PlantModel(; alt_init=trim_init[3], phi_init=trim_init[4], theta_init=trim_init[5], psi_init=trim_init[6], vt_init=trim_init[7], alpha_init=trim_init[8], beta_init=trim_init[9], P_init=trim_init[10], Q_init=trim_init[11], R_init=trim_init[12], f16plant_overrides...))
+  push!(__systems, @named f16plant = F16ModelWorkshop.Plant.F16PlantFromState(; x0=trim_init, __overrides = f16plant_overrides))
   # Subcomponent sched_vt of type MPCComponents.Experimental.LinearMPCScheduler
   sched_vt_overrides = __pop_subcomponent_overrides!(__overrides, "sched_vt")
-  push!(__systems, @named sched_vt = MPCComponents.Experimental.LinearMPCScheduler(; rho_grid=velocities, sched_vt_overrides...))
+  push!(__systems, @named sched_vt = MPCComponents.Experimental.LinearMPCScheduler(; rho_grid=velocities, __overrides = sched_vt_overrides))
   # Subcomponent sched_alt of type MPCComponents.Experimental.LinearMPCScheduler
   sched_alt_overrides = __pop_subcomponent_overrides!(__overrides, "sched_alt")
-  push!(__systems, @named sched_alt = MPCComponents.Experimental.LinearMPCScheduler(; rho_grid=altitudes, sched_alt_overrides...))
+  push!(__systems, @named sched_alt = MPCComponents.Experimental.LinearMPCScheduler(; rho_grid=altitudes, __overrides = sched_alt_overrides))
   # Subcomponent weights of type F16ModelWorkshop.VectorBlocks.OuterProduct
   weights_overrides = __pop_subcomponent_overrides!(__overrides, "weights")
-  push!(__systems, @named weights = F16ModelWorkshop.VectorBlocks.OuterProduct(; n1=n_velocities, n2=n_altitudes, weights_overrides...))
+  push!(__systems, @named weights = F16ModelWorkshop.VectorBlocks.OuterProduct(; n1=n_velocities, n2=n_altitudes, __overrides = weights_overrides))
   # Subcomponent observer of type MPCComponents.Experimental.LinearMPCScheduledObserver
   observer_overrides = __pop_subcomponent_overrides!(__overrides, "observer")
-  push!(__systems, @named observer = MPCComponents.Experimental.LinearMPCScheduledObserver(; mpc=mpc_bank, observer_overrides...))
+  push!(__systems, @named observer = MPCComponents.Experimental.LinearMPCScheduledObserver(; mpc=mpc_bank, __overrides = observer_overrides))
   # Subcomponent optimizer of type MPCComponents.Experimental.LinearMPCScheduledOptimizer
   optimizer_overrides = __pop_subcomponent_overrides!(__overrides, "optimizer")
-  push!(__systems, @named optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(; mpc=mpc_bank, u0=u_trim, backend=backend, optimizer_overrides...))
+  push!(__systems, @named optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(; mpc=mpc_bank, u0=u_trim, backend=backend, __overrides = optimizer_overrides))
   # Subcomponent clock of type DiscreteComponents.PeriodicClock
   clock_overrides = __pop_subcomponent_overrides!(__overrides, "clock")
-  push!(__systems, @named clock = DiscreteComponents.PeriodicClock(; dt=Ts, clock_overrides...))
+  push!(__systems, @named clock = DiscreteComponents.PeriodicClock(; dt=Ts, __symbol_overrides(clock_overrides)...))
   # Subcomponent meas_select of type F16ModelWorkshop.VectorBlocks.VectorSelect
   meas_select_overrides = __pop_subcomponent_overrides!(__overrides, "meas_select")
-  push!(__systems, @named meas_select = F16ModelWorkshop.VectorBlocks.VectorSelect(; n=12, indices=[3, 4, 5, 6, 7, 8, 9, 10, 11, 12], meas_select_overrides...))
+  push!(__systems, @named meas_select = F16ModelWorkshop.VectorBlocks.VectorSelect(; n=12, indices=[3, 4, 5, 6, 7, 8, 9, 10, 11, 12], __overrides = meas_select_overrides))
   # Subcomponent sample of type F16ModelWorkshop.VectorBlocks.MultiSampler
   sample_overrides = __pop_subcomponent_overrides!(__overrides, "sample")
-  push!(__systems, @named sample = F16ModelWorkshop.VectorBlocks.MultiSampler(; n=n_states, sample_overrides...))
+  push!(__systems, @named sample = F16ModelWorkshop.VectorBlocks.MultiSampler(; n=n_states, __overrides = sample_overrides))
   # Subcomponent vt_cmd of type BlockComponents.Sources.Ramp
   vt_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "vt_cmd")
-  push!(__systems, @named vt_cmd = BlockComponents.Sources.Ramp(; offset=initial_velocity, height=final_velocity - initial_velocity, start_time=ramp_start, duration=vt_ramp_duration, vt_cmd_overrides...))
+  push!(__systems, @named vt_cmd = BlockComponents.Sources.Ramp(; offset=initial_velocity, height=final_velocity - initial_velocity, start_time=ramp_start, duration=vt_ramp_duration, __overrides = vt_cmd_overrides))
   # Subcomponent alt_cmd of type BlockComponents.Sources.Ramp
   alt_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "alt_cmd")
-  push!(__systems, @named alt_cmd = BlockComponents.Sources.Ramp(; offset=initial_altitude, height=final_altitude - initial_altitude, start_time=ramp_start, duration=alt_ramp_duration, alt_cmd_overrides...))
+  push!(__systems, @named alt_cmd = BlockComponents.Sources.Ramp(; offset=initial_altitude, height=final_altitude - initial_altitude, start_time=ramp_start, duration=alt_ramp_duration, __overrides = alt_cmd_overrides))
   # Subcomponent sr_vt of type DiscreteComponents.Sampler
   sr_vt_overrides = __pop_subcomponent_overrides!(__overrides, "sr_vt")
-  push!(__systems, @named sr_vt = DiscreteComponents.Sampler(; sr_vt_overrides...))
+  push!(__systems, @named sr_vt = DiscreteComponents.Sampler(; __overrides = sr_vt_overrides))
   # Subcomponent sr_alt of type DiscreteComponents.Sampler
   sr_alt_overrides = __pop_subcomponent_overrides!(__overrides, "sr_alt")
-  push!(__systems, @named sr_alt = DiscreteComponents.Sampler(; sr_alt_overrides...))
+  push!(__systems, @named sr_alt = DiscreteComponents.Sampler(; __overrides = sr_alt_overrides))
   # Subcomponent ref_map of type DiscreteComponents.Examples.MatrixGain
   ref_map_overrides = __pop_subcomponent_overrides!(__overrides, "ref_map")
-  push!(__systems, @named ref_map = DiscreteComponents.Examples.MatrixGain(; ny=n_states, nu=n_reference_inputs, K=reference_gains, ref_map_overrides...))
+  push!(__systems, @named ref_map = DiscreteComponents.Examples.MatrixGain(; ny=n_states, nu=n_reference_inputs, K=reference_gains, __overrides = ref_map_overrides))
   # Subcomponent zoh of type F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold
   zoh_overrides = __pop_subcomponent_overrides!(__overrides, "zoh")
-  push!(__systems, @named zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(; n=4, zoh_overrides...))
+  push!(__systems, @named zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(; n=4, __overrides = zoh_overrides))
   # Subcomponent cmd_map of type DiscreteComponents.Examples.MatrixGain
   cmd_map_overrides = __pop_subcomponent_overrides!(__overrides, "cmd_map")
-  push!(__systems, @named cmd_map = DiscreteComponents.Examples.MatrixGain(; ny=5, nu=4, K=[Float64(1000.0) Float64(0.0) Float64(0.0) Float64(0.0); Float64(0.0) Float64(1.0) Float64(0.0) Float64(0.0); Float64(0.0) Float64(0.0) Float64(1.0) Float64(0.0); Float64(0.0) Float64(0.0) Float64(0.0) Float64(1.0); Float64(0.0) Float64(0.0) Float64(0.0) Float64(0.0)], cmd_map_overrides...))
+  push!(__systems, @named cmd_map = DiscreteComponents.Examples.MatrixGain(; ny=5, nu=4, K=[Float64(1000.0) Float64(0.0) Float64(0.0) Float64(0.0); Float64(0.0) Float64(1.0) Float64(0.0) Float64(0.0); Float64(0.0) Float64(0.0) Float64(1.0) Float64(0.0); Float64(0.0) Float64(0.0) Float64(0.0) Float64(1.0); Float64(0.0) Float64(0.0) Float64(0.0) Float64(0.0)], __overrides = cmd_map_overrides))
   # Subcomponent zoh_flag of type DiscreteComponents.ZeroOrderHold
   zoh_flag_overrides = __pop_subcomponent_overrides!(__overrides, "zoh_flag")
-  push!(__systems, @named zoh_flag = DiscreteComponents.ZeroOrderHold(; initial_condition=Float64(1.0), zoh_flag_overrides...))
+  push!(__systems, @named zoh_flag = DiscreteComponents.ZeroOrderHold(; initial_condition=Float64(1.0), __overrides = zoh_flag_overrides))
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
 
   ### Guesses
   isnothing(__ovr_exitflag__guess) || (__guesses[exitflag] = __ovr_exitflag__guess)
@@ -239,6 +265,6 @@ ramps that cross a knot on each axis.
   end
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export EnvelopeMPCDemo

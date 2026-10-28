@@ -1,16 +1,17 @@
-# Condense the Stevens & Lewis F-16 aerodynamic tables into the constant-derivative
-# deck carried by F16PlantModel (dyad/Plant/f16_plant_model.dyad). Run it to
-# regenerate those coefficients:
+# Fit the Stevens & Lewis F-16 aerodynamic tables (snl_aero_tables.jl) to the
+# constant-derivative deck of F16PlantModel (dyad/Plant/f16_plant_model.dyad):
 #
 #     julia --startup-file=no scripts/fit_snl_aero.jl
 #
-# The fit is taken at the reference CG (xcg = XCGR = 0.35c̄), so the deck carries no
-# CG transfer and the plant applies it live from its own `xcg` parameter. That is
-# what lets `xcg` alone move the aircraft across the pitch stability boundary.
+# Prints the residuals, a static-margin check, and the `final parameter` literals for
+# C0_lon, Cmat_lon, C0_lat and Cmat_lat to paste into the plant.
 #
-# Sample ranges bracket the tutorial operating point rather than the full envelope:
-# a deck linear in α cannot follow the tables to 45°, and the tutorial only ever
-# flies within a few degrees of trim. Widening them degrades the fit where it matters.
+# The fit is taken at the reference CG (xcg = XCGR = 0.35c̄), so the deck has no CG
+# transfer. The plant applies it from its own `xcg`, which lets `xcg` alone move the
+# aircraft across the pitch stability boundary.
+#
+# Sample ranges bracket the tutorial operating point: a deck linear in α cannot follow
+# the tables to 45°, and wider ranges degrade the fit near trim.
 
 include("snl_aero_tables.jl")
 include("snl_aero_buildup.jl")
@@ -19,7 +20,7 @@ using LinearAlgebra
 using Printf
 
 const D2R = pi / 180
-const XCG = F16AeroData.XCGR      # fit at the reference CG: no CG transfer in the deck
+const XCG = F16AeroData.XCGR
 const VT_FIT = 500.0              # ft/s; the S&L tables carry no Mach dependence
 
 # Sample ranges
@@ -87,10 +88,10 @@ function lateral()
     by, ry, my = fit(rowsy)
     bl, rl, ml = fit(rowsl)
     bn, rn, mn = fit(rowsn)
-    # The airframe is symmetric, so Cy, Cl and Cn all vanish at zero sideslip with the
-    # lateral controls centered. The fitted intercepts are rounding noise; carrying them
-    # would give the trimmed aircraft a phantom roll-off. Anything larger means the
-    # tables are no longer symmetric and the deck's structure no longer fits them.
+    # The airframe is symmetric, so Cy, Cl and Cn vanish at zero sideslip with centered
+    # lateral controls. The fitted intercepts are rounding noise and are zeroed so the
+    # trimmed aircraft has no phantom roll-off; anything larger means the tables are no
+    # longer symmetric and the deck's structure no longer fits them.
     C0 = [by[1], bl[1], bn[1]]
     maximum(abs, C0) < 1e-12 ||
         error("lateral intercepts are not symmetry noise: $C0")

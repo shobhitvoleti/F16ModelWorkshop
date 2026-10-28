@@ -8,6 +8,8 @@ using ModelingToolkit
 import Markdown
 using ModelingToolkit: t_nounits as t
 using OrdinaryDiffEqDefault
+using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel, SpecializationLevel
+using ModelingToolkit: SymbolicT, toggle_namespacing
 using RuntimeGeneratedFunctions
 RuntimeGeneratedFunctions.init(@__MODULE__)
 
@@ -20,8 +22,13 @@ import DiscreteComponents
 import DyadControlSystems
 import DyadData
 import DyadInterface
+import ElectricalComponents
+import HydraulicComponents
 import MPCComponents
 import MultibodyComponents
+import RotationalComponents
+import ThermalComponents
+import TranslationalComponents
 @doc Markdown.doc"""
 This connector represents an electrical pin with voltage and current as the potential and flow variables, respectively.
 """

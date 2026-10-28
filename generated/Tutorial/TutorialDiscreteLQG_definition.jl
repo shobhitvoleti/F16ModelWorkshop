@@ -5,11 +5,157 @@
 
 
 using DyadInterface
-using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel, SpecializationLevel
-using ModelingToolkit: SymbolicT, toggle_namespacing
 using DyadControlSystems: AbstractLQGAnalysisSpec, LQGAnalysisSpec
-@kwdef mutable struct TutorialDiscreteLQGSpec <: AbstractLQGAnalysisSpec
+@component function TutorialDiscreteLQG__System(; name = nothing, var"measurement"=["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"], var"controlled_output"=["yn", "ye", "yalt", "ypitch", "yvt", "yalpha", "ybeta", "yQ"], var"control_input"=["uT", "uEl", "uAil", "uRud", "uLef"], var"disturbance_inputs"=[], var"loop_openings"=[], var"t"=0.0, var"q1_diag"=[0.000001, 0.000001, 4.0, 131.312, 1.0, 820.702, 820.702, 32.8281], var"q2_diag"=[1.1111111e-7, 0.01, 0.01, 0.01, 0.01], var"r1_diag"=[40000.0, 0.25, 0.25, 0.25, 0.25], var"r2_diag"=[2500.0, 2500.0, 0.01, 0.000012184697, 0.000012184697, 0.000012184697, 0.0025, 0.0000030461742, 0.0000030461742, 7.6154355e-7, 7.6154355e-7, 7.6154355e-7], var"qQ"=0.0, var"qR"=0.0, var"disc"="zoh", var"Ts"=ControllerTs, var"integrator_indices"=[], var"integrator_r1_diag"=[], var"wl"=-1, var"wu"=-1, var"num_frequencies"=3000, var"duration"=30.0, __overrides = Dict{String, Any}())
+  isnothing(name) && throw(ArgumentError("""
+    The `name` keyword must be provided. Please consider using the `@named` macro,
+    like so:
+  
+    @named model = TutorialDiscreteLQG__System()
+  """))
+
+  __overrides = Dict{String, Any}(__overrides)
+  __params = Symbolics.SymbolicT[]
+  __vars = Symbolics.SymbolicT[]
+  __systems = System[]
+  __guesses = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initial_conditions = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initialization_eqs = Equation[]
+  __eqs = Equation[]
+  __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Keyword argument overrides
+  haskey(__overrides, "measurement") && (measurement = pop!(__overrides, "measurement"))
+  haskey(__overrides, "controlled_output") && (controlled_output = pop!(__overrides, "controlled_output"))
+  haskey(__overrides, "control_input") && (control_input = pop!(__overrides, "control_input"))
+  haskey(__overrides, "disturbance_inputs") && (disturbance_inputs = pop!(__overrides, "disturbance_inputs"))
+  haskey(__overrides, "loop_openings") && (loop_openings = pop!(__overrides, "loop_openings"))
+  haskey(__overrides, "t") && (t = pop!(__overrides, "t"))
+  haskey(__overrides, "q1_diag") && (q1_diag = pop!(__overrides, "q1_diag"))
+  haskey(__overrides, "q2_diag") && (q2_diag = pop!(__overrides, "q2_diag"))
+  haskey(__overrides, "r1_diag") && (r1_diag = pop!(__overrides, "r1_diag"))
+  haskey(__overrides, "r2_diag") && (r2_diag = pop!(__overrides, "r2_diag"))
+  haskey(__overrides, "qQ") && (qQ = pop!(__overrides, "qQ"))
+  haskey(__overrides, "qR") && (qR = pop!(__overrides, "qR"))
+  haskey(__overrides, "disc") && (disc = pop!(__overrides, "disc"))
+  haskey(__overrides, "Ts") && (Ts = pop!(__overrides, "Ts"))
+  haskey(__overrides, "integrator_indices") && (integrator_indices = pop!(__overrides, "integrator_indices"))
+  haskey(__overrides, "integrator_r1_diag") && (integrator_r1_diag = pop!(__overrides, "integrator_r1_diag"))
+  haskey(__overrides, "wl") && (wl = pop!(__overrides, "wl"))
+  haskey(__overrides, "wu") && (wu = pop!(__overrides, "wu"))
+  haskey(__overrides, "num_frequencies") && (num_frequencies = pop!(__overrides, "num_frequencies"))
+  haskey(__overrides, "duration") && (duration = pop!(__overrides, "duration"))
+
+  ### Structural Parameters (functions)
+
+  ### Structural Parameters (Final)
+
+  ### Path Parameters (functions)
+
+  ### Path Parameters (non-final)
+
+  ### Final Parameters (declarations)
+
+  ### Deferred assignment (default values that depend on final parameters)
+
+  ### Symbolic Parameters
+  __local__measurement = measurement
+  append!(__params, @parameters (measurement::Array{String, 1}))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, measurement, __local__measurement)
+  __local__controlled_output = controlled_output
+  append!(__params, @parameters (controlled_output::Array{String, 1}))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, controlled_output, __local__controlled_output)
+  __local__control_input = control_input
+  append!(__params, @parameters (control_input::Array{String, 1}))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, control_input, __local__control_input)
+  __local__disturbance_inputs = disturbance_inputs
+  append!(__params, @parameters (disturbance_inputs::Array{String, 1}))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, disturbance_inputs, __local__disturbance_inputs)
+  __local__loop_openings = loop_openings
+  append!(__params, @parameters (loop_openings::Array{String, 1}))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, loop_openings, __local__loop_openings)
+  __local__t = t
+  append!(__params, @parameters (t::Float64))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, t, __local__t)
+  __local__q1_diag = q1_diag
+  append!(__params, @parameters (q1_diag::Array{Float64, 1}))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, q1_diag, __local__q1_diag)
+  __local__q2_diag = q2_diag
+  append!(__params, @parameters (q2_diag::Array{Float64, 1}))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, q2_diag, __local__q2_diag)
+  __local__r1_diag = r1_diag
+  append!(__params, @parameters (r1_diag::Array{Float64, 1}))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, r1_diag, __local__r1_diag)
+  __local__r2_diag = r2_diag
+  append!(__params, @parameters (r2_diag::Array{Float64, 1}))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, r2_diag, __local__r2_diag)
+  __local__qQ = qQ
+  append!(__params, @parameters (qQ::Float64))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, qQ, __local__qQ)
+  __local__qR = qR
+  append!(__params, @parameters (qR::Float64))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, qR, __local__qR)
+  __local__disc = disc
+  append!(__params, @parameters (disc::String))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, disc, __local__disc)
+  __local__Ts = Ts
+  append!(__params, @parameters (Ts::Float64))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, Ts, __local__Ts)
+  __local__integrator_indices = integrator_indices
+  append!(__params, @parameters (integrator_indices::Array{Int, 1}))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, integrator_indices, __local__integrator_indices)
+  __local__integrator_r1_diag = integrator_r1_diag
+  append!(__params, @parameters (integrator_r1_diag::Array{Float64, 1}))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, integrator_r1_diag, __local__integrator_r1_diag)
+  __local__wl = wl
+  append!(__params, @parameters (wl::Float64))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, wl, __local__wl)
+  __local__wu = wu
+  append!(__params, @parameters (wu::Float64))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, wu, __local__wu)
+  __local__num_frequencies = num_frequencies
+  append!(__params, @parameters (num_frequencies::Int))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, num_frequencies, __local__num_frequencies)
+  __local__duration = duration
+  append!(__params, @parameters (duration::Float64))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, duration, __local__duration)
+
+  ### Final Parameters (assignments)
+
+  ### Final Path Parameters
+
+  ### Variables (declarations)
+
+  ### Variables (assignments)
+
+  ### Constants
+  __constants = Any[]
+
+  ### Components
+  # Subcomponent model of type F16ModelWorkshop.Tutorial.LQGDemo
+  model_overrides = __pop_subcomponent_overrides!(__overrides, "model")
+  push!(__systems, @named model = F16ModelWorkshop.Tutorial.LQGDemo(; __overrides = model_overrides))
+
+  ### Check there are no unmatched overrides
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
+
+  ### Guesses
+
+  ### Initialization Equations
+
+  ### Assertions
+  __assertions = []
+
+  ### Equations
+
+  # Return completely constructed System
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+end
+export TutorialDiscreteLQG__System
+
+@kwdef struct TutorialDiscreteLQG__Spec <: AbstractLQGAnalysisSpec
   name::Symbol = :TutorialDiscreteLQG
+  __overrides::Dict{SymbolicT, SymbolicT} = Dict{SymbolicT, SymbolicT}()
   var"measurement"::Array{String, 1} = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"]
   var"controlled_output"::Array{String, 1} = ["yn", "ye", "yalt", "ypitch", "yvt", "yalpha", "ybeta", "yQ"]
   var"control_input"::Array{String, 1} = ["uT", "uEl", "uAil", "uRud", "uLef"]
@@ -29,34 +175,41 @@ using DyadControlSystems: AbstractLQGAnalysisSpec, LQGAnalysisSpec
   var"wl"::Float64 = -1
   var"wu"::Float64 = -1
   var"num_frequencies"::Int = 3000
-  var"duration"::Float64 = -1.0
+  var"duration"::Float64 = 30.0
   # Tutorial 3 — Continuous LQG control.
   # 
-  # Design model built with vector connectors: the F16 plant (vector I/O) closed with
-  # an LQG regulator, trim folded in as a control offset. Analysis points must be
-  # SCALAR (LQGAnalysis counts each AP name as one channel, not a vector's N), so the
-  # vector signals are tapped through a demux/mux pair exactly at the 17 analysis
-  # points, and stay vector everywhere else — a clean bus instead of per-channel
-  # spaghetti:
+  # Design model: the F16 plant (vector I/O) closed with an LQG regulator, trim added as a
+  # control offset. Analysis points must be scalar, because LQGAnalysis counts each AP name
+  # as one channel, not a vector's N. The vector signals therefore pass through a demux/mux
+  # pair at the 17 analysis points and stay vector elsewhere:
   #   measurements: plant.y_out -> Demux4x3 -> 4x Demux3 -[yn..yR]-> 4x Mux3 -> Mux4x3 -> err
   #   controls:     controller  -> Demux5 -> (+trim) -[uT,uEl,uAil,uRud,uLef]-> Mux5 -> plant.u_in
-  #   (LEF carries no aero effect in the plant, so the synthesis returns a zero gain row for
-  #   it; it is kept as a design control so the controller has the plant's full 5 channels.)
+  # The leading-edge flap has no aero effect in the plant, so the synthesis returns a zero
+  # gain row for `uLef`; it stays a design control so the controller covers all 5 plant inputs.
   # 
-  # `TutorialLQG` linearizes the plant between these points and synthesizes the LQG
-  # gains; `TutorialLinearize` (02) linearizes the same instrumented model.
+  # `TutorialLQG` linearizes the plant between these points and synthesizes the LQG gains;
+  # `TutorialLinearize` (step 2) linearizes the same model.
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.LQGDemo(; name=:LQGDemo)
+  __system::System = TutorialDiscreteLQG__System(; name, var"measurement"=var"measurement", var"controlled_output"=var"controlled_output", var"control_input"=var"control_input", var"disturbance_inputs"=var"disturbance_inputs", var"loop_openings"=var"loop_openings", var"t"=var"t", var"q1_diag"=var"q1_diag", var"q2_diag"=var"q2_diag", var"r1_diag"=var"r1_diag", var"r2_diag"=var"r2_diag", var"qQ"=var"qQ", var"qR"=var"qR", var"disc"=var"disc", var"Ts"=var"Ts", var"integrator_indices"=var"integrator_indices", var"integrator_r1_diag"=var"integrator_r1_diag", var"wl"=var"wl", var"wu"=var"wu", var"num_frequencies"=var"num_frequencies", var"duration"=var"duration")
 end
 
-function DyadInterface.run_analysis(spec::TutorialDiscreteLQGSpec)
+function __dyad_base_analysis_spec(spec::TutorialDiscreteLQG__Spec)
   overrides = Dict{SymbolicT, SymbolicT}()
   no_namespace_model = toggle_namespacing(spec.model, false)
   
-  base_spec = LQGAnalysisSpec(;
-    name=:LQGAnalysis, overrides, measurement=spec.measurement, controlled_output=spec.controlled_output, control_input=spec.control_input, disturbance_inputs=spec.disturbance_inputs, loop_openings=spec.loop_openings, t=spec.t, q1_diag=spec.q1_diag, q2_diag=spec.q2_diag, r1_diag=spec.r1_diag, r2_diag=spec.r2_diag, qQ=spec.qQ, qR=spec.qR, disc=spec.disc, Ts=spec.Ts, integrator_indices=spec.integrator_indices, integrator_r1_diag=spec.integrator_r1_diag, wl=spec.wl, wu=spec.wu, num_frequencies=spec.num_frequencies, duration=spec.duration, model=spec.model
+  merge!(overrides, spec.__overrides)
+  LQGAnalysisSpec(;
+    name=spec.name, overrides, __system=spec.__system, var"measurement"=spec.var"measurement", var"controlled_output"=spec.var"controlled_output", var"control_input"=spec.var"control_input", var"disturbance_inputs"=spec.var"disturbance_inputs", var"loop_openings"=spec.var"loop_openings", var"t"=spec.var"t", var"q1_diag"=spec.var"q1_diag", var"q2_diag"=spec.var"q2_diag", var"r1_diag"=spec.var"r1_diag", var"r2_diag"=spec.var"r2_diag", var"qQ"=spec.var"qQ", var"qR"=spec.var"qR", var"disc"=spec.var"disc", var"Ts"=spec.var"Ts", var"integrator_indices"=spec.var"integrator_indices", var"integrator_r1_diag"=spec.var"integrator_r1_diag", var"wl"=spec.var"wl", var"wu"=spec.var"wu", var"num_frequencies"=spec.var"num_frequencies", var"duration"=spec.var"duration", var"model"=spec.var"model"
   )
-  run_analysis(base_spec)
 end
 
-TutorialDiscreteLQG(;kwargs...) = run_analysis(TutorialDiscreteLQGSpec(;kwargs...))
-export TutorialDiscreteLQG, TutorialDiscreteLQGSpec
+function DyadInterface.run_analysis(spec::TutorialDiscreteLQG__Spec)
+  run_analysis(__dyad_base_analysis_spec(spec))
+end
+
+function DyadInterface.setup_analysis(spec::TutorialDiscreteLQG__Spec; kwargs...)
+  DyadInterface.setup_analysis(__dyad_base_analysis_spec(spec); kwargs...)
+end
+
+TutorialDiscreteLQG(;kwargs...) = run_analysis(TutorialDiscreteLQG__Spec(;kwargs...))
+export TutorialDiscreteLQG, TutorialDiscreteLQG__Spec

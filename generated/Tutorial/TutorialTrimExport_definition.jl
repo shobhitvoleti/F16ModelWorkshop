@@ -5,44 +5,121 @@
 
 
 using DyadInterface
-using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel, SpecializationLevel
-using ModelingToolkit: SymbolicT, toggle_namespacing
 using F16ModelWorkshop: AbstractTrimExportAnalysisSpec, TrimExportAnalysisSpec
-@kwdef mutable struct TutorialTrimExportSpec <: AbstractTrimExportAnalysisSpec
+@component function TutorialTrimExport__System(; name = nothing, var"export_dir"="assets", __overrides = Dict{String, Any}())
+  isnothing(name) && throw(ArgumentError("""
+    The `name` keyword must be provided. Please consider using the `@named` macro,
+    like so:
+  
+    @named model = TutorialTrimExport__System()
+  """))
+
+  __overrides = Dict{String, Any}(__overrides)
+  __params = Symbolics.SymbolicT[]
+  __vars = Symbolics.SymbolicT[]
+  __systems = System[]
+  __guesses = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initial_conditions = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initialization_eqs = Equation[]
+  __eqs = Equation[]
+  __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Keyword argument overrides
+  haskey(__overrides, "export_dir") && (export_dir = pop!(__overrides, "export_dir"))
+
+  ### Structural Parameters (functions)
+
+  ### Structural Parameters (Final)
+
+  ### Path Parameters (functions)
+
+  ### Path Parameters (non-final)
+
+  ### Final Parameters (declarations)
+
+  ### Deferred assignment (default values that depend on final parameters)
+
+  ### Symbolic Parameters
+  __local__export_dir = export_dir
+  append!(__params, @parameters (export_dir::String), [description = "Directory the three trim assets are written to, relative to the project root; empty to trim without writing them."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, export_dir, __local__export_dir)
+
+  ### Final Parameters (assignments)
+
+  ### Final Path Parameters
+
+  ### Variables (declarations)
+
+  ### Variables (assignments)
+
+  ### Constants
+  __constants = Any[]
+
+  ### Components
+  # Subcomponent model of type F16ModelWorkshop.Tutorial.TrimDemo
+  model_overrides = __pop_subcomponent_overrides!(__overrides, "model")
+  push!(__systems, @named model = F16ModelWorkshop.Tutorial.TrimDemo(; __overrides = model_overrides))
+
+  ### Check there are no unmatched overrides
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
+
+  ### Guesses
+
+  ### Initialization Equations
+
+  ### Assertions
+  __assertions = []
+
+  ### Equations
+
+  # Return completely constructed System
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+end
+export TutorialTrimExport__System
+
+@kwdef struct TutorialTrimExport__Spec <: AbstractTrimExportAnalysisSpec
   name::Symbol = :TutorialTrimExport
+  __overrides::Dict{SymbolicT, SymbolicT} = Dict{SymbolicT, SymbolicT}()
   # Directory the three trim assets are written to, relative to the project root; empty to trim without writing them.
   var"export_dir"::String = "assets"
   # Tutorial 1 — Trimming.
   # 
-  # Trim is the steady flight condition: the control inputs and states that hold every
-  # motion derivative at zero. It is found by declaring the unknowns `missing` and letting
-  # the initialization solver satisfy the equilibrium constraints.
-  # 
-  #   - Unknowns: thrust `T_cmd.k`, elevator `el_cmd.k`, and the plant's `alpha`/`theta`
-  #     initial conditions (all `missing`).
+  # Trim is the steady flight condition: the controls and states that hold every motion
+  # derivative at zero. The unknowns are declared `missing` and the initialization solver
+  # satisfies the equilibrium constraints:
+  #   - Unknowns: thrust `T_cmd.k`, elevator `el_cmd.k`, and the plant's `alpha_init`/`theta_init`.
   #   - Constraints: `initial der(...) = 0` on the states that must be steady.
   #   - `guess`es seed Newton; they do not bias the converged trim.
   # 
   # `TutorialTrim` solves the operating point and shows it as the table `TrimTable`.
-  # `TutorialTrimExport` does the same solve and writes it as the package's trim assets —
-  # `assets/trim_point.toml`, `trim_reference.toml`, `trim_controls.toml` — which steps 2–6
-  # load with `apply "dyad://F16ModelWorkshop/..."`. Re-run it after changing the flight
-  # condition or the plant. Steps 7–9 trim their own flight conditions in Julia. It extends `TrimExportAnalysis`
-  # (dyad/trim_export_analysis.dyad, backed by src/trim_export_analysis.jl).
+  # `TutorialTrimExport` does the same solve and writes `assets/trim_point.toml`,
+  # `trim_reference.toml` and `trim_controls.toml`, which steps 2–6 `apply`; re-run it after
+  # changing the flight condition or the plant. Steps 7–9 trim their own flight conditions in
+  # Julia. Both analyses extend `TrimExportAnalysis` (dyad/trim_export_analysis.dyad, backed by
+  # src/trim_export_analysis.jl).
   # 
   # Signal flow: Constants -> Mux5 -> F16PlantModel
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.TrimDemo(; name=:TrimDemo)
+  __system::System = TutorialTrimExport__System(; name, var"export_dir"=var"export_dir")
 end
 
-function DyadInterface.run_analysis(spec::TutorialTrimExportSpec)
+function __dyad_base_analysis_spec(spec::TutorialTrimExport__Spec)
   overrides = Dict{SymbolicT, SymbolicT}()
   no_namespace_model = toggle_namespacing(spec.model, false)
   
-  base_spec = TrimExportAnalysisSpec(;
-    name=:TrimExportAnalysis, overrides, export_dir=spec.export_dir, model=spec.model
+  merge!(overrides, spec.__overrides)
+  TrimExportAnalysisSpec(;
+    name=spec.name, overrides, __system=spec.__system, var"export_dir"=spec.var"export_dir", var"model"=spec.var"model"
   )
-  run_analysis(base_spec)
 end
 
-TutorialTrimExport(;kwargs...) = run_analysis(TutorialTrimExportSpec(;kwargs...))
-export TutorialTrimExport, TutorialTrimExportSpec
+function DyadInterface.run_analysis(spec::TutorialTrimExport__Spec)
+  run_analysis(__dyad_base_analysis_spec(spec))
+end
+
+function DyadInterface.setup_analysis(spec::TutorialTrimExport__Spec; kwargs...)
+  DyadInterface.setup_analysis(__dyad_base_analysis_spec(spec); kwargs...)
+end
+
+TutorialTrimExport(;kwargs...) = run_analysis(TutorialTrimExport__Spec(;kwargs...))
+export TutorialTrimExport, TutorialTrimExport__Spec

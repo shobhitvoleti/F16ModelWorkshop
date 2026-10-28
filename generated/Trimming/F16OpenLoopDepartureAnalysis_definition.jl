@@ -5,11 +5,137 @@
 
 
 using DyadInterface
-using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel, SpecializationLevel
-using ModelingToolkit: SymbolicT, toggle_namespacing
 using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
-@kwdef mutable struct F16OpenLoopDepartureAnalysisSpec <: AbstractTransientAnalysisSpec
+@component function F16OpenLoopDepartureAnalysis__System(; name = nothing, var"alg"=ODEAlg.Auto(), var"start"=0, var"stop"=40.0, var"abstol"=0.000001, var"reltol"=0.000001, var"saveat"=0, var"dtmax"=0, var"tstops"=[], var"automatic_discontinuity_detection"=false, var"optimize"=OptimizationLevel.Aggressive(), var"progress"=true, var"respecialize"=false, var"specialization"=SpecializationLevel.Despecialize(), var"verbose"=DEVerbosity.Standard(), var"log_file"="", __overrides = Dict{String, Any}())
+  isnothing(name) && throw(ArgumentError("""
+    The `name` keyword must be provided. Please consider using the `@named` macro,
+    like so:
+  
+    @named model = F16OpenLoopDepartureAnalysis__System()
+  """))
+
+  __overrides = Dict{String, Any}(__overrides)
+  __params = Symbolics.SymbolicT[]
+  __vars = Symbolics.SymbolicT[]
+  __systems = System[]
+  __guesses = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initial_conditions = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initialization_eqs = Equation[]
+  __eqs = Equation[]
+  __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Keyword argument overrides
+  haskey(__overrides, "alg") && (alg = pop!(__overrides, "alg"))
+  haskey(__overrides, "start") && (start = pop!(__overrides, "start"))
+  haskey(__overrides, "stop") && (stop = pop!(__overrides, "stop"))
+  haskey(__overrides, "abstol") && (abstol = pop!(__overrides, "abstol"))
+  haskey(__overrides, "reltol") && (reltol = pop!(__overrides, "reltol"))
+  haskey(__overrides, "saveat") && (saveat = pop!(__overrides, "saveat"))
+  haskey(__overrides, "dtmax") && (dtmax = pop!(__overrides, "dtmax"))
+  haskey(__overrides, "tstops") && (tstops = pop!(__overrides, "tstops"))
+  haskey(__overrides, "automatic_discontinuity_detection") && (automatic_discontinuity_detection = pop!(__overrides, "automatic_discontinuity_detection"))
+  haskey(__overrides, "optimize") && (optimize = pop!(__overrides, "optimize"))
+  haskey(__overrides, "progress") && (progress = pop!(__overrides, "progress"))
+  haskey(__overrides, "respecialize") && (respecialize = pop!(__overrides, "respecialize"))
+  haskey(__overrides, "specialization") && (specialization = pop!(__overrides, "specialization"))
+  haskey(__overrides, "verbose") && (verbose = pop!(__overrides, "verbose"))
+  haskey(__overrides, "log_file") && (log_file = pop!(__overrides, "log_file"))
+
+  ### Structural Parameters (functions)
+
+  ### Structural Parameters (Final)
+
+  ### Path Parameters (functions)
+
+  ### Path Parameters (non-final)
+
+  ### Final Parameters (declarations)
+
+  ### Deferred assignment (default values that depend on final parameters)
+
+  ### Symbolic Parameters
+  __local__alg = alg
+  append!(__params, @parameters (alg::ODEAlg.Type))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, alg, __local__alg)
+  __local__start = start
+  append!(__params, @parameters (start::Float64))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, start, __local__start)
+  __local__stop = stop
+  append!(__params, @parameters (stop::Float64))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, stop, __local__stop)
+  __local__abstol = abstol
+  append!(__params, @parameters (abstol::Float64))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, abstol, __local__abstol)
+  __local__reltol = reltol
+  append!(__params, @parameters (reltol::Float64))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, reltol, __local__reltol)
+  __local__saveat = saveat
+  append!(__params, @parameters (saveat::Float64))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, saveat, __local__saveat)
+  __local__dtmax = dtmax
+  append!(__params, @parameters (dtmax::Float64))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, dtmax, __local__dtmax)
+  __local__tstops = tstops
+  append!(__params, @parameters (tstops::Array{Float64, 1}))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, tstops, __local__tstops)
+  __local__automatic_discontinuity_detection = automatic_discontinuity_detection
+  append!(__params, @parameters (automatic_discontinuity_detection::Bool))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, automatic_discontinuity_detection, __local__automatic_discontinuity_detection)
+  __local__optimize = optimize
+  append!(__params, @parameters (optimize::OptimizationLevel.Type))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, optimize, __local__optimize)
+  __local__progress = progress
+  append!(__params, @parameters (progress::Bool))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, progress, __local__progress)
+  __local__respecialize = respecialize
+  append!(__params, @parameters (respecialize::Bool))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, respecialize, __local__respecialize)
+  __local__specialization = specialization
+  append!(__params, @parameters (specialization::SpecializationLevel.Type))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, specialization, __local__specialization)
+  __local__verbose = verbose
+  append!(__params, @parameters (verbose::DEVerbosity.Type))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, verbose, __local__verbose)
+  __local__log_file = log_file
+  append!(__params, @parameters (log_file::String))
+  __dyad_seed_parameter!(__initial_conditions, __bindings, log_file, __local__log_file)
+
+  ### Final Parameters (assignments)
+
+  ### Final Path Parameters
+
+  ### Variables (declarations)
+
+  ### Variables (assignments)
+
+  ### Constants
+  __constants = Any[]
+
+  ### Components
+  # Subcomponent model of type F16ModelWorkshop.Trimming.F16OpenLoopDeparture
+  model_overrides = __pop_subcomponent_overrides!(__overrides, "model")
+  push!(__systems, @named model = F16ModelWorkshop.Trimming.F16OpenLoopDeparture(; __overrides = model_overrides))
+
+  ### Check there are no unmatched overrides
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
+
+  ### Guesses
+
+  ### Initialization Equations
+
+  ### Assertions
+  __assertions = []
+
+  ### Equations
+
+  # Return completely constructed System
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+end
+export F16OpenLoopDepartureAnalysis__System
+
+@kwdef struct F16OpenLoopDepartureAnalysis__Spec <: AbstractTransientAnalysisSpec
   name::Symbol = :F16OpenLoopDepartureAnalysis
+  __overrides::Dict{SymbolicT, SymbolicT} = Dict{SymbolicT, SymbolicT}()
   var"alg"::ODEAlg.Type = ODEAlg.Auto()
   var"start"::Float64 = 0
   var"stop"::Float64 = 40.0
@@ -27,31 +153,36 @@ using DyadInterface: AbstractTransientAnalysisSpec, TransientAnalysisSpec
   var"log_file"::String = ""
   # Open-loop pitch departure from trim.
   # 
-  # Identical to `F16OpenLoopTrim` except that `theta_init` is nudged 1 degree above the
-  # trim attitude and the horizon is long enough for the consequence to be unmistakable.
+  # `F16OpenLoopTrim` with `theta_init` 1 degree above the trim attitude and a longer horizon.
+  # At the reference CG the airframe is statically unstable in pitch (Cma = +0.082/rad): a real
+  # pole at about +0.095 rad/s doubles a perturbation every 7.3 s. This is why the aircraft
+  # needs the regulator of tutorial steps 3 and 4.
   # 
-  # At the reference CG the F-16 is statically unstable in pitch (Cma = +0.082/rad), which
-  # puts a real pole at roughly +0.09 rad/s — a perturbation doubles about every 7.6 s and
-  # never comes back. Where `F16OpenLoopTrim` shows that the trim point is an equilibrium,
-  # this shows that it is an unstable one, which is the reason the aircraft needs the
-  # regulator designed in tutorial steps 3 and 4.
-  # 
-  # Set `plant.xcg = 0.30` to move the CG forward of the aerodynamic reference and watch
-  # the same perturbation decay instead.
+  # `plant.xcg = 0.30` makes the airframe statically stable, but these held controls trim it
+  # only at the 0.35 reference: at 0.30 they pitch it nose-down into a dive.
   # 
   # Signal flow: Constants -> Mux5 -> F16PlantModel
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Trimming.F16OpenLoopDeparture(; name=:F16OpenLoopDeparture)
+  __system::System = F16OpenLoopDepartureAnalysis__System(; name, var"alg"=var"alg", var"start"=var"start", var"stop"=var"stop", var"abstol"=var"abstol", var"reltol"=var"reltol", var"saveat"=var"saveat", var"dtmax"=var"dtmax", var"tstops"=var"tstops", var"automatic_discontinuity_detection"=var"automatic_discontinuity_detection", var"optimize"=var"optimize", var"progress"=var"progress", var"respecialize"=var"respecialize", var"specialization"=var"specialization", var"verbose"=var"verbose", var"log_file"=var"log_file")
 end
 
-function DyadInterface.run_analysis(spec::F16OpenLoopDepartureAnalysisSpec)
+function __dyad_base_analysis_spec(spec::F16OpenLoopDepartureAnalysis__Spec)
   overrides = Dict{SymbolicT, SymbolicT}()
   no_namespace_model = toggle_namespacing(spec.model, false)
   
-  base_spec = TransientAnalysisSpec(;
-    name=:TransientAnalysis, overrides, alg=spec.alg, start=spec.start, stop=spec.stop, abstol=spec.abstol, reltol=spec.reltol, saveat=spec.saveat, dtmax=spec.dtmax, tstops=spec.tstops, automatic_discontinuity_detection=spec.automatic_discontinuity_detection, optimize=spec.optimize, progress=spec.progress, respecialize=spec.respecialize, specialization=spec.specialization, verbose=spec.verbose, log_file=spec.log_file, model=spec.model
+  merge!(overrides, spec.__overrides)
+  TransientAnalysisSpec(;
+    name=spec.name, overrides, __system=spec.__system, var"alg"=spec.var"alg", var"start"=spec.var"start", var"stop"=spec.var"stop", var"abstol"=spec.var"abstol", var"reltol"=spec.var"reltol", var"saveat"=spec.var"saveat", var"dtmax"=spec.var"dtmax", var"tstops"=spec.var"tstops", var"automatic_discontinuity_detection"=spec.var"automatic_discontinuity_detection", var"optimize"=spec.var"optimize", var"progress"=spec.var"progress", var"respecialize"=spec.var"respecialize", var"specialization"=spec.var"specialization", var"verbose"=spec.var"verbose", var"log_file"=spec.var"log_file", var"model"=spec.var"model"
   )
-  run_analysis(base_spec)
 end
 
-F16OpenLoopDepartureAnalysis(;kwargs...) = run_analysis(F16OpenLoopDepartureAnalysisSpec(;kwargs...))
-export F16OpenLoopDepartureAnalysis, F16OpenLoopDepartureAnalysisSpec
+function DyadInterface.run_analysis(spec::F16OpenLoopDepartureAnalysis__Spec)
+  run_analysis(__dyad_base_analysis_spec(spec))
+end
+
+function DyadInterface.setup_analysis(spec::F16OpenLoopDepartureAnalysis__Spec; kwargs...)
+  DyadInterface.setup_analysis(__dyad_base_analysis_spec(spec); kwargs...)
+end
+
+F16OpenLoopDepartureAnalysis(;kwargs...) = run_analysis(F16OpenLoopDepartureAnalysis__Spec(;kwargs...))
+export F16OpenLoopDepartureAnalysis, F16OpenLoopDepartureAnalysis__Spec

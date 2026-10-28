@@ -4,10 +4,9 @@ using F16ModelWorkshop.VelocityMPC
 using DyadInterface
 using SciMLBase
 
-# `VectorSelect` narrows the plant's twelve outputs to the ten the controller regulates,
-# so a wrong or reordered selection would feed the observer the wrong states. The Dyad
-# test model drives two integrators from the picked channels; their values at t = 1 s are
-# the picked channels themselves.
+# `VectorSelect` narrows the plant's twelve outputs to the ten the controller regulates; a
+# wrong or reordered selection would feed the observer the wrong states. The test model
+# integrates two picked channels, so the integrals at t = 1 s equal the channels.
 @testset "vector channel selector" begin
     result = F16ModelWorkshop.VectorBlocks.TestVectorSelectTransient()
     sol = result.sol
@@ -21,9 +20,8 @@ end
 # One second of a constant-signal check model: twenty ticks of the 20 Hz controller.
 check(model) = DyadInterface.run_analysis(DyadInterface.TransientAnalysisSpec(; model, stop = 1.0))
 
-# The bank is designed in Julia from the compiled plant, so the plant and its symbolic
-# linearization are checked on their own terms: every knot trims, and the Jacobians the
-# members are built from agree with the nonlinear plant they came from.
+# The bank is designed in Julia from the compiled plant: every knot must trim, and the
+# symbolic Jacobians the members are built from must agree with the nonlinear plant.
 @testset "velocity MPC bank" begin
     plant = VelocityMPC.dynamics()
 
@@ -56,11 +54,10 @@ check(model) = DyadInterface.run_analysis(DyadInterface.TransientAnalysisSpec(; 
     end
 end
 
-# Every member must be exact at its own trim: held at the state it was designed around,
-# with the trimmed command already applied, it must return that command and nothing else.
-# A bank's members have no public accessor (MPCComponents.jl#48), so the property is
-# asserted on the scheduled components themselves: `VelocityMPCHoldsTrim` feeds them a
-# constant trimmed state as both measurement and reference, one model per knot.
+# Each member is exact at its own trim: held at its design state with the trimmed command
+# applied, it returns that command. Bank members have no public accessor
+# (MPCComponents.jl#48), so `VelocityMPCHoldsTrim` feeds the scheduled components a constant
+# trimmed state as both measurement and reference, one model per knot.
 @testset "bank members hold their own trim" begin
     for velocity in VelocityMPC.KNOTS
         result = check(F16ModelWorkshop.Tests.VelocityMPCHoldsTrim(; name = :holds, velocity))
@@ -70,9 +67,8 @@ end
         expected = VelocityMPC.trim_command(velocity)
 
         @test SciMLBase.successful_retcode(sol.retcode)
-        # A held signal reads back on the controller's clock, one entry per tick: twenty of
-        # them over a second at 20 Hz, starting at the t = 0 tick, so every entry is a
-        # solved command and none is a hold's initial value.
+        # One entry per controller tick, twenty at 20 Hz starting at t = 0: every entry is a
+        # solved command, none a hold's initial value.
         @test length(sol[model.exitflag]) == 20
         @test all(>=(1), sol[model.exitflag])
         for (channel, signal) in pairs(held)
@@ -81,30 +77,27 @@ end
     end
 end
 
-# The terminal weight of every member is the Riccati cost-to-go of its own stage cost, so
-# the member's unconstrained optimum is the infinite-horizon discrete LQR of that cost and
-# the horizon length cannot move it. A bank's members have no public accessor
-# (MPCComponents.jl#48), so the property is asserted on the scheduled components:
-# `VelocityMPCMemberIsLQR` holds the reference at a knot's trim and the measurement one
-# fixed `dx` away, so every tick must return `u - K * dx`.
+# Each member's terminal weight is the Riccati cost-to-go of its stage cost, so its
+# unconstrained optimum is the infinite-horizon discrete LQR and independent of the
+# horizon. `VelocityMPCMemberIsLQR` holds the reference at a knot's trim and the
+# measurement a fixed `dx` away, so every tick must return `u - K * dx`.
 @testset "unconstrained member equals LQR" begin
     Ts = 0.05
     # Every knot on the default forty-step horizon, and the middle knot on five steps.
     runs = [[(velocity, 40) for velocity in VelocityMPC.KNOTS]; (152.4, 5)]
 
     commands = Dict{Tuple{Float64,Int},Vector{Float64}}()
-    worst = 0.0
     for (velocity, Np) in runs
         result = check(F16ModelWorkshop.Tests.VelocityMPCMemberIsLQR(; name = :lqr, velocity, Np))
         sol = result.sol
         model = DyadInterface.symbolic_container(result)
         @test SciMLBase.successful_retcode(sol.retcode)
 
-        # The offset is read back from the model, so its Dyad default is the only copy.
-        # That default is 0.006 of the Bryson state scales: a quarter of the largest
-        # multiple of them whose LQR move fits one tick's slew limit at every knot, rounded
-        # down to one significant figure. The optimum is interior only if the move stays
-        # well inside the slew limits and the command box, whichever way it points.
+        # `dx` is read from the model, so its Dyad default is the only copy: 0.006 of the
+        # Bryson state scales, a quarter of the largest multiple whose LQR move fits one
+        # tick's slew limit at every knot, rounded down to one significant figure. The
+        # optimum is interior only if the move stays well inside the slew limits and the
+        # command box in either direction.
         dx = sol.ps[model.perturbation.k]
         @test dx ≈ 0.006 .* VelocityMPC.STATE_SCALES
         design = member_design(velocity, VelocityMPC.ALTITUDE, Ts)
@@ -114,8 +107,6 @@ end
         @test all(VelocityMPC.COMMAND_MIN .< design.u .- abs.(move))
         @test all(design.u .+ abs.(move) .< VelocityMPC.COMMAND_MAX)
 
-        # One entry per controller tick: twenty over a second at 20 Hz, every one of them a
-        # solved command rather than a hold's initial value.
         @test length(sol[model.exitflag]) == 20
         @test all(>=(1), sol[model.exitflag])
 
@@ -124,22 +115,18 @@ end
         for (channel, signal) in pairs(held)
             samples = sol[signal]
             @test length(samples) == 20
-            # The measurement is constant and the optimum interior, so every tick returns
-            # the same LQR command. That includes the first: the observer corrects its
-            # initial estimate, the unperturbed trim, with the current measurement before
-            # the optimizer reads it.
+            # Constant measurement and interior optimum: every tick returns the same LQR
+            # command, including the first, because the observer corrects its initial
+            # estimate (the unperturbed trim) with the measurement before the optimizer runs.
             deviation = maximum(abs, samples .- expected[channel])
-            worst = max(worst, deviation)
             @test deviation < 1e-6
             push!(settled, samples[end])
         end
         commands[(velocity, Np)] = settled
     end
 
-    # The terminal weight removes the horizon from the answer, so five steps and forty at
-    # the same knot must agree.
+    # The terminal weight removes the horizon from the answer: five steps and forty agree.
     @test commands[(152.4, 5)]≈commands[(152.4, 40)] atol=1e-6
-    @info "unconstrained member equals LQR: largest command deviation $worst"
 end
 
 @testset "velocity MPC bank rejects unusable designs" begin
@@ -152,9 +139,8 @@ end
     @test_throws "q and r must be positive" VelocityMPC.bank(; r = zeros(4))
 end
 
-# The closed loop: a solved trajectory, not just a model that builds. The tolerances are
-# a little wider than the design achieves, tight enough that a broken schedule, a lost
-# reference channel or an infeasible QP fails here.
+# Tolerances are slightly wider than the design achieves, tight enough that a broken
+# schedule, a lost reference channel or an infeasible QP fails.
 @testset "velocity MPC tracks the airspeed ramp" begin
     result = F16ModelWorkshop.Tutorial.TutorialVelocityMPC()
     sol = result.sol
@@ -164,7 +150,7 @@ end
     @test SciMLBase.successful_retcode(sol.retcode)
     @test sol.t[end] ≈ 25.0
 
-    # Accelerated onto the commanded 160 m/s while holding altitude and wings level.
+    # Commanded 160 m/s, holding altitude and wings level.
     @test sol[p.vt][end]≈160.0 atol=0.5
     @test sol[p.alt][end]≈3000.0 atol=10.0
     @test maximum(abs, sol[p.phi]) < 0.02

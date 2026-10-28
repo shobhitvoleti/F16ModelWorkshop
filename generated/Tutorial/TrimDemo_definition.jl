@@ -5,29 +5,27 @@
 
 
 @doc Markdown.doc"""
-   TrimDemo(; name)
+   TrimDemo(; name, __overrides)
 
 Tutorial 1 — Trimming.
 
-Trim is the steady flight condition: the control inputs and states that hold every
-motion derivative at zero. It is found by declaring the unknowns `missing` and letting
-the initialization solver satisfy the equilibrium constraints.
-
-  - Unknowns: thrust `T_cmd.k`, elevator `el_cmd.k`, and the plant's `alpha`/`theta`
-    initial conditions (all `missing`).
+Trim is the steady flight condition: the controls and states that hold every motion
+derivative at zero. The unknowns are declared `missing` and the initialization solver
+satisfies the equilibrium constraints:
+  - Unknowns: thrust `T_cmd.k`, elevator `el_cmd.k`, and the plant's `alpha_init`/`theta_init`.
   - Constraints: `initial der(...) = 0` on the states that must be steady.
   - `guess`es seed Newton; they do not bias the converged trim.
 
 `TutorialTrim` solves the operating point and shows it as the table `TrimTable`.
-`TutorialTrimExport` does the same solve and writes it as the package's trim assets —
-`assets/trim_point.toml`, `trim_reference.toml`, `trim_controls.toml` — which steps 2–6
-load with `apply "dyad://F16ModelWorkshop/..."`. Re-run it after changing the flight
-condition or the plant. Steps 7–9 trim their own flight conditions in Julia. It extends `TrimExportAnalysis`
-(dyad/trim_export_analysis.dyad, backed by src/trim_export_analysis.jl).
+`TutorialTrimExport` does the same solve and writes `assets/trim_point.toml`,
+`trim_reference.toml` and `trim_controls.toml`, which steps 2–6 `apply`; re-run it after
+changing the flight condition or the plant. Steps 7–9 trim their own flight conditions in
+Julia. Both analyses extend `TrimExportAnalysis` (dyad/trim_export_analysis.dyad, backed by
+src/trim_export_analysis.jl).
 
 Signal flow: Constants -> Mux5 -> F16PlantModel
 """
-@component function TrimDemo(; name = nothing, kwargs...)
+@component function TrimDemo(; name = nothing, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -35,7 +33,7 @@ Signal flow: Constants -> Mux5 -> F16PlantModel
     @named model = TrimDemo()
   """))
 
-  __overrides = __build_overrides(kwargs)
+  __overrides = Dict{String, Any}(__overrides)
   __params = Symbolics.SymbolicT[]
   __vars = Symbolics.SymbolicT[]
   __systems = System[]
@@ -73,28 +71,28 @@ Signal flow: Constants -> Mux5 -> F16PlantModel
   ### Components
   # Subcomponent f16plant of type F16ModelWorkshop.Plant.F16PlantModel
   f16plant_overrides = __pop_subcomponent_overrides!(__overrides, "f16plant")
-  push!(__systems, @named f16plant = F16ModelWorkshop.Plant.F16PlantModel(; alt_init=Float64(3000.0), vt_init=152.4, alpha_init=missing, theta_init=missing, f16plant_overrides...))
+  push!(__systems, @named f16plant = F16ModelWorkshop.Plant.F16PlantModel(; alt_init=Float64(3000.0), vt_init=152.4, alpha_init=missing, theta_init=missing, __overrides = f16plant_overrides))
   # Subcomponent T_cmd of type BlockComponents.Sources.Constant
   T_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "T_cmd")
-  push!(__systems, @named T_cmd = BlockComponents.Sources.Constant(; k=missing, T_cmd_overrides...))
+  push!(__systems, @named T_cmd = BlockComponents.Sources.Constant(; k=missing, __overrides = T_cmd_overrides))
   # Subcomponent el_cmd of type BlockComponents.Sources.Constant
   el_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "el_cmd")
-  push!(__systems, @named el_cmd = BlockComponents.Sources.Constant(; k=missing, el_cmd_overrides...))
+  push!(__systems, @named el_cmd = BlockComponents.Sources.Constant(; k=missing, __overrides = el_cmd_overrides))
   # Subcomponent ail_cmd of type BlockComponents.Sources.Constant
   ail_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "ail_cmd")
-  push!(__systems, @named ail_cmd = BlockComponents.Sources.Constant(; k=Float64(0.0), ail_cmd_overrides...))
+  push!(__systems, @named ail_cmd = BlockComponents.Sources.Constant(; k=Float64(0.0), __overrides = ail_cmd_overrides))
   # Subcomponent rud_cmd of type BlockComponents.Sources.Constant
   rud_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "rud_cmd")
-  push!(__systems, @named rud_cmd = BlockComponents.Sources.Constant(; k=Float64(0.0), rud_cmd_overrides...))
+  push!(__systems, @named rud_cmd = BlockComponents.Sources.Constant(; k=Float64(0.0), __overrides = rud_cmd_overrides))
   # Subcomponent lef_cmd of type BlockComponents.Sources.Constant
   lef_cmd_overrides = __pop_subcomponent_overrides!(__overrides, "lef_cmd")
-  push!(__systems, @named lef_cmd = BlockComponents.Sources.Constant(; k=Float64(0.0), lef_cmd_overrides...))
+  push!(__systems, @named lef_cmd = BlockComponents.Sources.Constant(; k=Float64(0.0), __overrides = lef_cmd_overrides))
   # Subcomponent mux of type F16ModelWorkshop.Utils.Mux5
   mux_overrides = __pop_subcomponent_overrides!(__overrides, "mux")
-  push!(__systems, @named mux = F16ModelWorkshop.Utils.Mux5(; mux_overrides...))
+  push!(__systems, @named mux = F16ModelWorkshop.Utils.Mux5(; __overrides = mux_overrides))
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
 
   ### Guesses
   __guesses[T_cmd.k] = (11000.0)
@@ -120,6 +118,6 @@ Signal flow: Constants -> Mux5 -> F16PlantModel
   push!(__eqs, connect(mux.y, f16plant.u_in))
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export TrimDemo

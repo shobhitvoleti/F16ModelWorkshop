@@ -1,22 +1,18 @@
-# Trim export, paired with the `partial analysis` in dyad/trim_export_analysis.dyad.
+# Trim export (dyad/trim_export_analysis.dyad).
 #
-# A trim model declares its unknown controls and attitude `missing` (see
-# `Tutorial.TrimDemo`). A zero-duration transient solve resolves them to the
-# equilibrium, and the converged operating point is written as the three parameter-set
-# assets that every later model applies:
+# The trim model declares its unknown controls and attitude `missing` (see
+# `Tutorial.TrimDemo`); a zero-duration transient solve resolves them, and the operating
+# point is written as the parameter sets every later model applies:
 #
 #   trim_point.toml      F16PlantModel initial conditions
 #   trim_reference.toml  `k`: state set-points [npos,epos,alt,phi,theta,psi,vt,alpha,beta,P,Q,R]
 #   trim_controls.toml   `k`: control offsets [T,el,ail,rud,lef]
 #
-# The model must expose the plant as `f16plant` and the five commands as
-# `T_cmd`, `el_cmd`, `ail_cmd`, `rud_cmd`, `lef_cmd` Constant blocks, as TrimDemo does.
-
-using DyadInterface: AnalysisSolutionMetadata, ArtifactMetadata, ArtifactType,
-                     artifacts, customizable_visualization, symbolic_container
+# The model must name the plant `f16plant` and the commands `T_cmd`, `el_cmd`, `ail_cmd`,
+# `rud_cmd`, `lef_cmd` (Constant blocks).
 
 const _TRIM_CONTROLS = ("T", "el", "ail", "rud", "lef")
-# (plant state) => (F16PlantModel initial-condition parameter it seeds)
+# (plant state, F16PlantModel initial-condition parameter)
 const _TRIM_STATES = (
     ("npos", "npos_init"), ("epos", "epos_init"), ("alt", "alt_init"),
     ("phi", "phi_init"), ("theta", "theta_init"), ("psi", "psi_init"),
@@ -40,21 +36,20 @@ const _TRIM_FILES = (
     ],
 )
 
-# The artifacts of an inner transient analysis that work on this package's models.
-# DyadInterface's `ObservablesTable` throws "Duplicate variable names" on them: it names every
-# element of an array observable (the plant's `y_out`, `u_in`, ...) by the array's name.
+# An inner transient analysis' artifacts without `:ObservablesTable`, which throws
+# "Duplicate variable names" on these models: it names every element of an array
+# observable (`y_out`, `u_in`, ...) after the array. Used by every transient-wrapping analysis.
 transient_artifacts(md) = filter(a -> a.name !== :ObservablesTable, md.artifacts)
 
 abstract type AbstractTrimExportAnalysisSpec <: AbstractAnalysisSpec end
 
 """
-    TrimExportAnalysisSpec(; model, export_dir = "assets", abstol, reltol)
+    TrimExportAnalysisSpec(; model, export_dir = "assets", abstol = 1e-6, reltol = 1e-6)
 
-Trim `model` and write the operating point as `trim_point.toml`, `trim_reference.toml`
-and `trim_controls.toml` under `export_dir` (a relative path resolves against the
-package root). The default is the package's own `assets/`, the operating point the rest
-of the workshop applies; pass another directory to trim a different flight condition
-without replacing it, or `""` to trim without writing anything.
+Trim `model` and write `trim_point.toml`, `trim_reference.toml` and `trim_controls.toml`
+to `export_dir` (relative to the package root). The default `assets/` holds the operating
+point the rest of the workshop applies; pass another directory to trim a different flight
+condition without replacing it, or `""` to skip writing.
 """
 @kwdef mutable struct TrimExportAnalysisSpec <: AbstractTrimExportAnalysisSpec
     name::Symbol = :TrimExportAnalysis
@@ -63,14 +58,15 @@ without replacing it, or `""` to trim without writing anything.
     abstol::Float64 = 1e-6
     reltol::Float64 = 1e-6
     overrides::_Overrides = _Overrides()
+    __system::Union{Nothing, System} = nothing   # handed over by Dyad-generated specs; unused
 end
 
 """
     TrimExportAnalysisSolution
 
-The zero-duration transient solution plus the exported operating point: `paramset`
-holds one table per written file (`"trim_point"`, `"trim_reference"`,
-`"trim_controls"`) and `files` the paths written.
+The zero-duration transient solution (`inner`), the operating point as `paramset` (one
+table per asset: `"trim_point"`, `"trim_reference"`, `"trim_controls"`) and the paths
+written (`files`, empty when `export_dir == ""`).
 """
 struct TrimExportAnalysisSolution{S} <: AbstractAnalysisSolution
     spec::TrimExportAnalysisSpec
@@ -81,10 +77,22 @@ end
 
 Base.nameof(sol::TrimExportAnalysisSolution) = sol.spec.name
 
+# The trim is solved by a trust-region Newton method. The default initialization
+# polyalgorithm tries Broyden, then Klement, whose diagonal Jacobian approximation cannot
+# represent this problem: the trim Jacobian's diagonal is near zero (thrust ~1e-4,
+# pitch ~3e-8), so Klement goes singular and throws before the Newton members run.
+const _TRIM_INIT = SciMLBase.OverrideInit(; nlsolve = TrustRegion())
+
+# A transient setup with its problem replaced, every other field kept.
+_with_prob(setup, prob) = DyadInterface.TransientAnalysisSetup(
+    (f === :prob ? prob : getfield(setup, f) for f in fieldnames(typeof(setup)))...)
+
 function DyadInterface.run_analysis(spec::TrimExportAnalysisSpec)
-    inner = DyadInterface.run_analysis(TransientAnalysisSpec(;
+    setup = DyadInterface.setup_analysis(TransientAnalysisSpec(;
         name = spec.name, model = spec.model, stop = 0.0,
         abstol = spec.abstol, reltol = spec.reltol, overrides = spec.overrides))
+    setup = _with_prob(setup, remake(setup.prob; initializealg = _TRIM_INIT))
+    inner = DyadInterface.run_analysis(setup)
     sol = inner.sol
     m = symbolic_container(inner)
     at_trim(x) = Float64(sol(0.0, idxs = x))
@@ -115,8 +123,7 @@ function DyadInterface.run_analysis(spec::TrimExportAnalysisSpec)
     return TrimExportAnalysisSolution(spec, inner, paramset, files)
 end
 
-# Units of the trim table, by plant state or control. Angles are shown in degrees, the
-# unit a reader checks a trim in; the assets keep the plant's radians.
+# Display units of `trim_table`. Angles are shown in degrees; the assets keep the plant's radians.
 const _TRIM_UNITS = Dict("npos" => "m", "epos" => "m", "alt" => "m", "vt" => "m/s",
     "phi" => "deg", "theta" => "deg", "psi" => "deg", "alpha" => "deg", "beta" => "deg",
     "P" => "deg/s", "Q" => "deg/s", "R" => "deg/s",
@@ -143,9 +150,8 @@ function trim_table(sol::TrimExportAnalysisSolution)
         unit = [_TRIM_UNITS[n] for n in names])
 end
 
-# The Studio-facing interface delegates to the inner transient solution and adds the
-# operating point: `:TrimTable` to read, `:TrimPoint` as a nested Dict, and one download
-# per exported file.
+# Studio interface: delegates to the inner transient solution and adds `:TrimTable`,
+# `:TrimPoint` (nested Dict) and one download per exported file.
 _file_artifact(path) = Symbol(first(splitext(basename(path))))
 
 DyadInterface.symbolic_container(sol::TrimExportAnalysisSolution) = symbolic_container(sol.inner)

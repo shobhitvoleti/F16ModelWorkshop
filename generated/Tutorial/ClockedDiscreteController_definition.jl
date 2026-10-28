@@ -5,22 +5,21 @@
 
 
 @doc Markdown.doc"""
-   ClockedDiscreteController(; name)
+   ClockedDiscreteController(; name, __overrides)
 
-Tutorial 6 — standalone C for the discrete LQG controller.
+Tutorial 6 — step 4's discrete LQG controller on its own, for C code generation.
 
-`ClockedDiscreteController` is step 4's controller on its own: the clocked
-`DiscreteStateSpace` and its 100 Hz clock, with the 12 tracking errors in and the 5
-absolute commands out as whole-array connectors. `TutorialControllerCodegen` compiles it
-with `SynchToolkit.stkcompile` and writes the C to `generated_c/f16_controller/`: once
-per tick, `top_*_step_c` takes `double u[12]` and fills `double y[5]`.
+The clocked `DiscreteStateSpace` and its 100 Hz clock: 12 tracking errors in, 5 absolute
+commands out. `TutorialControllerCodegen` compiles it with `SynchToolkit.stkcompile` into
+`generated_c/f16_controller/`; each tick, `top_*_step_c` takes `double u[12]` and fills
+`double y[5]`.
 
 ## Connectors
 
  * `u` - This connector represents a real signal as an input to a component ([`RealInput`](@ref))
  * `y` - This connector represents a real signal as an output from a component ([`RealOutput`](@ref))
 """
-@component function ClockedDiscreteController(; name = nothing, kwargs...)
+@component function ClockedDiscreteController(; name = nothing, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -28,7 +27,7 @@ per tick, `top_*_step_c` takes `double u[12]` and fills `double y[5]`.
     @named model = ClockedDiscreteController()
   """))
 
-  __overrides = __build_overrides(kwargs)
+  __overrides = Dict{String, Any}(__overrides)
   __params = Symbolics.SymbolicT[]
   __vars = Symbolics.SymbolicT[]
   __systems = System[]
@@ -88,13 +87,17 @@ per tick, `top_*_step_c` takes `double u[12]` and fills `double y[5]`.
   __controller_apply_1 = __dyad_load_parameters(pkgdir(@__MODULE__), String(nameof(Base.moduleroot(@__MODULE__))), "dyad://F16ModelWorkshop/discrete_controller.toml")
   __controller_apply_1_flat = __dyad_flatten(__controller_apply_1)
   __dyad_check_apply(__controller_apply_1_flat, __controller_apply_schema, "dyad://F16ModelWorkshop/discrete_controller.toml")
-  push!(__systems, @named controller = DiscreteComponents.DiscreteStateSpace(; __dyad_apply_kwargs(__controller_apply_1, (:with_D, :initialization), __controller_apply_schema)..., nx=12, nu=12, ny=5, __dyad_apply_overrides(__controller_apply_1, __controller_apply_1_flat, __controller_apply_exclude, __controller_apply_schema)..., controller_overrides...))
+  __controller_apply_1_ovr = __dyad_apply_overrides(__controller_apply_1, __controller_apply_1_flat, __controller_apply_exclude, __controller_apply_schema)
+  controller_dict = Dict{String, Any}()
+  merge!(controller_dict, __controller_apply_1_ovr)
+  merge!(controller_dict, controller_overrides)
+  push!(__systems, @named controller = DiscreteComponents.DiscreteStateSpace(; __dyad_apply_kwargs(__controller_apply_1, (:with_D, :initialization), __controller_apply_schema)..., nx=12, nu=12, ny=5, __overrides = controller_dict))
   # Subcomponent clock of type DiscreteComponents.PeriodicClock
   clock_overrides = __pop_subcomponent_overrides!(__overrides, "clock")
-  push!(__systems, @named clock = DiscreteComponents.PeriodicClock(; dt=ControllerTs, clock_overrides...))
+  push!(__systems, @named clock = DiscreteComponents.PeriodicClock(; dt=ControllerTs, __symbol_overrides(clock_overrides)...))
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
 
   ### Guesses
 
@@ -109,6 +112,6 @@ per tick, `top_*_step_c` takes `double u[12]` and fills `double y[5]`.
   push!(__eqs, connect(controller.y, y))
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export ClockedDiscreteController

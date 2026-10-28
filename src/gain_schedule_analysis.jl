@@ -1,6 +1,5 @@
-# Gain-schedule design, paired with the `partial analysis` in
-# dyad/gain_schedule_analysis.dyad. Defined before the generated code, which references
-# the `*Spec` type; the design itself is `ScheduledPID`, loaded after it.
+# Gain-schedule design (dyad/gain_schedule_analysis.dyad). The design lives in
+# `ScheduledPID`, which is included after this file and resolved at run time.
 
 import ControlSystemsBase
 
@@ -9,9 +8,8 @@ abstract type AbstractGainScheduleAnalysisSpec <: AbstractAnalysisSpec end
 """
     GainScheduleAnalysisSpec(; velocities = [140.0, 152.4, 170.0], altitude = 3000.0, fixed_point = 2)
 
-Design the step-7 autopilot at each airspeed of `velocities` (m/s) at `altitude` (m), and
-compare each design point's loops with those that the gains of design point
-`fixed_point` give there.
+Design the step-7 autopilot at each of `velocities` (m/s) at `altitude` (m), and compare
+each design point's loops with those given by the gains of design point `fixed_point`.
 """
 @kwdef mutable struct GainScheduleAnalysisSpec <: AbstractGainScheduleAnalysisSpec
     name::Symbol = :GainScheduleAnalysis
@@ -20,13 +18,14 @@ compare each design point's loops with those that the gains of design point
     altitude::Float64 = 3000.0
     fixed_point::Int = 2
     overrides::_Overrides = _Overrides()
+    __system::Union{Nothing, System} = nothing   # handed over by Dyad-generated specs; unused
 end
 
 """
     GainScheduleAnalysisSolution
 
-`table` is `ScheduledPID.gain_table`, `pressures` the dynamic pressure of each design
-point, `scheduled[j]` and `fixed[j]` the loops (`ScheduledPID.loop_transfers`) at design
+`table` is `ScheduledPID.gain_table`, `pressures` the dynamic pressure (Pa) of each design
+point, and `scheduled[j]`/`fixed[j]` the loops (`ScheduledPID.loop_transfers`) at design
 point `j` with its own gains and with those of `spec.fixed_point`.
 """
 struct GainScheduleAnalysisSolution <: AbstractAnalysisSolution

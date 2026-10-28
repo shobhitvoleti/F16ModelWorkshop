@@ -16,5 +16,6 @@ end
 
 
 @testset "`F16ModelWorkshop.Plant`" begin
+include("F16PlantFromState_test.jl")
 include("F16PlantModel_test.jl")
 end

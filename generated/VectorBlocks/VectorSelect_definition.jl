@@ -5,13 +5,13 @@
 
 
 @doc Markdown.doc"""
-   VectorSelect(; name, n, indices)
+   VectorSelect(; name, n, indices, __overrides)
 
 Vector channel selector: routes chosen channels of an `n`-vector onto an `m`-vector.
 
-`y[j] = u[indices[j]]`, so the block covers slices, reorderings and repetitions alike.
-It carries no state and imposes no clock, so it works on continuous and clocked signals.
-Steps 7–9 use it to narrow the plant's 12 outputs to the states they measure.
+`y[j] = u[indices[j]]`, covering slices, reorderings and repetitions. Stateless and
+clock-agnostic, so it works on continuous and clocked signals. Steps 7–9 use it to narrow
+the plant's 12 outputs to the states they measure.
 
 ## Parameters:
 
@@ -26,7 +26,7 @@ Steps 7–9 use it to narrow the plant's 12 outputs to the states they measure.
  * `u` - This connector represents a real signal as an input to a component ([`RealInput`](@ref))
  * `y` - This connector represents a real signal as an output from a component ([`RealOutput`](@ref))
 """
-@component function VectorSelect(; name = nothing, n=1, indices=[1], kwargs...)
+@component function VectorSelect(; name = nothing, var"n"=1, var"indices"=[1], __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -34,7 +34,7 @@ Steps 7–9 use it to narrow the plant's 12 outputs to the states they measure.
     @named model = VectorSelect()
   """))
 
-  __overrides = __build_overrides(kwargs)
+  __overrides = Dict{String, Any}(__overrides)
   __params = Symbolics.SymbolicT[]
   __vars = Symbolics.SymbolicT[]
   __systems = System[]
@@ -43,6 +43,10 @@ Steps 7–9 use it to narrow the plant's 12 outputs to the states they measure.
   __initialization_eqs = Equation[]
   __eqs = Equation[]
   __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Keyword argument overrides
+  haskey(__overrides, "n") && (n = pop!(__overrides, "n"))
+  haskey(__overrides, "indices") && (indices = pop!(__overrides, "indices"))
 
   ### Structural Parameters (functions)
 
@@ -75,7 +79,7 @@ Steps 7–9 use it to narrow the plant's 12 outputs to the states they measure.
   ### Components
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
 
   ### Guesses
 
@@ -92,6 +96,6 @@ Steps 7–9 use it to narrow the plant's 12 outputs to the states they measure.
   end
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export VectorSelect

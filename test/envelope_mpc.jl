@@ -4,10 +4,9 @@ using F16ModelWorkshop.EnvelopeMPC
 using DyadInterface
 using SciMLBase
 
-# The envelope the bank is drawn from: every one of the 10 000 default flight conditions
-# trims inside the alpha range the aero deck was fitted over. The pitch slope of the deck
-# is dCm/dα = Cma + 2 Cma2 α, so the airframe is statically unstable below
-# α = -Cma / (2 Cma2) = 5.66 deg and stable above it, in the slow, high corner.
+# All 10 000 default flight conditions trim inside the deck's fitted alpha range. The
+# deck's pitch slope is dCm/dα = Cma + 2 Cma2 α, so the airframe is statically unstable
+# below α = -Cma / (2 Cma2) = 5.66 deg and stable above it, in the slow, high corner.
 @testset "envelope linearizes at 10 000 flight conditions" begin
     env = EnvelopeMPC.envelope()
     @test length(env.A) == 10_000
@@ -21,13 +20,13 @@ using SciMLBase
     @test env.alpha[1, end] > env.alpha[1, 1]
 end
 
-# The committed trim table is the grid the model reads. Regenerating it must reproduce it
-# exactly, so a plant change without a re-run of TutorialEnvelopeTable fails here. The
-# table also serves as the pitch reference, which holds because level trim has theta = alpha.
+# The committed trim table is the grid the model reads; a plant change without a re-run of
+# TutorialEnvelopeTable fails here. The table doubles as the pitch reference because level
+# trim has theta = alpha.
 @testset "trim table matches the plant" begin
     table = EnvelopeMPC.trim_table()
     trims = [F16ModelWorkshop.VelocityMPC.trim_states(v, h) for v in table["vt"], h in table["alt"]]
-    @test table["alpha"] == getindex.(trims, 8)
+    @test getindex.(trims, 8) ≈ table["alpha"] rtol = 1e-10   # round-off varies by platform
     @test getindex.(trims, 5) ≈ table["alpha"] atol = 1e-12
 end
 

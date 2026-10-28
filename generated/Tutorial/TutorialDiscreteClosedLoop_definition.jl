@@ -5,11 +5,93 @@
 
 
 using DyadInterface
-using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel, SpecializationLevel
-using ModelingToolkit: SymbolicT, toggle_namespacing
 using F16ModelWorkshop: AbstractFlightAnalysisSpec, FlightAnalysisSpec
-@kwdef mutable struct TutorialDiscreteClosedLoopSpec <: AbstractFlightAnalysisSpec
+@component function TutorialDiscreteClosedLoop__System(; name = nothing, var"stop"=10.0, var"panels"=["Pitch attitude (rad), started 10 deg nose-up: f16plant.theta", "Altitude (m): f16plant.alt", "Airspeed (m/s): f16plant.vt", "Elevator (deg), one value per 100 Hz tick: f16plant.el", "Thrust (N): f16plant.T"], var"abstol"=0.000001, var"reltol"=0.000001, __overrides = Dict{String, Any}())
+  isnothing(name) && throw(ArgumentError("""
+    The `name` keyword must be provided. Please consider using the `@named` macro,
+    like so:
+  
+    @named model = TutorialDiscreteClosedLoop__System()
+  """))
+
+  __overrides = Dict{String, Any}(__overrides)
+  __params = Symbolics.SymbolicT[]
+  __vars = Symbolics.SymbolicT[]
+  __systems = System[]
+  __guesses = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initial_conditions = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initialization_eqs = Equation[]
+  __eqs = Equation[]
+  __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Keyword argument overrides
+  haskey(__overrides, "stop") && (stop = pop!(__overrides, "stop"))
+  haskey(__overrides, "panels") && (panels = pop!(__overrides, "panels"))
+  haskey(__overrides, "abstol") && (abstol = pop!(__overrides, "abstol"))
+  haskey(__overrides, "reltol") && (reltol = pop!(__overrides, "reltol"))
+
+  ### Structural Parameters (functions)
+
+  ### Structural Parameters (Final)
+
+  ### Path Parameters (functions)
+
+  ### Path Parameters (non-final)
+
+  ### Final Parameters (declarations)
+
+  ### Deferred assignment (default values that depend on final parameters)
+
+  ### Symbolic Parameters
+  __local__stop = stop
+  append!(__params, @parameters (stop::Float64), [description = "End time of the simulation, s."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, stop, __local__stop)
+  __local__panels = panels
+  append!(__params, @parameters (panels::Array{String, 1}), [description = "Panels of the `FlightResponse` figure, each `Title: signal, signal, ...`."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, panels, __local__panels)
+  __local__abstol = abstol
+  append!(__params, @parameters (abstol::Float64), [description = "Absolute tolerance of the ODE solver."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, abstol, __local__abstol)
+  __local__reltol = reltol
+  append!(__params, @parameters (reltol::Float64), [description = "Relative tolerance of the ODE solver."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, reltol, __local__reltol)
+
+  ### Final Parameters (assignments)
+
+  ### Final Path Parameters
+
+  ### Variables (declarations)
+
+  ### Variables (assignments)
+
+  ### Constants
+  __constants = Any[]
+
+  ### Components
+  # Subcomponent model of type F16ModelWorkshop.Tutorial.DiscreteClosedLoopDemo
+  model_overrides = __pop_subcomponent_overrides!(__overrides, "model")
+  push!(__systems, @named model = F16ModelWorkshop.Tutorial.DiscreteClosedLoopDemo(; __overrides = model_overrides))
+
+  ### Check there are no unmatched overrides
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
+
+  ### Guesses
+
+  ### Initialization Equations
+
+  ### Assertions
+  __assertions = []
+
+  ### Equations
+
+  # Return completely constructed System
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+end
+export TutorialDiscreteClosedLoop__System
+
+@kwdef struct TutorialDiscreteClosedLoop__Spec <: AbstractFlightAnalysisSpec
   name::Symbol = :TutorialDiscreteClosedLoop
+  __overrides::Dict{SymbolicT, SymbolicT} = Dict{SymbolicT, SymbolicT}()
   # End time of the simulation, s.
   var"stop"::Float64 = 10.0
   # Panels of the `FlightResponse` figure, each `Title: signal, signal, ...`.
@@ -20,12 +102,10 @@ using F16ModelWorkshop: AbstractFlightAnalysisSpec, FlightAnalysisSpec
   var"reltol"::Float64 = 0.000001
   # Tutorial 4 — Discrete (sampled-data) closed-loop LQG.
   # 
-  # Sampled version of `LQGDemo` (03): the continuous LQG controller is replaced by the
-  # clocked `DiscreteStateSpace`, fed the ZOH-discretized matrices from the applied
-  # `discrete_controller.toml` asset (designed by `TutorialDiscreteLQG` at
-  # Ts = ControllerTs). Trim is folded into the controller output operating point `y0`,
-  # also carried by that asset, so `controller.y` is the absolute control command — no
-  # external feedforward.
+  # Sampled version of `LQGDemo` (step 3): the controller is the clocked `DiscreteStateSpace`
+  # with the ZOH-discretized matrices of `discrete_controller.toml` (designed by
+  # `TutorialDiscreteLQG` at Ts = ControllerTs). That asset also carries the trim as the
+  # output operating point `y0`, so `controller.y` is the absolute control command.
   # 
   # Signal flow (all vector ports):
   #   ref - measurement --> err (12 ch)
@@ -34,20 +114,27 @@ using F16ModelWorkshop: AbstractFlightAnalysisSpec, FlightAnalysisSpec
   # 
   # The 100 Hz clock is planted on one controller input; the controller's block clock
   # carries it to the other eleven, and clock inference to the sampler and hold.
-  # 
-  # Scenario: 10 deg initial pitch perturbation about trim.
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.DiscreteClosedLoopDemo(; name=:DiscreteClosedLoopDemo)
+  __system::System = TutorialDiscreteClosedLoop__System(; name, var"stop"=var"stop", var"panels"=var"panels", var"abstol"=var"abstol", var"reltol"=var"reltol")
 end
 
-function DyadInterface.run_analysis(spec::TutorialDiscreteClosedLoopSpec)
+function __dyad_base_analysis_spec(spec::TutorialDiscreteClosedLoop__Spec)
   overrides = Dict{SymbolicT, SymbolicT}()
   no_namespace_model = toggle_namespacing(spec.model, false)
   
-  base_spec = FlightAnalysisSpec(;
-    name=:FlightAnalysis, overrides, stop=spec.stop, panels=spec.panels, abstol=spec.abstol, reltol=spec.reltol, model=spec.model
+  merge!(overrides, spec.__overrides)
+  FlightAnalysisSpec(;
+    name=spec.name, overrides, __system=spec.__system, var"stop"=spec.var"stop", var"panels"=spec.var"panels", var"abstol"=spec.var"abstol", var"reltol"=spec.var"reltol", var"model"=spec.var"model"
   )
-  run_analysis(base_spec)
 end
 
-TutorialDiscreteClosedLoop(;kwargs...) = run_analysis(TutorialDiscreteClosedLoopSpec(;kwargs...))
-export TutorialDiscreteClosedLoop, TutorialDiscreteClosedLoopSpec
+function DyadInterface.run_analysis(spec::TutorialDiscreteClosedLoop__Spec)
+  run_analysis(__dyad_base_analysis_spec(spec))
+end
+
+function DyadInterface.setup_analysis(spec::TutorialDiscreteClosedLoop__Spec; kwargs...)
+  DyadInterface.setup_analysis(__dyad_base_analysis_spec(spec); kwargs...)
+end
+
+TutorialDiscreteClosedLoop(;kwargs...) = run_analysis(TutorialDiscreteClosedLoop__Spec(;kwargs...))
+export TutorialDiscreteClosedLoop, TutorialDiscreteClosedLoop__Spec

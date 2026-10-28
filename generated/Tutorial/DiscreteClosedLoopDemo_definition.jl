@@ -5,16 +5,14 @@
 
 
 @doc Markdown.doc"""
-   DiscreteClosedLoopDemo(; name)
+   DiscreteClosedLoopDemo(; name, __overrides)
 
 Tutorial 4 — Discrete (sampled-data) closed-loop LQG.
 
-Sampled version of `LQGDemo` (03): the continuous LQG controller is replaced by the
-clocked `DiscreteStateSpace`, fed the ZOH-discretized matrices from the applied
-`discrete_controller.toml` asset (designed by `TutorialDiscreteLQG` at
-Ts = ControllerTs). Trim is folded into the controller output operating point `y0`,
-also carried by that asset, so `controller.y` is the absolute control command — no
-external feedforward.
+Sampled version of `LQGDemo` (step 3): the controller is the clocked `DiscreteStateSpace`
+with the ZOH-discretized matrices of `discrete_controller.toml` (designed by
+`TutorialDiscreteLQG` at Ts = ControllerTs). That asset also carries the trim as the
+output operating point `y0`, so `controller.y` is the absolute control command.
 
 Signal flow (all vector ports):
   ref - measurement --> err (12 ch)
@@ -23,10 +21,8 @@ Signal flow (all vector ports):
 
 The 100 Hz clock is planted on one controller input; the controller's block clock
 carries it to the other eleven, and clock inference to the sampler and hold.
-
-Scenario: 10 deg initial pitch perturbation about trim.
 """
-@component function DiscreteClosedLoopDemo(; name = nothing, kwargs...)
+@component function DiscreteClosedLoopDemo(; name = nothing, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -34,7 +30,7 @@ Scenario: 10 deg initial pitch perturbation about trim.
     @named model = DiscreteClosedLoopDemo()
   """))
 
-  __overrides = __build_overrides(kwargs)
+  __overrides = Dict{String, Any}(__overrides)
   __params = Symbolics.SymbolicT[]
   __vars = Symbolics.SymbolicT[]
   __systems = System[]
@@ -73,6 +69,7 @@ Scenario: 10 deg initial pitch perturbation about trim.
   # Subcomponent f16plant of type F16ModelWorkshop.Plant.F16PlantModel
   f16plant_overrides = __pop_subcomponent_overrides!(__overrides, "f16plant")
   __f16plant_apply_exclude = Set{String}()
+  __f16plant_apply_1_exclude = Set{String}(["theta_init"])
   __f16plant_apply_schema = Dict{String,NamedTuple}(
     "npos_init" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
     "epos_init" => (base="Real", dims=Int[], min=nothing, max=nothing, structural=false, final=false, initial=false, guess=false),
@@ -155,7 +152,11 @@ Scenario: 10 deg initial pitch perturbation about trim.
   __f16plant_apply_1 = __dyad_load_parameters(pkgdir(@__MODULE__), String(nameof(Base.moduleroot(@__MODULE__))), "dyad://F16ModelWorkshop/trim_point.toml")
   __f16plant_apply_1_flat = __dyad_flatten(__f16plant_apply_1)
   __dyad_check_apply(__f16plant_apply_1_flat, __f16plant_apply_schema, "dyad://F16ModelWorkshop/trim_point.toml")
-  push!(__systems, @named f16plant = F16ModelWorkshop.Plant.F16PlantModel(; __dyad_apply_overrides(__f16plant_apply_1, __f16plant_apply_1_flat, __f16plant_apply_exclude, __f16plant_apply_schema)..., theta_init=0.17453292519943295, f16plant_overrides...))
+  __f16plant_apply_1_ovr = __dyad_apply_overrides(__f16plant_apply_1, __f16plant_apply_1_flat, __f16plant_apply_1_exclude, __f16plant_apply_schema)
+  f16plant_dict = Dict{String, Any}()
+  merge!(f16plant_dict, __f16plant_apply_1_ovr)
+  merge!(f16plant_dict, f16plant_overrides)
+  push!(__systems, @named f16plant = F16ModelWorkshop.Plant.F16PlantModel(; theta_init=0.17453292519943295, __overrides = f16plant_dict))
   # Subcomponent controller of type DiscreteComponents.DiscreteStateSpace
   controller_overrides = __pop_subcomponent_overrides!(__overrides, "controller")
   __controller_apply_exclude = Set{String}(["nx", "nu", "ny", "with_D", "initialization"])
@@ -178,10 +179,14 @@ Scenario: 10 deg initial pitch perturbation about trim.
   __controller_apply_1 = __dyad_load_parameters(pkgdir(@__MODULE__), String(nameof(Base.moduleroot(@__MODULE__))), "dyad://F16ModelWorkshop/discrete_controller.toml")
   __controller_apply_1_flat = __dyad_flatten(__controller_apply_1)
   __dyad_check_apply(__controller_apply_1_flat, __controller_apply_schema, "dyad://F16ModelWorkshop/discrete_controller.toml")
-  push!(__systems, @named controller = DiscreteComponents.DiscreteStateSpace(; __dyad_apply_kwargs(__controller_apply_1, (:with_D, :initialization), __controller_apply_schema)..., nx=12, nu=12, ny=5, __dyad_apply_overrides(__controller_apply_1, __controller_apply_1_flat, __controller_apply_exclude, __controller_apply_schema)..., controller_overrides...))
+  __controller_apply_1_ovr = __dyad_apply_overrides(__controller_apply_1, __controller_apply_1_flat, __controller_apply_exclude, __controller_apply_schema)
+  controller_dict = Dict{String, Any}()
+  merge!(controller_dict, __controller_apply_1_ovr)
+  merge!(controller_dict, controller_overrides)
+  push!(__systems, @named controller = DiscreteComponents.DiscreteStateSpace(; __dyad_apply_kwargs(__controller_apply_1, (:with_D, :initialization), __controller_apply_schema)..., nx=12, nu=12, ny=5, __overrides = controller_dict))
   # Subcomponent clk of type DiscreteComponents.PeriodicClock
   clk_overrides = __pop_subcomponent_overrides!(__overrides, "clk")
-  push!(__systems, @named clk = DiscreteComponents.PeriodicClock(; dt=ControllerTs, clk_overrides...))
+  push!(__systems, @named clk = DiscreteComponents.PeriodicClock(; dt=ControllerTs, __symbol_overrides(clk_overrides)...))
   # Subcomponent ref of type F16ModelWorkshop.VectorBlocks.VectorConstant
   ref_overrides = __pop_subcomponent_overrides!(__overrides, "ref")
   __ref_apply_exclude = Set{String}(["n"])
@@ -192,19 +197,23 @@ Scenario: 10 deg initial pitch perturbation about trim.
   __ref_apply_1 = __dyad_load_parameters(pkgdir(@__MODULE__), String(nameof(Base.moduleroot(@__MODULE__))), "dyad://F16ModelWorkshop/trim_reference.toml")
   __ref_apply_1_flat = __dyad_flatten(__ref_apply_1)
   __dyad_check_apply(__ref_apply_1_flat, __ref_apply_schema, "dyad://F16ModelWorkshop/trim_reference.toml")
-  push!(__systems, @named ref = F16ModelWorkshop.VectorBlocks.VectorConstant(; n=12, __dyad_apply_overrides(__ref_apply_1, __ref_apply_1_flat, __ref_apply_exclude, __ref_apply_schema)..., ref_overrides...))
+  __ref_apply_1_ovr = __dyad_apply_overrides(__ref_apply_1, __ref_apply_1_flat, __ref_apply_exclude, __ref_apply_schema)
+  ref_dict = Dict{String, Any}()
+  merge!(ref_dict, __ref_apply_1_ovr)
+  merge!(ref_dict, ref_overrides)
+  push!(__systems, @named ref = F16ModelWorkshop.VectorBlocks.VectorConstant(; n=12, __overrides = ref_dict))
   # Subcomponent err of type F16ModelWorkshop.VectorBlocks.VectorAdd
   err_overrides = __pop_subcomponent_overrides!(__overrides, "err")
-  push!(__systems, @named err = F16ModelWorkshop.VectorBlocks.VectorAdd(; n=12, k1=Float64(1), k2=Float64(-1), err_overrides...))
+  push!(__systems, @named err = F16ModelWorkshop.VectorBlocks.VectorAdd(; n=12, k1=Float64(1), k2=Float64(-1), __overrides = err_overrides))
   # Subcomponent sample of type F16ModelWorkshop.VectorBlocks.MultiSampler
   sample_overrides = __pop_subcomponent_overrides!(__overrides, "sample")
-  push!(__systems, @named sample = F16ModelWorkshop.VectorBlocks.MultiSampler(; n=12, sample_overrides...))
+  push!(__systems, @named sample = F16ModelWorkshop.VectorBlocks.MultiSampler(; n=12, __overrides = sample_overrides))
   # Subcomponent zoh of type F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold
   zoh_overrides = __pop_subcomponent_overrides!(__overrides, "zoh")
-  push!(__systems, @named zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(; n=5, zoh_overrides...))
+  push!(__systems, @named zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(; n=5, __overrides = zoh_overrides))
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
 
   ### Guesses
 
@@ -223,6 +232,6 @@ Scenario: 10 deg initial pitch perturbation about trim.
   push!(__eqs, connect(clk.y, controller.u[1]))
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export DiscreteClosedLoopDemo

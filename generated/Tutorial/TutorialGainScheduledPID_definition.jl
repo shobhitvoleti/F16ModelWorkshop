@@ -5,11 +5,93 @@
 
 
 using DyadInterface
-using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel, SpecializationLevel
-using ModelingToolkit: SymbolicT, toggle_namespacing
 using F16ModelWorkshop: AbstractFlightAnalysisSpec, FlightAnalysisSpec
-@kwdef mutable struct TutorialGainScheduledPIDSpec <: AbstractFlightAnalysisSpec
+@component function TutorialGainScheduledPID__System(; name = nothing, var"stop"=25.0, var"panels"=["Airspeed (m/s): f16plant.vt, vt_reference", "Altitude (m): f16plant.alt", "Dynamic pressure, the scheduling variable (Pa): f16plant.qbar", "Weight of each design point (140, 152.4, 170 m/s): schedule.scheduler.w[1], schedule.scheduler.w[2], schedule.scheduler.w[3]", "Scheduled pitch gain (deg of elevator per rad): schedule.K_pitch", "Elevator (deg): f16plant.el", "Thrust (N): f16plant.T"], var"abstol"=0.000001, var"reltol"=0.000001, __overrides = Dict{String, Any}())
+  isnothing(name) && throw(ArgumentError("""
+    The `name` keyword must be provided. Please consider using the `@named` macro,
+    like so:
+  
+    @named model = TutorialGainScheduledPID__System()
+  """))
+
+  __overrides = Dict{String, Any}(__overrides)
+  __params = Symbolics.SymbolicT[]
+  __vars = Symbolics.SymbolicT[]
+  __systems = System[]
+  __guesses = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initial_conditions = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+  __initialization_eqs = Equation[]
+  __eqs = Equation[]
+  __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Keyword argument overrides
+  haskey(__overrides, "stop") && (stop = pop!(__overrides, "stop"))
+  haskey(__overrides, "panels") && (panels = pop!(__overrides, "panels"))
+  haskey(__overrides, "abstol") && (abstol = pop!(__overrides, "abstol"))
+  haskey(__overrides, "reltol") && (reltol = pop!(__overrides, "reltol"))
+
+  ### Structural Parameters (functions)
+
+  ### Structural Parameters (Final)
+
+  ### Path Parameters (functions)
+
+  ### Path Parameters (non-final)
+
+  ### Final Parameters (declarations)
+
+  ### Deferred assignment (default values that depend on final parameters)
+
+  ### Symbolic Parameters
+  __local__stop = stop
+  append!(__params, @parameters (stop::Float64), [description = "End time of the simulation, s."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, stop, __local__stop)
+  __local__panels = panels
+  append!(__params, @parameters (panels::Array{String, 1}), [description = "Panels of the `FlightResponse` figure, each `Title: signal, signal, ...`."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, panels, __local__panels)
+  __local__abstol = abstol
+  append!(__params, @parameters (abstol::Float64), [description = "Absolute tolerance of the ODE solver."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, abstol, __local__abstol)
+  __local__reltol = reltol
+  append!(__params, @parameters (reltol::Float64), [description = "Relative tolerance of the ODE solver."])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, reltol, __local__reltol)
+
+  ### Final Parameters (assignments)
+
+  ### Final Path Parameters
+
+  ### Variables (declarations)
+
+  ### Variables (assignments)
+
+  ### Constants
+  __constants = Any[]
+
+  ### Components
+  # Subcomponent model of type F16ModelWorkshop.Tutorial.GainScheduledPIDDemo
+  model_overrides = __pop_subcomponent_overrides!(__overrides, "model")
+  push!(__systems, @named model = F16ModelWorkshop.Tutorial.GainScheduledPIDDemo(; __overrides = model_overrides))
+
+  ### Check there are no unmatched overrides
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
+
+  ### Guesses
+
+  ### Initialization Equations
+
+  ### Assertions
+  __assertions = []
+
+  ### Equations
+
+  # Return completely constructed System
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+end
+export TutorialGainScheduledPID__System
+
+@kwdef struct TutorialGainScheduledPID__Spec <: AbstractFlightAnalysisSpec
   name::Symbol = :TutorialGainScheduledPID
+  __overrides::Dict{SymbolicT, SymbolicT} = Dict{SymbolicT, SymbolicT}()
   # End time of the simulation, s.
   var"stop"::Float64 = 25.0
   # Panels of the `FlightResponse` figure, each `Title: signal, signal, ...`.
@@ -20,11 +102,10 @@ using F16ModelWorkshop: AbstractFlightAnalysisSpec, FlightAnalysisSpec
   var"reltol"::Float64 = 0.000001
   # Tutorial 7 — Gain-scheduled PID autopilot.
   # 
-  # The classical longitudinal autopilot of Stevens & Lewis, *Aircraft Control and
-  # Simulation*, flown on the nonlinear plant at 20 Hz and gain-scheduled on dynamic pressure.
-  # Three `DiscreteComponents.DiscretePIDScheduled` controllers take their gains as
-  # input signals; `AutopilotGainSchedule` computes those signals and is the only component
-  # that knows about the flight condition.
+  # The classical longitudinal autopilot of Stevens & Lewis, flown on the nonlinear plant at
+  # 20 Hz and gain-scheduled on dynamic pressure. Three `DiscreteComponents.DiscretePIDScheduled`
+  # controllers take their gains as input signals; `AutopilotGainSchedule` computes them and is
+  # the only component that knows the flight condition.
   # 
   # Signal flow:
   # 
@@ -37,43 +118,51 @@ using F16ModelWorkshop: AbstractFlightAnalysisSpec, FlightAnalysisSpec
   #   schedule --> every K, Ti, Td and u_ff input
   #   [autothrottle.y; pitch.y] --> zoh --> cmd_map (5) --> f16plant.u_in
   # 
-  # The loops, inner first, as in the book's altitude-hold autopilot with an autothrottle:
+  # Loops, inner first:
   # 
-  # - `pitch` — pitch-attitude hold: elevator from pitch attitude, a PD whose derivative acts
-  #   on the measurement only (`wd = 0`), which is pitch-rate damping. The airframe is
-  #   unstable in pitch; this loop stabilizes it.
-  # - `altitude_hold` — pitch-attitude command from altitude, a PID whose derivative is
+  # - `pitch` — pitch-attitude hold: elevator from pitch attitude. A PD with the derivative on
+  #   the measurement only (`wd = 0`), i.e. pitch-rate damping; it stabilizes the airframe,
+  #   which is unstable in pitch.
+  # - `altitude_hold` — pitch-attitude command from altitude. A PID whose derivative is
   #   climb-rate damping.
-  # - `autothrottle` — thrust from airspeed, a PI. Half the reference enters the
-  #   proportional path (`wp = 0.5`): with all of it, the slow zero of the integral makes the
-  #   airspeed overshoot the end of the ramp and creep back over tens of seconds.
+  # - `autothrottle` — thrust from airspeed. A PI with half the reference in the proportional
+  #   path (`wp = 0.5`); with all of it, the integral's slow zero makes the airspeed overshoot
+  #   the end of the ramp and creep back over tens of seconds.
   # 
-  # Each loop adds the scheduled trim of its command (pitch attitude, elevator, thrust) as
-  # feed-forward, so the feedback only corrects the departure from trim, and starts with
-  # `InitialOutput` at the trim of the initial flight condition, so nothing jumps at t = 0.
+  # Each loop adds the scheduled trim of its output (pitch attitude, elevator, thrust) as
+  # feed-forward, so the feedback only corrects the departure from trim, and starts at the trim
+  # of the initial flight condition (`InitialOutput`), so nothing jumps at t = 0.
   # 
-  # Design (`F16ModelWorkshop.ScheduledPID`): at each design point the plant is linearized,
-  # and each loop is designed in turn on the plant with the inner loops closed, for a fixed
-  # gain-crossover frequency and phase margin (pitch 2 rad/s and 60°, altitude 0.3 rad/s and
-  # 60°, airspeed 0.5 rad/s and 70°). The design points are the airspeed knots of step 8, so
-  # the two controllers can be compared on the same manoeuvre.
+  # Design (`F16ModelWorkshop.ScheduledPID`): at each design point the plant is linearized and
+  # each loop is designed with the inner loops closed, for a gain-crossover frequency and phase
+  # margin of 2 rad/s and 60° (pitch), 0.3 rad/s and 60° (altitude), 0.5 rad/s and 70°
+  # (airspeed). The design points are step 8's airspeed knots, so the two controllers can be
+  # compared on the same manoeuvre.
   # 
-  # Scenario: as in step 8, trimmed at 148 m/s and 3000 m with 2° of extra pitch attitude, and
-  # commanded to 160 m/s over 12 s from t = 2 s, a ramp that crosses the 152.4 m/s design
-  # point. Aileron and rudder stay at their trim of zero: the manoeuvre is symmetric and the
-  # lateral modes are stable.
+  # Scenario: as in step 8, a ramp from 148 to 160 m/s at 3000 m that crosses the 152.4 m/s
+  # design point. Aileron and rudder stay at their trim of zero: the manoeuvre is symmetric and
+  # the lateral modes are stable.
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.GainScheduledPIDDemo(; name=:GainScheduledPIDDemo)
+  __system::System = TutorialGainScheduledPID__System(; name, var"stop"=var"stop", var"panels"=var"panels", var"abstol"=var"abstol", var"reltol"=var"reltol")
 end
 
-function DyadInterface.run_analysis(spec::TutorialGainScheduledPIDSpec)
+function __dyad_base_analysis_spec(spec::TutorialGainScheduledPID__Spec)
   overrides = Dict{SymbolicT, SymbolicT}()
   no_namespace_model = toggle_namespacing(spec.model, false)
   
-  base_spec = FlightAnalysisSpec(;
-    name=:FlightAnalysis, overrides, stop=spec.stop, panels=spec.panels, abstol=spec.abstol, reltol=spec.reltol, model=spec.model
+  merge!(overrides, spec.__overrides)
+  FlightAnalysisSpec(;
+    name=spec.name, overrides, __system=spec.__system, var"stop"=spec.var"stop", var"panels"=spec.var"panels", var"abstol"=spec.var"abstol", var"reltol"=spec.var"reltol", var"model"=spec.var"model"
   )
-  run_analysis(base_spec)
 end
 
-TutorialGainScheduledPID(;kwargs...) = run_analysis(TutorialGainScheduledPIDSpec(;kwargs...))
-export TutorialGainScheduledPID, TutorialGainScheduledPIDSpec
+function DyadInterface.run_analysis(spec::TutorialGainScheduledPID__Spec)
+  run_analysis(__dyad_base_analysis_spec(spec))
+end
+
+function DyadInterface.setup_analysis(spec::TutorialGainScheduledPID__Spec; kwargs...)
+  DyadInterface.setup_analysis(__dyad_base_analysis_spec(spec); kwargs...)
+end
+
+TutorialGainScheduledPID(;kwargs...) = run_analysis(TutorialGainScheduledPID__Spec(;kwargs...))
+export TutorialGainScheduledPID, TutorialGainScheduledPID__Spec

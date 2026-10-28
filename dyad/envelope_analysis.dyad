@@ -4,9 +4,9 @@ Trim and linearize the aircraft across its flight envelope.
 The plant is trimmed in straight-and-level flight and linearized at `points` × `points`
 flight conditions between the bounds of `velocities` and `altitudes`. The result in
 Studio is the figure `Envelope`: trimmed angle of attack, thrust and elevator, and the
-pitch divergence rate, each over the grid, with the nodes of the step-9 bank marked. With
-`table_dir` set, it also rewrites that lookup table, `envelope_trim_alpha.csv`: the trimmed angle of attack at the
-table's own nodes, the asset `EnvelopeMPCDemo` reads its bank from. Backed by
+pitch divergence rate over the grid, with the nodes of the step-9 bank marked. With
+`table_dir` set, it also rewrites `envelope_trim_alpha.csv`, the trimmed angle of attack
+at the table's own nodes that `EnvelopeMPCDemo` builds its bank from. Backed by
 `EnvelopeAnalysisSpec` in src/envelope_analysis.jl.
 """
 partial analysis EnvelopeAnalysis

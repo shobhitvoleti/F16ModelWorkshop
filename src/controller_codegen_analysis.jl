@@ -1,6 +1,5 @@
-# Clocked-controller C export, paired with the `partial analysis` in
-# dyad/controller_codegen_analysis.dyad. SynchToolkit compiles the model's whole-array
-# `u` and `y` connectors straight into a synchronous node, and SynchJulia emits its C.
+# Clocked-controller C export (dyad/controller_codegen_analysis.dyad). SynchToolkit compiles
+# the model's whole-array `u` and `y` connectors into a synchronous node; SynchJulia emits its C.
 
 import SynchToolkit, SynchJulia
 
@@ -11,14 +10,14 @@ abstract type AbstractControllerCodegenAnalysisSpec <: AbstractAnalysisSpec end
     model::Union{Nothing, System} = nothing
     export_dir::String = "generated_c/f16_controller"
     overrides::_Overrides = _Overrides()
+    __system::Union{Nothing, System} = nothing   # handed over by Dyad-generated specs; unused
 end
 
 """
     ControllerCodegenAnalysisSolution
 
-The compiled node, the directory and `files` written, and `check`: the node stepped on a
-test sequence next to the state-space recursion of `discrete_controller.toml`, one row
-per SynchJulia backend.
+The `compiled` node, the `export_dir` and `files` written, and `check`, the `step_check`
+table.
 """
 struct ControllerCodegenAnalysisSolution <: AbstractAnalysisSolution
     spec::ControllerCodegenAnalysisSpec
@@ -43,8 +42,8 @@ function DyadInterface.run_analysis(spec::ControllerCodegenAnalysisSpec)
 
     export_dir = _resolve_export(spec.export_dir)
     mkpath(export_dir)
-    # SynchJulia writes its files read-only; make a previous export writable so this one
-    # replaces every file instead of failing part-way.
+    # SynchJulia writes files read-only; make a previous export writable so this one
+    # overwrites it instead of failing part-way.
     for f in readdir(export_dir; join = true)
         isfile(f) && chmod(f, 0o644)
     end
@@ -58,15 +57,16 @@ end
 
 Step `compiled` on `ticks` tracking errors and compare its commands with the recursion
 `y = C x + D u + y0`, `x⁺ = A x + B u` of `discrete_controller.toml`, the controller the
-model applies. The Julia backend always runs; the C backend runs when a C compiler is
-loaded (`using Clang_unified_jll`), which SynchJulia needs to build it.
+model applies. One row per SynchJulia backend (`backend`, `ticks`, `max_abs_error`,
+`status`). The C backend runs only when `Clang_unified_jll` is loaded, which SynchJulia
+needs to build it.
 """
 function step_check(compiled, pars; ticks = 200)
     d = TOML.parsefile(asset_path("discrete_controller.toml"))
     matrix(rows) = reduce(vcat, permutedims.(Vector{Float64}.(rows)))
     A, B, C, D = (matrix(d[k]) for k in ("A", "B", "C", "D"))
     y0 = Vector{Float64}(d["y0"])
-    # Tracking errors of a few tenths of a degree and m/s, different on every channel.
+    # Small tracking errors, different on every channel.
     us = [0.01 .* sin.((1:size(B, 2)) .* (k / 7)) for k in 1:ticks]
     x = zeros(size(A, 1))
     reference = map(us) do u

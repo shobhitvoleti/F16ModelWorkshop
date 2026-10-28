@@ -20,8 +20,13 @@ import DiscreteComponents
 import DyadControlSystems
 import DyadData
 import DyadInterface
+import ElectricalComponents
+import HydraulicComponents
 import MPCComponents
 import MultibodyComponents
+import RotationalComponents
+import ThermalComponents
+import TranslationalComponents
 @doc Markdown.doc"""
 This connector represents an electrical pin with voltage and current as the potential and flow variables, respectively.
 """
@@ -200,4 +205,5 @@ component.
 end
 
 
+include("F16PlantFromState_definition.jl")
 include("F16PlantModel_definition.jl")

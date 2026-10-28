@@ -34,6 +34,6 @@ function base_lqg_spec(spec)
 end
 
 println("Loading the F-16 tutorial LQG design...")
-spec = base_lqg_spec(TutorialLQGSpec())
+spec = base_lqg_spec(TutorialLQG__Spec())
 println("Launching live tuning dashboard (12 measurements, 5 controls)...")
 state = DyadControlSystems.launch_lqg_designer(spec; elevator_weight=0.33)

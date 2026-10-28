@@ -1,11 +1,10 @@
-# Reference implementation of the Stevens & Lewis F-16 aerodynamic model,
-# operating on the tables in snl_aero_tables.jl (see that file for provenance).
-# The coefficient-buildup equations are transcribed from the MathML
-# <calculation> elements of the source DAVE-ML document.
+# Reference implementation of the Stevens & Lewis F-16 aerodynamic model on the tables
+# in snl_aero_tables.jl (provenance there). The coefficient buildup is transcribed from
+# the MathML <calculation> elements of the source DAVE-ML document.
 #
-# Ground truth for scripts/fit_snl_aero.jl. The CG-transfer terms at the end are
-# the ones F16PlantModel reproduces directly, which is what makes `xcg` move the
-# plant across the pitch stability boundary.
+# Ground truth for scripts/fit_snl_aero.jl. F16PlantModel reproduces the CG-transfer
+# terms at the end directly, which lets `xcg` move the plant across the pitch stability
+# boundary.
 #
 # Inputs: vt ft/s; alpha, beta, el, ail, rdr deg; p, q, r rad/s;
 # xcg fraction of cbar. Outputs: nondimensional body-axis coefficients.
@@ -52,11 +51,10 @@ Total body-axis aerodynamic coefficients `(cx, cy, cz, cl, cm, cn)` of the
 Stevens & Lewis F-16 model: table lookups plus damping, control-power, and
 CG moment-transfer terms. Units per the file header.
 
-`cl0_table` selects the basic rolling-moment table: `F16AeroData.CL0_ABS`
-(S&L book values) or `F16AeroData.CL0_ABS_DML` (the
-Morelli/DML variant the NASA checkcases were generated against). The two
-differ in 18 cells at alpha 15-25 deg, |beta| >= 5 deg. The fitted deck is taken
-from the book values.
+`cl0_table` selects the basic rolling-moment table: `F16AeroData.CL0_ABS` (S&L book
+values, used for the fitted deck) or `F16AeroData.CL0_ABS_DML` (the Morelli/DML variant
+the NASA checkcases were generated against). The two differ in 18 cells at alpha
+15-25 deg, |beta| >= 5 deg.
 """
 function f16_aero_coefficients(vt::Real, alpha::Real, beta::Real,
                                p::Real, q::Real, r::Real,

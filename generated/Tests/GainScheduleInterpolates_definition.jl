@@ -5,13 +5,13 @@
 
 
 @doc Markdown.doc"""
-   GainScheduleInterpolates(; name, velocity, altitude, Ts)
+   GainScheduleInterpolates(; name, velocity, altitude, Ts, __overrides)
 
 `Tutorial.AutopilotGainSchedule` interpolates its gain table linearly in dynamic pressure.
 
-The schedule is fed a constant altitude and airspeed. Its held outputs must equal the
-columns of `ScheduledPID.gain_table` weighted by the hat functions of the dynamic pressure
-over `ScheduledPID.knot_pressures`, and the end column outside the knots.
+Fed a constant altitude and airspeed, its held outputs must equal the columns of
+`ScheduledPID.gain_table` weighted by the hat functions of dynamic pressure over
+`ScheduledPID.knot_pressures`, or the end column outside the knots.
 
 ## Parameters:
 
@@ -27,7 +27,7 @@ over `ScheduledPID.knot_pressures`, and the end column outside the knots.
 | ------------ | ----------------------------------- | ------ |
 | `scheduled`         | The held scheduled signals, in the order of `ScheduledPID.SCHEDULE_ROWS`.                         | --  |
 """
-@component function GainScheduleInterpolates(; name = nothing, velocity=Float64(160.0), altitude=Float64(3000.0), Ts=0.05, kwargs...)
+@component function GainScheduleInterpolates(; name = nothing, var"velocity"=Float64(160.0), var"altitude"=Float64(3000.0), var"Ts"=0.05, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -35,7 +35,7 @@ over `ScheduledPID.knot_pressures`, and the end column outside the knots.
     @named model = GainScheduleInterpolates()
   """))
 
-  __overrides = __build_overrides(kwargs)
+  __overrides = Dict{String, Any}(__overrides)
   __params = Symbolics.SymbolicT[]
   __vars = Symbolics.SymbolicT[]
   __systems = System[]
@@ -44,6 +44,11 @@ over `ScheduledPID.knot_pressures`, and the end column outside the knots.
   __initialization_eqs = Equation[]
   __eqs = Equation[]
   __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
+
+  ### Keyword argument overrides
+  haskey(__overrides, "velocity") && (velocity = pop!(__overrides, "velocity"))
+  haskey(__overrides, "altitude") && (altitude = pop!(__overrides, "altitude"))
+  haskey(__overrides, "Ts") && (Ts = pop!(__overrides, "Ts"))
 
   ### Structural Parameters (functions)
 
@@ -68,8 +73,8 @@ over `ScheduledPID.knot_pressures`, and the end column outside the knots.
 
   ### Variables (assignments)
   __ovr_scheduled = pop!(__overrides, "scheduled", nothing); isnothing(__ovr_scheduled) || push!(__eqs, scheduled ~ __ovr_scheduled)
-  __ovr_scheduled__initial = pop!(__overrides, "scheduled__initial", nothing); isnothing(__ovr_scheduled__initial) || (__initial_conditions[scheduled] = __ovr_scheduled__initial)
-  __ovr_scheduled__guess = pop!(__overrides, "scheduled__guess", nothing)
+  __ovr_scheduled__initial = pop!(__overrides, "scheduled.initial", nothing); isnothing(__ovr_scheduled__initial) || (__initial_conditions[scheduled] = __ovr_scheduled__initial)
+  __ovr_scheduled__guess = pop!(__overrides, "scheduled.guess", nothing)
 
   ### Constants
   __constants = Any[]
@@ -77,25 +82,25 @@ over `ScheduledPID.knot_pressures`, and the end column outside the knots.
   ### Components
   # Subcomponent condition of type F16ModelWorkshop.VectorBlocks.VectorConstant
   condition_overrides = __pop_subcomponent_overrides!(__overrides, "condition")
-  push!(__systems, @named condition = F16ModelWorkshop.VectorBlocks.VectorConstant(; n=2, k=[altitude, velocity], condition_overrides...))
+  push!(__systems, @named condition = F16ModelWorkshop.VectorBlocks.VectorConstant(; n=2, k=[altitude, velocity], __overrides = condition_overrides))
   # Subcomponent sample of type F16ModelWorkshop.VectorBlocks.MultiSampler
   sample_overrides = __pop_subcomponent_overrides!(__overrides, "sample")
-  push!(__systems, @named sample = F16ModelWorkshop.VectorBlocks.MultiSampler(; n=2, sample_overrides...))
+  push!(__systems, @named sample = F16ModelWorkshop.VectorBlocks.MultiSampler(; n=2, __overrides = sample_overrides))
   # Subcomponent clock of type DiscreteComponents.PeriodicClock
   clock_overrides = __pop_subcomponent_overrides!(__overrides, "clock")
-  push!(__systems, @named clock = DiscreteComponents.PeriodicClock(; dt=Ts, clock_overrides...))
+  push!(__systems, @named clock = DiscreteComponents.PeriodicClock(; dt=Ts, __symbol_overrides(clock_overrides)...))
   # Subcomponent schedule of type F16ModelWorkshop.Tutorial.AutopilotGainSchedule
   schedule_overrides = __pop_subcomponent_overrides!(__overrides, "schedule")
-  push!(__systems, @named schedule = F16ModelWorkshop.Tutorial.AutopilotGainSchedule(; schedule_overrides...))
+  push!(__systems, @named schedule = F16ModelWorkshop.Tutorial.AutopilotGainSchedule(; __overrides = schedule_overrides))
   # Subcomponent zoh of type F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold
   zoh_overrides = __pop_subcomponent_overrides!(__overrides, "zoh")
-  push!(__systems, @named zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(; n=10, zoh_overrides...))
+  push!(__systems, @named zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(; n=10, __overrides = zoh_overrides))
   # Subcomponent intg of type BlockComponents.Continuous.Integrator
   intg_overrides = __pop_subcomponent_overrides!(__overrides, "intg")
-  push!(__systems, @named intg = BlockComponents.Continuous.Integrator(; intg_overrides...))
+  push!(__systems, @named intg = BlockComponents.Continuous.Integrator(; __overrides = intg_overrides))
 
   ### Check there are no unmatched overrides
-  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded."))
+  isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
 
   ### Guesses
   isnothing(__ovr_scheduled__guess) || (__guesses[scheduled] = __ovr_scheduled__guess)
@@ -123,6 +128,6 @@ over `ScheduledPID.knot_pressures`, and the end column outside the knots.
   push!(__eqs, connect(zoh.y[1], intg.u))
 
   # Return completely constructed System
-  return System(__eqs, t, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
+  return System(__eqs, ModelingToolkit.t_nounits, __vars, __params; systems=__systems, initial_conditions=__initial_conditions, guesses=__guesses, name, initialization_eqs=__initialization_eqs, bindings=__bindings, assertions=__assertions)
 end
 export GainScheduleInterpolates
