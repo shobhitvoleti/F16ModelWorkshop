@@ -1,18 +1,18 @@
 """
 Tutorial 2 — Linearization.
 
-Linearizes the open-loop F16 plant about the trim operating point, from the four control
-inputs with aerodynamic effect (uT, uEl, uAil, uRud — the leading-edge flap is inert in
-this plant) to the 12 measured outputs (yn..yR). It reuses the instrumented design model
-`LQGDemo` (03_lqg_continuous.dyad) and opens the feedback loop at the measurement
-outputs, so the plant keeps its trim command inputs while the controller feedback is
-severed — the result is the bare plant P, not the closed loop. Analysis-point names are
-scalar, one per channel (see the note in 03).
+Linearizes the open-loop F16 plant about the trim operating point, from the five control
+inputs (u1..u5 = T, el, ail, rud, lef; the leading-edge flap is inert in this plant, so its
+column of the linearization is zero) to the 12 measured outputs (y1..y12). It reuses the
+instrumented design model `LQGDemo` (03_lqg_continuous.dyad) and opens the feedback loop
+at the measurement outputs, so the plant keeps its trim command inputs while the
+controller feedback is severed — the result is the bare plant P, not the closed loop. The
+analysis points `u` and `y` are vector-valued, one channel per element (see the note in 03).
 
 Output: poles, zeros, and Bode/step responses of the linearized plant.
 """
 analysis TutorialLinearize
-  extends DyadControlSystems.LinearAnalysis(inputs = ["uT", "uEl", "uAil", "uRud"], outputs = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"], loop_openings = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"])
+  extends DyadControlSystems.LinearAnalysis(inputs = ["u"], outputs = ["y"], loop_openings = ["y"])
   model = LQGDemo()
 relations
 end

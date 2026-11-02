@@ -30,6 +30,9 @@ struct DashboardPlugin
     update!::Function
 end
 
+"Elevator channel of the control analysis point `u` = [T, el, ail, rud, lef]."
+const ELEVATOR_INPUT = "u2"
+
 mutable struct LQGDesignerState
     fig::Figure
     original_spec::LQGAnalysisSpec
@@ -114,8 +117,8 @@ end
 
 """Diagonal elevator return ratio, the loop the slider shapes."""
 function elevator_return_ratio(sol)
-    elevator_idx = findfirst(==("uEl"), input_names(sol.P))
-    elevator_idx === nothing && error("uEl is not present in the plant inputs.")
+    elevator_idx = findfirst(==(ELEVATOR_INPUT), input_names(sol.P))
+    elevator_idx === nothing && error("$ELEVATOR_INPUT is not present in the plant inputs.")
     minreal((sol.Cfb * sol.P)[elevator_idx, elevator_idx], 1e-4)
 end
 
@@ -227,8 +230,8 @@ function register_gang_of_four_plugin!(state, slot)
     panel_note!(slot, "T"; halign=:right, valign=:bottom, color=DARK)
 
     update! = function (sol, w)
-        elevator_idx = findfirst(==("uEl"), input_names(sol.P))
-        elevator_idx === nothing && error("uEl is not present in the plant inputs.")
+        elevator_idx = findfirst(==(ELEVATOR_INPUT), input_names(sol.P))
+        elevator_idx === nothing && error("$ELEVATOR_INPUT is not present in the plant inputs.")
         Pcol = sol.P[:, elevator_idx]
         Crow = sol.Cfb[elevator_idx, :]
         S, PS, CS, T = gangoffour(Pcol, Crow; minimal=true)

@@ -10,27 +10,27 @@ using ModelingToolkit: SymbolicT, toggle_namespacing
 using DyadControlSystems: AbstractLinearAnalysisSpec, LinearAnalysisSpec
 @kwdef mutable struct TutorialLinearizeSpec <: AbstractLinearAnalysisSpec
   name::Symbol = :TutorialLinearize
-  var"inputs"::Array{String, 1} = ["uT", "uEl", "uAil", "uRud"]
-  var"outputs"::Array{String, 1} = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"]
+  var"inputs"::Array{String, 1} = ["u"]
+  var"outputs"::Array{String, 1} = ["y"]
   var"wl"::Float64 = -1
   var"wu"::Float64 = -1
   var"num_frequencies"::Int = 3000
   var"duration"::Float64 = -1
-  var"loop_openings"::Array{String, 1} = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"]
+  var"loop_openings"::Array{String, 1} = ["y"]
   var"t"::Float64 = 0.0
   var"symbolic"::Bool = false
   # Tutorial 3 — Continuous LQG control.
   # 
   # Design model built with vector connectors: the F16 plant (vector I/O) closed with
-  # an LQG regulator, trim folded in as a control offset. Analysis points must be
-  # SCALAR (LQGAnalysis counts each AP name as one channel, not a vector's N), so the
-  # vector signals are tapped through a demux/mux pair exactly at the 17 analysis
-  # points, and stay vector everywhere else — a clean bus instead of per-channel
-  # spaghetti:
-  #   measurements: plant.y_out -> Demux4x3 -> 4x Demux3 -[yn..yR]-> 4x Mux3 -> Mux4x3 -> err
-  #   controls:     controller  -> Demux5 -> (+trim) -[uT,uEl,uAil,uRud,uLef]-> Mux5 -> plant.u_in
-  #   (LEF carries no aero effect in the plant, so the synthesis returns a zero gain row for
-  #   it; it is kept as a design control so the controller has the plant's full 5 channels.)
+  # an LQG regulator, trim folded in as a control offset. One analysis point is placed on
+  # each vector connection of the plant:
+  #   y: f16plant.y_out -> err.u2       12 measurement channels y1..y12
+  #                                     [npos,epos,alt,phi,theta,psi,vt,alpha,beta,P,Q,R]
+  #   u: ctrl.y -> f16plant.u_in        5 control channels u1..u5 [T,el,ail,rud,lef]
+  # An analysis point on a vector connection has one channel per element, so the weights
+  # of the LQG analysis below have one entry per channel.
+  # (LEF carries no aero effect in the plant, so the synthesis returns a zero gain row for
+  # it; it is kept as a design control so the controller has the plant's full 5 channels.)
   # 
   # `TutorialLQG` linearizes the plant between these points and synthesizes the LQG
   # gains; `TutorialLinearize` (02) linearizes the same instrumented model.

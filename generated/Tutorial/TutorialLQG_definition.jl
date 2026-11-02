@@ -10,13 +10,13 @@ using ModelingToolkit: SymbolicT, toggle_namespacing
 using DyadControlSystems: AbstractLQGAnalysisSpec, LQGAnalysisSpec
 @kwdef mutable struct TutorialLQGSpec <: AbstractLQGAnalysisSpec
   name::Symbol = :TutorialLQG
-  var"measurement"::Array{String, 1} = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"]
-  var"controlled_output"::Array{String, 1} = ["yn", "ye", "yalt", "ypitch", "yvt", "yalpha", "ybeta", "yQ"]
-  var"control_input"::Array{String, 1} = ["uT", "uEl", "uAil", "uRud", "uLef"]
+  var"measurement"::Array{String, 1} = ["y"]
+  var"controlled_output"::Array{String, 1} = ["y"]
+  var"control_input"::Array{String, 1} = ["u"]
   var"disturbance_inputs"::Array{String, 1} = []
   var"loop_openings"::Array{String, 1} = []
   var"t"::Float64 = 0.0
-  var"q1_diag"::Array{Float64, 1} = [0.000001, 0.000001, 4.0, 131.312, 1.0, 820.702, 820.702, 32.8281]
+  var"q1_diag"::Array{Float64, 1} = [0.000001, 0.000001, 4.0, 0.000001, 131.312, 0.000001, 1.0, 820.702, 820.702, 0.000001, 32.8281, 0.000001]
   var"q2_diag"::Array{Float64, 1} = [1.1111111e-7, 0.01, 0.01, 0.01, 0.01]
   var"r1_diag"::Array{Float64, 1} = [40000.0, 0.25, 0.25, 0.25, 0.25]
   var"r2_diag"::Array{Float64, 1} = [2500.0, 2500.0, 0.01, 0.000012184697, 0.000012184697, 0.000012184697, 0.0025, 0.0000030461742, 0.0000030461742, 7.6154355e-7, 7.6154355e-7, 7.6154355e-7]
@@ -33,15 +33,15 @@ using DyadControlSystems: AbstractLQGAnalysisSpec, LQGAnalysisSpec
   # Tutorial 3 — Continuous LQG control.
   # 
   # Design model built with vector connectors: the F16 plant (vector I/O) closed with
-  # an LQG regulator, trim folded in as a control offset. Analysis points must be
-  # SCALAR (LQGAnalysis counts each AP name as one channel, not a vector's N), so the
-  # vector signals are tapped through a demux/mux pair exactly at the 17 analysis
-  # points, and stay vector everywhere else — a clean bus instead of per-channel
-  # spaghetti:
-  #   measurements: plant.y_out -> Demux4x3 -> 4x Demux3 -[yn..yR]-> 4x Mux3 -> Mux4x3 -> err
-  #   controls:     controller  -> Demux5 -> (+trim) -[uT,uEl,uAil,uRud,uLef]-> Mux5 -> plant.u_in
-  #   (LEF carries no aero effect in the plant, so the synthesis returns a zero gain row for
-  #   it; it is kept as a design control so the controller has the plant's full 5 channels.)
+  # an LQG regulator, trim folded in as a control offset. One analysis point is placed on
+  # each vector connection of the plant:
+  #   y: f16plant.y_out -> err.u2       12 measurement channels y1..y12
+  #                                     [npos,epos,alt,phi,theta,psi,vt,alpha,beta,P,Q,R]
+  #   u: ctrl.y -> f16plant.u_in        5 control channels u1..u5 [T,el,ail,rud,lef]
+  # An analysis point on a vector connection has one channel per element, so the weights
+  # of the LQG analysis below have one entry per channel.
+  # (LEF carries no aero effect in the plant, so the synthesis returns a zero gain row for
+  # it; it is kept as a design control so the controller has the plant's full 5 channels.)
   # 
   # `TutorialLQG` linearizes the plant between these points and synthesizes the LQG
   # gains; `TutorialLinearize` (02) linearizes the same instrumented model.
