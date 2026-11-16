@@ -20,13 +20,14 @@ end
 # One second of a constant-signal check model: twenty ticks of the 20 Hz controller.
 check(model) = DyadInterface.run_analysis(DyadInterface.TransientAnalysisSpec(; model, stop = 1.0))
 
-# The bank is designed in Julia from the compiled plant: every knot must trim, and the
-# symbolic Jacobians the members are built from must agree with the nonlinear plant.
+# The bank is designed in Julia from the compiled plant: every knot must trim (step 1's
+# `TrimDemo`), and the symbolic Jacobians the members are built from must agree with the
+# nonlinear plant.
 @testset "velocity MPC bank" begin
     plant = VelocityMPC.dynamics()
 
     for velocity in VelocityMPC.KNOTS
-        trim = trim_point(plant, velocity; altitude = VelocityMPC.ALTITUDE)
+        trim = trim_point(velocity; altitude = VelocityMPC.ALTITUDE)
         @test trim.residual_norm < 1e-7
         u = trim.u ./ VelocityMPC.CONTROL_UNITS
         @test 0 < u[1] < 50

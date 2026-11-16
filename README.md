@@ -22,8 +22,8 @@ on a model. The steps build on each other, so work through them in order.
   `dyad-3.5.0` juliaup channel), and access to the JuliaHub package registries that provide
   the Dyad libraries.
 - About 30 minutes for the first setup, which downloads and compiles many packages.
-- Optional: a C compiler. Steps 8 and 9 use it to compile the MPC solvers and fall back to
-  a slower Julia solver without one.
+- Optional: a C compiler. Step 8 uses it to compile the MPC solvers and falls back to a
+  slower Julia solver without one.
 
 ## Setup
 
@@ -52,9 +52,9 @@ result = TutorialGainScheduledPID()                 # step 7b
 DyadInterface.artifacts(result, :FlightResponse)    # the figure Studio shows
 ```
 
-**All steps at once.** `scripts/tutorial_walkthrough.jl` runs steps 1–9 in order and
-reports the result each step names: figures to `results/walkthrough/`, tables to the
-terminal. Pass `--no-video` to skip step 5 on a machine without a display.
+**All steps in order.** `scripts/tutorial_walkthrough.jl` is steps 1–9 as plain code: one
+line runs each step's analysis and the next shows its result. Step through it line by line
+in the REPL or VS Code, or run it whole:
 
 ```sh
 julia --project=. scripts/tutorial_walkthrough.jl
@@ -84,7 +84,8 @@ change to be zero, and the solver finds the unknowns.
 
 `TutorialTrimExport` runs the same solve and writes `assets/trim_point.toml`,
 `trim_reference.toml` and `trim_controls.toml`, which steps 2–6 apply. Rerun it only after
-changing the flight condition or the plant.
+changing the flight condition or the plant. Steps 7–9 solve the same `TrimDemo` at their
+own airspeeds and altitudes.
 
 ### Step 2 — Linearize
 
@@ -192,23 +193,27 @@ airspeed: the gain scheduling of step 7, applied to whole controllers.
 
 ### Step 9 — Scheduling on airspeed and altitude
 
-The aircraft also changes with altitude, so this bank has one MPC at each node of a 3 × 3
-airspeed × altitude grid. The grid comes from `assets/envelope_trim_alpha.csv`: rows are
-airspeed knots, columns are altitude knots, and values are the trimmed angle of attack,
-which sets the pitch and angle-of-attack references.
+The aircraft also changes with altitude, so this controller has one MPC at each node of a
+100 × 100 airspeed × altitude grid: 10 000 controllers over 140–250 m/s and 0–9000 m.
+Each tick only the four nodes around the measured airspeed and altitude solve, blended
+bilinearly, and a node's controller is built the first time the flight reaches it, so the
+grid costs nothing until it is flown. The grid comes from `assets/envelope_trim_alpha.csv`:
+rows are airspeed knots, columns are altitude knots, and values are the trimmed angle of
+attack, interpolated at the measured condition for the pitch and angle-of-attack
+references.
 
 - **Run** `TutorialEnvelope` (9a) and open **`Envelope`**.
 - **Expect** the trimmed angle of attack, thrust, elevator and pitch divergence rate over
-  140–250 m/s and 0–9000 m, from 10 000 trims and linearizations, with the bank's nine
-  nodes marked: the aircraft changes along both axes.
+  140–250 m/s and 0–9000 m, from 10 000 trims and linearizations, with the controller grid
+  outlined: the aircraft changes along both axes.
 
 - **Run** `TutorialEnvelopeMPC` (9b) and open **`FlightResponse`**.
-- **Expect** airspeed to reach 190 m/s and altitude 4500 m, and the airspeed and altitude
-  weights with which the bank blends its nine members.
+- **Expect** airspeed to reach 190 m/s and altitude 4500 m, the angle of attack near its
+  interpolated trim, and about 110 of the 10 000 controllers built along the way.
 
-**Try it:** to move the grid, edit the table's first column (airspeeds) or header row
-(altitudes), then run `TutorialEnvelopeTable` (9c), which re-trims the aircraft at the new
-nodes and rewrites the table.
+**Try it:** to move or refine the grid, edit the table's first column (airspeeds) or header
+row (altitudes), then run `TutorialEnvelopeTable` (9c), which re-trims the aircraft at the
+new nodes and rewrites the table.
 
 ## Presenting the workshop
 
@@ -229,18 +234,24 @@ also builds the plant, so it takes longest.
 | 7b | `TutorialGainScheduledPID` | 15 s | `FlightResponse` | design-point weights hand over at 9 s |
 | 8 | `TutorialVelocityMPC` | 26 s | `FlightResponse` | the bank members' weights |
 | 9a | `TutorialEnvelope` | 3 s | `Envelope` | the aircraft changes along both axes |
-| 9b | `TutorialEnvelopeMPC` | 23 s | `FlightResponse` | both references tracked |
+| 9b | `TutorialEnvelopeMPC` | 25 s | `FlightResponse` | both references tracked; controllers built on demand |
 
 Step 5 needs a display and takes the longest, so start it before talking about it.
 
 ## Known limitations
 
 - `DyadControlSystems.LinearAnalysis` offers results that it cannot build for this
-  4-input, 12-output plant. In step 2, `RootLocusPlot` and `StepInfoPlot` stop with an
-  error, and `RGAPlot` never returns, which blocks the session until Julia is restarted.
-- The MPC components grow with the number of controllers, so the step-9 bank stays small;
-  a bank of 10 000 is not yet possible
-  ([MPCComponents.jl#94](https://github.com/JuliaComputing/MPCComponents.jl/issues/94)).
+  4-input, 12-output plant. In step 2, `RootLocusPlot` stops with an error ("a default gain
+  is only available for SISO systems"), and `RGAPlot` never returns, which blocks the
+  session until Julia is restarted: ControlSystemsBase's `relative_gain_array` iterates on a
+  rectangular system until a change of 1e-15, which round-off never reaches. `MarginPlot`
+  (steps 2 and 3) and `GangOfFour` (step 3) hold `Inf` coordinates, which JSON cannot
+  represent, so they cannot be saved as images.
+- MPCComponents' scheduled components carry every controller in the model and grow with
+  their number ([MPCComponents.jl#94](https://github.com/JuliaComputing/MPCComponents.jl/issues/94)),
+  so step 9 uses its own `GridMPCOptimizer`, which solves only the active nodes. It runs on
+  LinearMPC.jl's Julia solver and does not export to C: a C build would need every node
+  compiled ahead of time, about 370 KB of QP data each.
 
 ## The aircraft
 
@@ -278,18 +289,24 @@ which is why step 3 needs a regulator.
 
 ## Maintenance
 
-The Dyad libraries are registered releases from DyadRegistry: MPCComponents 0.2,
-DiscreteComponents 0.6 (which includes `DiscretePIDScheduled`) and DyadControlSystems 2.6.
-They and `generated/` must share Dyad's constructor API, which `generated/definitions.jl`
-checks when the package loads; recompile after changing a library version.
-`test/lqg_design.jl` reruns the step-2 linearization and the step-3 designs against the
-controllers in `assets/`, so a library change that alters the designs fails the tests.
+The Dyad libraries are registered releases from DyadRegistry: MPCComponents 0.2.1,
+DiscreteComponents 0.6.1 (which includes `DiscretePIDScheduled`), DyadControlSystems 2.6,
+SynchToolkit 0.5.2 and SynchJulia 0.8.6. They and `generated/` must share Dyad's
+constructor API, which `generated/definitions.jl` checks when the package loads; recompile
+after changing a library version. `test/lqg_design.jl` reruns the step-2 linearization and
+the step-3 designs against the controllers in `assets/`, so a library change that alters
+the designs fails the tests.
 
+- **SynchToolkit's next release** (main after 0.5.2) adds a `Latest()` method that
+  DiscreteComponents 0.6.0 overwrites, which stops it precompiling; the compat bound of
+  DiscreteComponents is therefore 0.6.1. The workshop passes its step 6–9 analyses and the
+  step 8–9 tests against the main branches of SynchToolkit and MPCComponents as of
+  2026-11-11.
 - **MultibodyComponents**, used only for the step-5 animation, is pinned to a commit in
   `[sources]` of `Project.toml`.
 - DiscreteComponents defines its sampler and hold in native Dyad, so `MultiSampler` and
   `MultiZeroOrderHold` can become `y = sample(u)` and `y = hold(u)` on whole vectors.
 - Native two-variable scheduling is proposed in
-  [MPCComponents.jl#95](https://github.com/JuliaComputing/MPCComponents.jl/pull/95). Once
-  merged, step 9 can use `LinearMPCScheduler2D` in place of two schedulers and
-  `OuterProduct`.
+  [MPCComponents.jl#95](https://github.com/JuliaComputing/MPCComponents.jl/pull/95). Step 9
+  schedules each axis with its own `LinearMPCScheduler` and multiplies their weights in
+  `GridMPCOptimizer`.

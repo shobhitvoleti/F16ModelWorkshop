@@ -102,7 +102,7 @@ csv_numbers(path) = [parse.(Float64, filter(!isempty, split(line, ','))) for lin
     spec = F16ModelWorkshop.EnvelopeAnalysisSpec(; velocities = [140.0, 250.0],
         altitudes = [0.0, 9000.0], points = 4, table_dir = dir)
     result = DyadInterface.run_analysis(spec)
-    @test length(result.nodes) == 9
+    @test length(result.nodes) == 100 * 100
     # Same grid, and the same trims to round-off: the last bits of a Newton solve vary
     # with platform and package versions.
     rebuilt = csv_numbers(artifacts(result, :TrimTable))

@@ -209,7 +209,6 @@ end
 
 include("MultiSampler_definition.jl")
 include("MultiZeroOrderHold_definition.jl")
-include("OuterProduct_definition.jl")
 include("TestVectorSelectTransient_definition.jl")
 include("TestVectorSelect_definition.jl")
 include("VectorAdd_definition.jl")

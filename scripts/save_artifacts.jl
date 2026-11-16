@@ -38,16 +38,23 @@ for name in requested
             push!(failed, "$(art.name) ($(first(split(sprint(showerror, err), '\n'))))")
             continue
         end
-        if art.type == ArtifactType.PlotlyPlot
-            savefig(value, joinpath(dir, "$(art.name).png"))
-        else
-            open(joinpath(dir, "$(art.name).csv"), "w") do io
-                println(io, join(names(value), ","))
-                foreach(row -> println(io, join(row, ",")), eachrow(Matrix(value)))
+        # Some DyadControlSystems figures (GangOfFour, MarginPlot) hold Inf, which the
+        # Plotly PNG export rejects; report them instead of stopping the run.
+        try
+            if art.type == ArtifactType.PlotlyPlot
+                savefig(value, joinpath(dir, "$(art.name).png"))
+            else
+                open(joinpath(dir, "$(art.name).csv"), "w") do io
+                    println(io, join(names(value), ","))
+                    foreach(row -> println(io, join(row, ",")), eachrow(Matrix(value)))
+                end
             end
+        catch err
+            push!(failed, "$(art.name) (not saved: $(first(split(sprint(showerror, err), '\n'))))")
+            continue
         end
         push!(saved, String(art.name))
     end
     println(rpad(name, 32), round(seconds; digits = 1), " s  ", join(saved, ", "))
-    isempty(failed) || println(" "^32, "cannot be built: ", join(failed, "; "))
+    isempty(failed) || println(" "^32, "not saved: ", join(failed, "; "))
 end

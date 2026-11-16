@@ -30,20 +30,31 @@ end
     @test getindex.(trims, 5) ≈ table["alpha"] atol = 1e-12
 end
 
-@testset "reference map follows the flattened grid" begin
-    table = EnvelopeMPC.trim_table()
-    vs, hs = table["vt"], table["alt"]
-    K = EnvelopeMPC.reference_map(table)
-    @test size(K) == (10, 2 + length(vs) * length(hs))
-    @test K[5, 1] == 1 && K[1, 2] == 1          # commanded airspeed and altitude
-    # Member k = (j - 1) * length(vs) + i sits at (vs[i], hs[j]).
-    i, j = 2, 3
-    @test K[3, 2 + (j - 1) * length(vs) + i] == table["alpha"][i, j]   # pitch
-    @test K[6, 2 + (j - 1) * length(vs) + i] == table["alpha"][i, j]   # angle of attack
-    @test_throws "outside the design grid" EnvelopeMPC.bank(vs, hs, 100.0, 3000.0)
+# The grid bank builds a node only when a tick weights it, and a node is step 8's member
+# design there: given its own trim as state and reference, its command is the trim command.
+@testset "grid bank solves only the active nodes" begin
+    vs, hs = [140.0, 175.0, 210.0], [1000.0, 4000.0, 7000.0]
+    ref = EnvelopeMPC.grid_bank(vs, hs)
+    bank = ref[]
+    @test isempty(bank.nodes)
+    x = F16ModelWorkshop.VelocityMPC.trim_states(175.0, 4000.0)[3:12]
+    u = F16ModelWorkshop.VelocityMPC.trim_command(175.0, 4000.0)
+    # Exactly at node (2, 2): one weight, one node built and solved.
+    flag = EnvelopeMPC.grid_bank_solve([0.0, 1.0, 0.0], [0.0, 1.0, 0.0], x, x, u, ref)
+    @test flag == 1
+    @test collect(keys(bank.nodes)) == [(2, 2)]
+    @test [EnvelopeMPC.grid_bank_u(flag, k, ref) for k in 1:4] ≈ u atol = 1e-6
+    # Inside a cell: its four corners.
+    EnvelopeMPC.grid_bank_solve([0.0, 0.5, 0.5], [0.0, 0.25, 0.75], x, x, u, ref)
+    @test sort(collect(keys(bank.nodes))) == [(2, 2), (2, 3), (3, 2), (3, 3)]
+    @test EnvelopeMPC.grid_bank_built(flag, ref) == 4
+    @test bank.solves == 5
+    @test_throws "weights for a 3 × 3 grid" EnvelopeMPC.grid_bank_solve([0.0, 1.0], [0.0, 1.0, 0.0], x, x, u, ref)
+    @test_throws "strictly increasing" EnvelopeMPC.grid_bank([140.0, 140.0], hs)
 end
 
-# The closed loop: climb and accelerate across a knot on each axis.
+# The closed loop on the committed 100 x 100 grid: climb and accelerate across many cells,
+# building only the nodes the flight passes.
 @testset "envelope MPC tracks airspeed and altitude" begin
     result = F16ModelWorkshop.Tutorial.TutorialEnvelopeMPC()
     sol = result.sol
@@ -55,11 +66,13 @@ end
     @test sol[p.vt][end]≈190.0 atol=1.0
     @test sol[p.alt][end]≈4500.0 atol=20.0
     @test maximum(abs, sol[p.phi]) < 0.02
-    # Both axes cross a knot, so the schedule hands over on each.
-    @test minimum(sol[p.vt]) < 175 < maximum(sol[p.vt])
-    @test minimum(sol[p.alt]) < 4000 < maximum(sol[p.alt])
 
     @test all(0 .<= sol[p.T] .<= 5.0e4)
     @test maximum(abs, sol[p.el]) <= 25.0
-    @test all(>=(1), sol[loop.exitflag])
+    @test all(>=(1), sol[loop.optimizer.exitflag])
+    # A small fraction of the grid is ever built.
+    built = sol[loop.optimizer.built]
+    @test issorted(built) && 4 <= built[end] < 500
+    # The reference interpolated in the grid is the trim at the start.
+    @test sol[loop.alpha_ref.y][1] ≈ F16ModelWorkshop.VelocityMPC.trim_states(150.0, 3000.0)[8] rtol = 1e-6
 end

@@ -30,8 +30,9 @@ asset_path(parts::AbstractString...) = joinpath(_project_root(), "assets", parts
     trim_asset(name) -> Vector{Float64}
 
 The `k` vector of a trim asset written by `TrimExportAnalysis`: `"trim_reference"`
-(12 state set-points) or `"trim_controls"` (5 control offsets). `LQGDemo` seeds its
-initialization guesses from these so it linearizes about the applied trim.
+(12 state set-points) or `"trim_controls"` (5 control offsets). `ControllerExportAnalysis`
+writes the trim controls as the discrete controller's output offset `y0`. Dyad models
+read these assets with `apply` instead.
 """
 trim_asset(name::AbstractString) = Float64.(TOML.parsefile(asset_path(name * ".toml"))["k"])
 

@@ -1,45 +1,110 @@
 """
+Constrained MPC with one controller per node of a `velocities × altitudes` grid of flight
+conditions, solving only the nodes of the grid cell the aircraft is in.
+
+`wv` and `wh` are the hat-function weights of two `LinearMPCScheduler`s, one weight per knot
+of each axis, so node `(i, j)` has the bilinear weight `wv[i] * wh[j]`, positive for at
+most the four corners of the current cell. Every tick those nodes solve their QPs for the
+same state, reference and previous command, and `u` is the weighted blend of their first
+moves, as in `LinearMPCScheduledOptimizer`.
+
+The controllers live in `EnvelopeMPC.grid_bank`, which builds a node
+(`VelocityMPC.member_controller`) the first time it gets a positive weight. The component's
+size grows with the knots of each axis, not with their product, and a grid of any size
+costs nothing until it is flown through; `built` counts the nodes built so far. The QPs are
+solved by LinearMPC.jl's Julia solver, so a model containing this component does not export
+to C.
+"""
+component GridMPCOptimizer@[input clk extends Discrete]
+  "Regulated states, all measured: [alt, phi, theta, psi, vt, alpha, beta, P, Q, R]"
+  xhat = [RealInput@[clk]() for i in 1:nx] {^xhat}
+  "References of the regulated states"
+  r = [RealInput@[clk]() for i in 1:nx] {^r}
+  "Weights of the airspeed knots, from a LinearMPCScheduler"
+  wv = [RealInput@[clk]() for i in 1:nv] {^wv}
+  "Weights of the altitude knots, from a LinearMPCScheduler"
+  wh = [RealInput@[clk]() for j in 1:nh] {^wh}
+  "Command [thrust (kN), elevator, aileron, rudder (deg)], the blend of the active nodes' first moves"
+  u = [RealOutput@[clk]() for i in 1:nu] {^u}
+  "Composite solver status of the last tick: the first negative node flag, else 2 with active soft constraints, else 1"
+  exitflag = RealOutput@[clk]() {^exitflag}
+  "Number of grid nodes whose controller has been built"
+  built = RealOutput@[clk]() {^built}
+  "Airspeed knots, m/s, strictly increasing"
+  structural parameter velocities::Real[:]
+  "Altitude knots, m, strictly increasing"
+  structural parameter altitudes::Real[:]
+  "Sample period of the clock and of the nodes' models, s"
+  structural parameter Ts::Real = 0.05
+  "Number of airspeed knots (derived)"
+  final structural parameter nv::Integer = size(velocities, 1)
+  "Number of altitude knots (derived)"
+  final structural parameter nh::Integer = size(altitudes, 1)
+  "Regulated states of VelocityMPC's design"
+  final structural parameter nx::Integer = 10
+  "Commands of VelocityMPC's design"
+  final structural parameter nu::Integer = 4
+  "The grid's controllers, each built on first use"
+  final structural parameter bank::MPCComponents.MPCRef = F16ModelWorkshop.EnvelopeMPC.grid_bank(velocities, altitudes, Ts)
+  "Command assumed applied before the first tick"
+  parameter u0::Real[nu] = zeros(nu)
+relations
+  initial u@(clk-1) = u0
+  # One solve per tick (the composite flag); the blended command and the node count are read
+  # back through accessors that depend on it. Every node sees the previous blended command.
+  exitflag@clk = F16ModelWorkshop.EnvelopeMPC.grid_bank_solve(wv@clk, wh@clk, xhat@clk, r@clk, u@(clk-1), bank)
+  for i in 1:nu
+    u[i] = F16ModelWorkshop.EnvelopeMPC.grid_bank_u(exitflag, i, bank)
+  end
+  built = F16ModelWorkshop.EnvelopeMPC.grid_bank_built(exitflag, bank)
+metadata {
+  "Dyad": {"icons": {"default": "dyad://Dyad/Default.svg"}},
+  "_links": {
+    "wv": {"Dyad": {"placement": {"icon": {"x1": -50, "y1": 50, "x2": 50, "y2": 150}}}},
+    "wh": {"Dyad": {"placement": {"icon": {"x1": -50, "y1": 300, "x2": 50, "y2": 400}}}},
+    "xhat": {"Dyad": {"placement": {"icon": {"x1": -50, "y1": 600, "x2": 50, "y2": 700}}}},
+    "r": {"Dyad": {"placement": {"icon": {"x1": -50, "y1": 850, "x2": 50, "y2": 950}}}},
+    "u": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 250, "x2": 1050, "y2": 350}}}},
+    "exitflag": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 500, "x2": 1050, "y2": 600}}}},
+    "built": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 750, "x2": 1050, "y2": 850}}}}
+  }
+}
+end
+
+"""
 Tutorial 9 — Altitude- and velocity-scheduled linear MPC.
 
-Step 8's bank extended from one altitude to a rectangle of the flight envelope: one
-constrained `LinearMPC` member at every node of a `velocities × altitudes` grid, scheduled
-on measured airspeed and altitude.
+Step 8's controller extended from one altitude to a rectangle of the flight envelope: one
+constrained `LinearMPC` controller at every node of a `velocities × altitudes` grid,
+scheduled on measured airspeed and altitude. `GridMPCOptimizer` solves only the (at most
+four) nodes of the cell the aircraft is in and builds each node the first time it is
+needed, so the grid can be as fine as the envelope survey of step 9a.
 
-`MPCComponents.Experimental.LinearMPCScheduler` takes one scalar scheduling variable, so
-each axis gets its own scheduler, and `VectorBlocks.OuterProduct` multiplies the two
-hat-function weight vectors into the bilinear weights of the grid (at most four nonzero).
-The observer and optimizer see one weight per member, so they are the same components as
-in step 8.
+Signal flow:
 
-Signal flow (whole-array connections except where a channel is named):
-
-  f16plant.y_out (12) --> meas_select (3:12) --> sample (20 Hz) --> observer.y (10)
-  sample.y[5] --> sched_vt.rho, clock                  airspeed: schedule and clock
-  sample.y[1] --> sched_alt.rho                        altitude: schedule
-  sched_vt.w (nv), sched_alt.w (nh) --> weights --> observer.w, optimizer.w
+  f16plant.y_out (12) --> meas_select (3:12) --> sample (20 Hz) --> optimizer.xhat (10)
+  sample.y[5] --> sched_vt.rho, alpha_ref.u1, clock    airspeed: schedule, reference, clock
+  sample.y[1] --> sched_alt.rho, alpha_ref.u2          altitude: schedule, reference
+  sched_vt.w (nv), sched_alt.w (nh) --> optimizer.wv, optimizer.wh
   vt_cmd --> sr_vt --> ref_map.u[1]                    commanded airspeed
   alt_cmd --> sr_alt --> ref_map.u[2]                  commanded altitude
-  weights.y --> ref_map.u[3:end]                       member weights
+  alpha_ref --> ref_map.u[3]                           trimmed angle of attack
   ref_map (10) --> optimizer.r
   optimizer.u (4) --> zoh --> cmd_map (5) --> f16plant.u_in
 
 The grid comes from the lookup-table asset `envelope_trim_alpha.csv`
-(`DyadData.DyadInterpolationTable2D`): its axes are the bank's knots and its values the
-trimmed angle of attack at each node, which in level flight is also the trimmed pitch
-attitude. `EnvelopeMPC.write_trim_table()` regenerates it (analysis 9c).
+(`DyadData.DyadInterpolationTable2D`): its axes are the knots and its values the trimmed
+angle of attack at each node, which in level flight is also the trimmed pitch attitude.
+`alpha_ref` interpolates it at the measured airspeed and altitude, so the pitch and
+angle-of-attack references are the same bilinear blend of node trims as the commands.
+`EnvelopeMPC.write_trim_table()` regenerates the table (analysis 9c).
 
-The bank (`F16ModelWorkshop.EnvelopeMPC.bank`) is step 8's member design (absolute frame,
-cost, limits, affine offset) at each node, flattened airspeed-fastest in the order
-`OuterProduct` emits its weights. `ref_map` puts the two commands on their own channels and
-the weighted tabulated trims on pitch and angle of attack, so those references are bilinear
-in airspeed and altitude.
-
-The bank is a coarse subset of the envelope: `EnvelopeMPC.envelope()` trims and linearizes
-10 000 flight conditions in seconds, but the scheduled components grow with the member
-count, which keeps the bank to tens of members (MPCComponents.jl#94).
+A node's controller is step 8's member design at that node (absolute frame, cost, limits,
+affine offset), built by `VelocityMPC.member_controller`. All ten regulated states are
+measured, so the controller takes the sampled states directly, without an observer.
 
 Scenario: trimmed at 150 m/s and 3000 m, commanded to 190 m/s and 4500 m on overlapping
-ramps that cross a knot on each axis.
+ramps.
 """
 component EnvelopeMPCDemo
   "F16 plant, started at the trim of `initial_velocity` and `initial_altitude`."
@@ -48,12 +113,8 @@ component EnvelopeMPCDemo
   sched_vt = MPCComponents.Experimental.LinearMPCScheduler(rho_grid = velocities) {^sched_vt}
   "Measured altitude to weights over the altitude knots."
   sched_alt = MPCComponents.Experimental.LinearMPCScheduler(rho_grid = altitudes) {^sched_alt}
-  "Bilinear member weights: the outer product of the two axes' weights, airspeed fastest."
-  weights = F16ModelWorkshop.VectorBlocks.OuterProduct(n1 = n_velocities, n2 = n_altitudes) {^weights}
-  "Weight-blended state observer of the bank."
-  observer = MPCComponents.Experimental.LinearMPCScheduledObserver(mpc = mpc_bank) {^observer}
-  "Weight-blended constrained optimizer, started from the trimmed command."
-  optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(mpc = mpc_bank, u0 = u_trim, backend = backend) {^optimizer}
+  "Constrained MPC over the grid, started from the trimmed command."
+  optimizer = F16ModelWorkshop.Tutorial.GridMPCOptimizer(velocities = velocities, altitudes = altitudes, Ts = Ts, u0 = u_trim) {^optimizer}
   "Controller sample clock, planted on the airspeed connection set."
   clock = DiscreteComponents.PeriodicClock(dt = Ts) {^clock}
   "The ten regulated states: all plant outputs but horizontal position."
@@ -68,19 +129,19 @@ component EnvelopeMPCDemo
   sr_vt = DiscreteComponents.Sampler() {^sr_vt}
   "Clock crossing for the commanded altitude."
   sr_alt = DiscreteComponents.Sampler() {^sr_alt}
-  "Reference: the two commands, and weighted trims on pitch and angle of attack."
-  ref_map = DiscreteComponents.Examples.MatrixGain(ny = n_states, nu = n_reference_inputs, K = reference_gains) {^ref_map}
+  "Trimmed angle of attack at the measured airspeed and altitude, rad: the pitch and angle-of-attack reference."
+  alpha_ref = BlockComponents.Tables.InterpolatedTable(axis1 = velocities, axis2 = altitudes, data = trim_table["alpha"], interpolation_dim1 = BlockComponents.InterpolationDimension.LinearInterpolationDimension(), interpolation_dim2 = BlockComponents.InterpolationDimension.LinearInterpolationDimension()) {^alpha_ref}
+  "Reference: [commanded airspeed; commanded altitude; trimmed angle of attack] onto the ten regulated states; every other channel is regulated to zero."
+  ref_map = DiscreteComponents.Examples.MatrixGain(ny = n_states, nu = 3, K = [[0.0, 1.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]) {^ref_map}
   "Command clock crossing for the four optimized commands."
   zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(n = 4) {^zoh}
   "Controller to plant commands: thrust kN to N, leading-edge flap at zero."
   cmd_map = DiscreteComponents.Examples.MatrixGain(ny = 5, nu = 4, K = [[1000.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 0.0, 0.0]]) {^cmd_map}
-  "Hold for the solver status, so it can be read from the solution."
-  zoh_flag = DiscreteComponents.ZeroOrderHold(initial_condition = 1.0) {^zoh_flag}
-  "Trimmed angle of attack at each grid node, rad; its axes are the bank's knots."
+  "Trimmed angle of attack at each grid node, rad; its axes are the knots."
   structural parameter trim_table::DyadData.DyadInterpolationTable2D = DyadData.DyadInterpolationTable2D("dyad://F16ModelWorkshop/envelope_trim_alpha.csv", axis1_name = "vt", axis2_name = "alt", data_name = "alpha")
-  "Airspeed knots of the bank, m/s: the trim table's first axis."
+  "Airspeed knots, m/s: the trim table's first axis."
   structural parameter velocities::Real[:] = trim_table["vt"]
-  "Altitude knots of the bank, m: the trim table's second axis."
+  "Altitude knots, m: the trim table's second axis."
   structural parameter altitudes::Real[:] = trim_table["alt"]
   "Initial trimmed airspeed, m/s."
   structural parameter initial_velocity::Real = 150.0
@@ -98,101 +159,72 @@ component EnvelopeMPCDemo
   structural parameter alt_ramp_duration::Real = 60.0
   "Controller sample period, s."
   structural parameter Ts::Real = 0.05
-  "QP solver backend: Auto compiles one C library per member when a C compiler is available."
-  structural parameter backend::MPCComponents.Backend = MPCComponents.Backend.Auto()
   "Number of regulated states."
   structural parameter n_states::Integer = 10
-  "Number of airspeed knots (derived)."
-  final structural parameter n_velocities::Integer = size(velocities, 1)
-  "Number of altitude knots (derived)."
-  final structural parameter n_altitudes::Integer = size(altitudes, 1)
-  "Number of bank members (derived)."
-  final structural parameter n_members::Integer = n_velocities * n_altitudes
-  "Reference-map inputs: two commands plus one weight per member (derived)."
-  final structural parameter n_reference_inputs::Integer = n_members + 2
-  "Controller bank, one member per grid node."
-  structural parameter mpc_bank::MPCComponents.MPCRef = F16ModelWorkshop.EnvelopeMPC.bank(velocities, altitudes, initial_velocity, initial_altitude, Ts)
   "Trimmed initial states."
   structural parameter trim_init::Real[12] = F16ModelWorkshop.VelocityMPC.trim_states(initial_velocity, initial_altitude)
   "Trimmed initial command [kN, deg, deg, deg]."
   structural parameter u_trim::Real[4] = F16ModelWorkshop.VelocityMPC.trim_command(initial_velocity, initial_altitude)
-  "Reference map, [commanded airspeed; commanded altitude; member weights] to the ten references."
-  structural parameter reference_gains::Real[n_states, n_reference_inputs] = F16ModelWorkshop.EnvelopeMPC.reference_map(trim_table)
-  "Composite solver status of the last tick."
-  variable exitflag::Real
   "Commanded airspeed on the continuous time base, for plotting."
   variable vt_reference::Real
   "Commanded altitude on the continuous time base, for plotting."
   variable alt_reference::Real
 relations
-  exitflag = zoh_flag.y
   vt_reference = vt_cmd.y
   alt_reference = alt_cmd.y
   # ---- Measurements ----
   connect(f16plant.y_out, meas_select.u) {^id1}
   connect(meas_select.y, sample.u) {^id2}
-  connect(sample.y, observer.y) {^id3}
+  connect(sample.y, optimizer.xhat) {^id3}
   # ---- Scheduling ----
-  connect(sample.y[5], sched_vt.rho, clock.y) {^id4}
-  connect(sample.y[1], sched_alt.rho) {^id5}
-  connect(sched_vt.w, weights.u1) {^id6}
-  connect(sched_alt.w, weights.u2) {^id7}
-  connect(weights.y, observer.w, optimizer.w) {^id8}
-  # ---- Controller internals ----
-  connect(observer.xhat, optimizer.xhat) {^id9}
-  connect(optimizer.u, observer.u) {^id10}
+  connect(sample.y[5], sched_vt.rho, alpha_ref.u1, clock.y) {^id4}
+  connect(sample.y[1], sched_alt.rho, alpha_ref.u2) {^id5}
+  connect(sched_vt.w, optimizer.wv) {^id6}
+  connect(sched_alt.w, optimizer.wh) {^id7}
   # ---- References ----
-  connect(vt_cmd.y, sr_vt.u) {^id11}
-  connect(alt_cmd.y, sr_alt.u) {^id12}
-  connect(sr_vt.y, ref_map.u[1]) {^id13}
-  connect(sr_alt.y, ref_map.u[2]) {^id14}
-  for k in 1:n_members
-    connect(weights.y[k], ref_map.u[k + 2])
-  end
-  connect(ref_map.y, optimizer.r) {^id15}
+  connect(vt_cmd.y, sr_vt.u) {^id8}
+  connect(alt_cmd.y, sr_alt.u) {^id9}
+  connect(sr_vt.y, ref_map.u[1]) {^id10}
+  connect(sr_alt.y, ref_map.u[2]) {^id11}
+  connect(alpha_ref.y, ref_map.u[3]) {^id12}
+  connect(ref_map.y, optimizer.r) {^id13}
   # ---- Commands ----
-  connect(optimizer.u, zoh.u) {^id16}
-  connect(zoh.y, cmd_map.u) {^id17}
-  connect(cmd_map.y, f16plant.u_in) {^id18}
-  connect(optimizer.exitflag, zoh_flag.u) {^id19}
+  connect(optimizer.u, zoh.u) {^id14}
+  connect(zoh.y, cmd_map.u) {^id15}
+  connect(cmd_map.y, f16plant.u_in) {^id16}
 metadata {
   "_links": {
     "f16plant": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1900, "y1": 500, "x2": 2000, "y2": 600, "rot": 0}}}},
-    "sched_vt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 370, "y1": 408, "x2": 470, "y2": 508, "rot": 0}}}},
-    "sched_alt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 370, "y1": 550, "x2": 470, "y2": 650, "rot": 0}}}},
-    "weights": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 550, "y1": 433, "x2": 650, "y2": 533, "rot": 0}}}},
-    "observer": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 800, "y1": 550, "x2": 1000, "y2": 750, "rot": 0}}}},
+    "sched_vt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 650, "y1": 450, "x2": 750, "y2": 550, "rot": 0}}}},
+    "sched_alt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 650, "y1": 600, "x2": 750, "y2": 700, "rot": 0}}}},
     "optimizer": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1200, "y1": 400, "x2": 1400, "y2": 600, "rot": 0}}}},
-    "clock": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 100, "y1": 640, "x2": 200, "y2": 740, "rot": 0}}}},
+    "clock": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 650, "y1": 750, "x2": 750, "y2": 850, "rot": 0}}}},
     "meas_select": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 150, "y1": 850, "x2": 250, "y2": 950, "rot": 0}}}},
     "sample": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 350, "y1": 850, "x2": 450, "y2": 950, "rot": 0}}}},
     "vt_cmd": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 100, "y1": 123, "x2": 200, "y2": 223, "rot": 0}}}},
     "alt_cmd": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 100, "y1": 250, "x2": 200, "y2": 350, "rot": 0}}}},
     "sr_vt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 270, "y1": 123, "x2": 370, "y2": 223, "rot": 0}}}},
     "sr_alt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 270, "y1": 250, "x2": 370, "y2": 350, "rot": 0}}}},
-    "ref_map": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 700, "y1": 123, "x2": 800, "y2": 223, "rot": 0}}}},
+    "alpha_ref": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 650, "y1": 300, "x2": 750, "y2": 400, "rot": 0}}}},
+    "ref_map": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 150, "x2": 1000, "y2": 250, "rot": 0}}}},
     "zoh": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1500, "y1": 500, "x2": 1600, "y2": 600, "rot": 0}}}},
     "cmd_map": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1700, "y1": 500, "x2": 1800, "y2": 600, "rot": 0}}}},
-    "zoh_flag": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1500, "y1": 250, "x2": 1600, "y2": 350, "rot": 0}}}},
     "id1": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2050, "y": 550}, {"x": 2050, "y": 1000}, {"x": 30, "y": 1000}, {"x": 30, "y": 900}], "E": 2}], "renderStyle": "standard"}},
     "id2": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id3": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 600, "y": 900}, {"x": 600, "y": 725}], "E": 2}], "renderStyle": "standard"}},
-    "id4": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 500, "y": 900}, {"x": 500, "y": 820}, {"x": 250, "y": 820}], "E": -1}, {"S": -1, "M": [{"x": 250, "y": 458}], "E": 2}, {"S": -1, "M": [{"x": 70, "y": 620}, {"x": 70, "y": 690}], "E": 3}], "junctions": [{"x": 250, "y": 620}], "renderStyle": "standard"}},
-    "id5": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 520, "y": 900}, {"x": 520, "y": 800}, {"x": 290, "y": 800}, {"x": 290, "y": 600}], "E": 2}], "renderStyle": "standard"}},
-    "id6": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id7": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 520, "y": 600}, {"x": 520, "y": 508}], "E": 2}], "renderStyle": "standard"}},
-    "id8": {"Dyad": {"edges": [{"S": 1, "M": [], "E": -1}, {"S": -1, "M": [], "E": 3}, {"S": -1, "M": [{"x": 700, "y": 575}], "E": 2}], "junctions": [{"x": 700, "y": 483}], "renderStyle": "standard"}},
-    "id9": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1100, "y": 600}, {"x": 1100, "y": 517}], "E": 2}], "renderStyle": "standard"}},
-    "id10": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1460, "y": 550}, {"x": 1460, "y": 820}, {"x": 760, "y": 820}, {"x": 760, "y": 625}], "E": 2}], "renderStyle": "standard"}},
-    "id11": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id12": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id13": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id14": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 650, "y": 300}, {"x": 650, "y": 173}], "E": 2}], "renderStyle": "standard"}},
-    "id15": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1150, "y": 173}, {"x": 1150, "y": 417}], "E": 2}], "renderStyle": "standard"}},
-    "id16": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id17": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id18": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id19": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1440, "y": 450}, {"x": 1440, "y": 300}], "E": 2}], "renderStyle": "standard"}}
+    "id3": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1100, "y": 900}, {"x": 1100, "y": 520}], "E": 2}], "renderStyle": "standard"}},
+    "id4": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 520, "y": 900}, {"x": 520, "y": 500}], "E": -1}, {"S": -1, "M": [], "E": 2}, {"S": -1, "M": [{"x": 520, "y": 330}], "E": 3}, {"S": -1, "M": [{"x": 520, "y": 800}], "E": 4}], "junctions": [{"x": 520, "y": 500}], "renderStyle": "standard"}},
+    "id5": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 560, "y": 900}, {"x": 560, "y": 650}], "E": -1}, {"S": -1, "M": [], "E": 2}, {"S": -1, "M": [{"x": 560, "y": 370}], "E": 3}], "junctions": [{"x": 560, "y": 650}], "renderStyle": "standard"}},
+    "id6": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 900, "y": 500}, {"x": 900, "y": 410}], "E": 2}], "renderStyle": "standard"}},
+    "id7": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 950, "y": 650}, {"x": 950, "y": 470}], "E": 2}], "renderStyle": "standard"}},
+    "id8": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id9": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id10": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 850, "y": 173}, {"x": 850, "y": 170}], "E": 2}], "renderStyle": "standard"}},
+    "id11": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 820, "y": 300}, {"x": 820, "y": 200}], "E": 2}], "renderStyle": "standard"}},
+    "id12": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 800, "y": 350}, {"x": 800, "y": 230}], "E": 2}], "renderStyle": "standard"}},
+    "id13": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1150, "y": 200}, {"x": 1150, "y": 580}], "E": 2}], "renderStyle": "standard"}},
+    "id14": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id15": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id16": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}}
   }
 }
 end
@@ -202,8 +234,8 @@ Tutorial 9a — survey the flight envelope.
 
 Trims and linearizes the aircraft at 100 × 100 flight conditions. `Envelope` shows how the
 trimmed angle of attack, thrust, elevator and pitch divergence rate change with airspeed
-and altitude, and where the bank's nodes sit: one scheduling variable is not enough across
-this range.
+and altitude, and the grid of step 9b's controllers: one scheduling variable is not enough
+across this range.
 """
 analysis TutorialEnvelope
   extends F16ModelWorkshop.EnvelopeAnalysis(velocities = [140.0, 250.0], altitudes = [0.0, 9000.0], points = 100)
@@ -213,20 +245,21 @@ end
 """
 Tutorial 9b — fly the envelope-scheduled MPC.
 
-`FlightResponse` shows both references tracked, and the airspeed and altitude weights with
-which the bank blends its nine members.
+`FlightResponse` shows both references tracked, the angle of attack against the trimmed
+angle of attack interpolated in the grid, and how many of the grid's controllers the
+flight has built.
 """
 analysis TutorialEnvelopeMPC
-  extends F16ModelWorkshop.FlightAnalysis(stop = 80.0, panels = ["Airspeed (m/s): f16plant.vt, vt_reference", "Altitude (m): f16plant.alt, alt_reference", "Airspeed weights of the bank (140, 175, 210 m/s): sched_vt.w[1], sched_vt.w[2], sched_vt.w[3]", "Altitude weights of the bank (1000, 4000, 7000 m): sched_alt.w[1], sched_alt.w[2], sched_alt.w[3]", "Elevator (deg): f16plant.el", "Thrust (N): f16plant.T"])
+  extends F16ModelWorkshop.FlightAnalysis(stop = 80.0, panels = ["Airspeed (m/s): f16plant.vt, vt_reference", "Altitude (m): f16plant.alt, alt_reference", "Angle of attack and the trimmed angle of attack interpolated in the grid (rad): f16plant.alpha, alpha_ref.y", "Grid controllers built so far: optimizer.built", "Elevator (deg): f16plant.el", "Thrust (N): f16plant.T", "Solver status, 1 when every active controller solved: optimizer.exitflag"])
   model = EnvelopeMPCDemo()
 end
 
 """
-Tutorial 9c — rebuild the bank's trim table.
+Tutorial 9c — rebuild the grid's trim table.
 
 Re-trims the aircraft at the nodes of `assets/envelope_trim_alpha.csv` and rewrites it. To
-move the grid, edit the table's first column (airspeeds) or header row (altitudes), then
-run this.
+move or refine the grid, edit the table's first column (airspeeds) or header row
+(altitudes), then run this.
 """
 analysis TutorialEnvelopeTable
   extends F16ModelWorkshop.EnvelopeAnalysis(velocities = [140.0, 250.0], altitudes = [0.0, 9000.0], points = 2, table_dir = "assets")

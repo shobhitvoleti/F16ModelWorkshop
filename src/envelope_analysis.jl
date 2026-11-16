@@ -24,8 +24,9 @@ end
 """
     EnvelopeAnalysisSolution
 
-`envelope` is `EnvelopeMPC.envelope` on the grid, `nodes` the bank's `(velocity, altitude)`
-nodes from the trim table, and `table` the rewritten table's path, or `nothing`.
+`envelope` is `EnvelopeMPC.envelope` on the grid, `nodes` the `(velocity, altitude)` nodes
+of step 9b's controller grid from the trim table, and `table` the rewritten table's path,
+or `nothing`.
 """
 struct EnvelopeAnalysisSolution{E} <: AbstractAnalysisSolution
     spec::EnvelopeAnalysisSpec
@@ -49,13 +50,24 @@ function DyadInterface.run_analysis(spec::EnvelopeAnalysisSpec)
     return EnvelopeAnalysisSolution(spec, env, nodes, table)
 end
 
+# Above this many nodes the grid is outlined rather than marked node by node, which would
+# cover the map.
+const _MARKED_NODES = 400
+
 function envelope_figure(sol::EnvelopeAnalysisSolution)
     env = sol.envelope
+    vs, hs = first.(sol.nodes), last.(sol.nodes)
     panel(z, title, label) = begin
         p = Plots.heatmap(env.velocities, env.altitudes, permutedims(z); title, titlefontsize = 10,
             xlabel = "airspeed (m/s)", ylabel = "altitude (m)", colorbar_title = label)
-        Plots.scatter!(p, first.(sol.nodes), last.(sol.nodes); color = :white, markersize = 5,
-            label = "bank nodes")
+        if length(sol.nodes) <= _MARKED_NODES
+            Plots.scatter!(p, vs, hs; color = :white, markersize = 5, label = "controller grid nodes")
+        else
+            (v0, v1), (h0, h1) = extrema(vs), extrema(hs)
+            Plots.plot!(p, [v0, v1, v1, v0, v0], [h0, h0, h1, h1, h0]; color = :white, linewidth = 2,
+                label = "controller grid, $(length(unique(vs))) × $(length(unique(hs))) nodes")
+        end
+        p
     end
     return Plots.plot(
         panel(rad2deg.(env.alpha), "Trimmed angle of attack", "deg"),
@@ -67,9 +79,9 @@ end
 
 function DyadInterface.AnalysisSolutionMetadata(sol::EnvelopeAnalysisSolution)
     arts = ArtifactMetadata[ArtifactMetadata(:Envelope, ArtifactType.PlotlyPlot, "Flight envelope",
-        "Trim and pitch stability over the airspeed-altitude grid, with the bank nodes.")]
+        "Trim and pitch stability over the airspeed-altitude grid, with step 9b's controller grid.")]
     isnothing(sol.table) || push!(arts, ArtifactMetadata(:TrimTable, ArtifactType.Download,
-        basename(sol.table), "The bank's trim table, rewritten at $(sol.table)."))
+        basename(sol.table), "The controller grid's trim table, rewritten at $(sol.table)."))
     return AnalysisSolutionMetadata(arts, Dict{Symbol, Vector{Symbol}}())
 end
 

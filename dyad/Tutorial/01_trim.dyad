@@ -11,8 +11,9 @@ satisfies the equilibrium constraints:
 `TutorialTrim` solves the operating point and shows it as the table `TrimTable`.
 `TutorialTrimExport` does the same solve and writes `assets/trim_point.toml`,
 `trim_reference.toml` and `trim_controls.toml`, which steps 2–6 `apply`; re-run it after
-changing the flight condition or the plant. Steps 7–9 trim their own flight conditions in
-Julia. Both analyses extend `TrimExportAnalysis` (dyad/trim_export_analysis.dyad, backed by
+changing the flight condition or the plant. Steps 7–9 solve this same model at their own
+flight conditions (`VelocityMPC.trim_point` sets `vt_init`, `alt_init` and `xcg`). Both
+analyses extend `TrimExportAnalysis` (dyad/trim_export_analysis.dyad, backed by
 src/trim_export_analysis.jl).
 
 Signal flow: Constants -> Mux5 -> F16PlantModel

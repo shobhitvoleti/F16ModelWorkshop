@@ -2,7 +2,8 @@
 Design-time support for the velocity-scheduled MPC of tutorial step 8: the plant's
 symbolic linearization, straight-and-level trim, and the bank of `LinearMPC` controllers
 that `dyad/Tutorial/08_velocity_mpc.dyad` hands to `MPCComponents.Experimental`. The loop
-itself is Dyad; this module computes the structural parameters Dyad cannot.
+itself is Dyad; this module computes the structural parameters Dyad cannot. The trim is
+step 1's Dyad model `Tutorial.TrimDemo`, solved at each flight condition.
 
 Controller units are kN of thrust and degrees of deflection; the plant takes N and
 degrees. `CONTROL_UNITS` converts between them.
@@ -10,14 +11,13 @@ degrees. `CONTROL_UNITS` converts between them.
 module VelocityMPC
 
 using LinearAlgebra
-using ADTypes: AutoFiniteDiff
 import ControlSystemsBase as CS
 import MPCComponents
 import ModelingToolkit as MTK
 import Symbolics
 import NonlinearSolve
 import SciMLBase
-using ..F16ModelWorkshop: Plant
+using ..F16ModelWorkshop: Plant, Tutorial
 
 export F16Dynamics, bank, build_bank, linear_model, member_design, reference_map, trim_command, trim_point,
     trim_states
@@ -134,37 +134,64 @@ function (d::F16Dynamics)(x, u)
 end
 
 """
-    trim_point(dynamics, velocity; altitude=3000.0) -> NamedTuple
+    LevelTrim()
 
-Straight-and-level trim at `velocity` (m/s) and `altitude` (m): solve thrust, elevator,
-angle of attack and pitch, then verify all ten flight-state derivatives vanish. North
-position advances at airspeed and is excluded from the equilibrium. Returns
+Step 1's trim model `Tutorial.TrimDemo`, compiled once for reuse at any flight condition.
+`TrimDemo` declares thrust, elevator, angle of attack and pitch attitude `missing` and
+holds airspeed, angle of attack, altitude and pitch rate steady (`initial der(...) = 0`),
+so its initialization problem is the straight-and-level trim. `trim_point` sets the
+flight condition and CG on that problem and solves it from `TrimDemo`'s guesses.
+"""
+struct LevelTrim{P,S,X,U}
+    problem::P
+    guess::Vector{Float64}
+    set_condition!::S
+    states::X
+    commands::U
+end
+
+function LevelTrim()
+    sys = MTK.mtkcompile(Tutorial.TrimDemo(; name=:level_trim))
+    problem = MTK.ODEProblem(sys, [], (0.0, 0.0)).f.initialization_data.initializeprob
+    plant = sys.f16plant
+    return LevelTrim(problem, copy(problem.u0),
+        MTK.setp(problem, [plant.vt_init, plant.alt_init, plant.xcg]),
+        MTK.getsym(problem, [getproperty(plant, s) for s in STATE_NAMES]),
+        MTK.getsym(problem, [sys.T_cmd.k, sys.el_cmd.k, sys.ail_cmd.k, sys.rud_cmd.k]))
+end
+
+const _LEVEL_TRIM = Ref{Any}(nothing)
+# `trim_point` mutates the one compiled problem, so solves take turns.
+const _LEVEL_TRIM_LOCK = ReentrantLock()
+
+"""
+    trim_point(velocity; altitude=ALTITUDE, xcg=XCG) -> NamedTuple
+
+Straight-and-level trim at `velocity` (m/s) and `altitude` (m) with the center of gravity
+at `xcg`: `Tutorial.TrimDemo` (step 1) solved at that condition (see `LevelTrim`), then
+checked on the compiled plant `dynamics(xcg)`: all ten flight-state derivatives must
+vanish. North position advances at airspeed and is excluded from the equilibrium. Returns
 `(; velocity, x, u, residual_norm)` with the 12 plant states `x` and 4 plant inputs `u`.
 """
-function trim_point(d::F16Dynamics, velocity; altitude=ALTITUDE)
+function trim_point(velocity; altitude=ALTITUDE, xcg=XCG)
     isfinite(velocity) && velocity > 0 || throw(ArgumentError("trim velocity must be positive and finite"))
     isfinite(altitude) && 0 <= altitude <= 11000 ||
         throw(ArgumentError("altitude must be within the plant's troposphere model (0–11000 m)"))
-    function unpack(z)
-        x = zeros(eltype(z), 12)
-        x[3], x[5], x[7], x[8] = altitude, z[4], velocity, z[3]
-        u = [1e4*z[1], z[2], zero(z[1]), zero(z[1])]
-        return x, u
+    isfinite(xcg) || throw(ArgumentError("xcg must be finite"))
+    x, u = lock(_LEVEL_TRIM_LOCK) do
+        isnothing(_LEVEL_TRIM[]) && (_LEVEL_TRIM[] = LevelTrim())   # built on first use
+        trim = _LEVEL_TRIM[]
+        trim.set_condition!(trim.problem, [velocity, altitude, xcg])
+        trim.problem.u0 .= trim.guess
+        # Trust-region Newton, as `TrimExportAnalysis`: the trim Jacobian's diagonal is
+        # near zero, which defeats the default initialization polyalgorithm.
+        sol = NonlinearSolve.solve(trim.problem, NonlinearSolve.TrustRegion(); abstol=1e-12, reltol=1e-12)
+        SciMLBase.successful_retcode(sol) ||
+            error("trim failed at $velocity m/s and $altitude m: $(sol.retcode)")
+        Vector{Float64}(trim.states(sol)), Vector{Float64}(trim.commands(sol))
     end
-    # Finite differences avoid requiring dual-number support from the compiled
-    # ModelingToolkit function and its concrete parameter storage.
-    residual(z, _) = begin
-        x, u = unpack(z)
-        f = d(x, u)
-        [f[7], 100*f[8], f[3], 100*f[11]]
-    end
-    problem = NonlinearSolve.NonlinearProblem(residual, [1.1, -0.7, 0.06, 0.06])
-    sol = NonlinearSolve.solve(problem, NonlinearSolve.NewtonRaphson(; autodiff=AutoFiniteDiff());
-        abstol=1e-10, reltol=1e-10, maxiters=100)
-    SciMLBase.successful_retcode(sol) || error("trim failed at $velocity m/s: $(sol.retcode)")
-    x, u = unpack(sol.u)
-    residual_norm = norm(d(x, u)[FLIGHT], Inf)
-    residual_norm < 1e-7 || error("trim residual at $velocity m/s is $residual_norm")
+    residual_norm = norm(dynamics(xcg)(x, u)[FLIGHT], Inf)
+    residual_norm < 1e-7 || error("trim residual at $velocity m/s and $altitude m is $residual_norm")
     return (; velocity=Float64(velocity), x, u, residual_norm)
 end
 
@@ -203,7 +230,7 @@ dynamics(xcg=XCG) = get!(() -> F16Dynamics(; xcg), _DYNAMICS, Float64(xcg))
 
 function _trim(velocity, altitude, xcg)
     key = (Float64(velocity), Float64(altitude), Float64(xcg))
-    return get!(() -> trim_point(dynamics(xcg), velocity; altitude), _TRIMS, key)
+    return get!(() -> trim_point(velocity; altitude, xcg), _TRIMS, key)
 end
 
 """
@@ -315,8 +342,8 @@ end
                rate, measurement_noise=1e-6) -> MPCComponents.MPCRef
 
 A bank of constrained `LinearMPC` members, member `j` being the `member_design` at
-`conditions[j] = (velocity, altitude)`, filed under `knots[j]`. Steps 8 and 9 both build
-their banks here; they differ only in the conditions and in how members are scheduled.
+`conditions[j] = (velocity, altitude)`, filed under `knots[j]`: step 8's bank. Step 9 builds
+the same members one at a time with `member_controller`, at the nodes of its grid.
 
 All members share one absolute physical frame (states in plant units, commands in kN and
 deg): the scheduled components require a single operating point, and it makes the
@@ -343,6 +370,38 @@ function build_bank(knots, conditions, initial, Ts=0.05;
     grid = check_grid(knots)
     length(conditions) == length(grid) ||
         throw(DimensionMismatch("$(length(grid)) knots but $(length(conditions)) flight conditions"))
+    shared = _shared_settings(Ts; Np, q, sx, r, su, umin, umax, rate)
+    isfinite(measurement_noise) && measurement_noise > 0 ||
+        throw(ArgumentError("measurement_noise must be positive and finite"))
+    # Only these vary between members; `shared` holds the rest.
+    members = Dict(k => _member_data(v, h, Ts, shared; xcg, q, sx, r, su) for (k, (v, h)) in zip(grid, conditions))
+    Inx = Matrix{Float64}(I, 10, 10)
+    x0 = _trim(initial..., xcg).x[FLIGHT]
+    return MPCComponents.Experimental.build_linear_mpc_bank(grid, k -> members[k];
+        shared.settings..., C_meas=Inx, R1=Inx, R2=measurement_noise .* Inx, x0)
+end
+
+"""
+    member_controller(velocity, altitude, Ts=0.05; xcg, Np=40, q, sx, r, su, umin, umax, rate)
+        -> MPCComponents.MPCRef
+
+One member of `build_bank` on its own: the `member_design` at `velocity` (m/s) and
+`altitude` (m) as a single `LinearMPC` controller with the bank's frame, cost, horizon and
+limits, and no observer. Step 9's grid bank (`EnvelopeMPC.grid_bank`) builds each node
+with it, so its nodes are the members a `build_bank` at the same conditions would hold.
+"""
+function member_controller(velocity, altitude, Ts=0.05;
+        xcg=XCG, Np=40,
+        q=STATE_WEIGHTS, sx=STATE_SCALES, r=COMMAND_WEIGHTS, su=COMMAND_SCALES,
+        umin=COMMAND_MIN, umax=COMMAND_MAX, rate=COMMAND_RATE)
+    shared = _shared_settings(Ts; Np, q, sx, r, su, umin, umax, rate)
+    return MPCComponents.build_linear_mpc(; shared.settings...,
+        _member_data(velocity, altitude, Ts, shared; xcg, q, sx, r, su)...)
+end
+
+# The `build_linear_mpc` keywords every member shares, after checking them: the frame
+# (`C` the identity), horizon, Bryson weights, command bounds and slew limit.
+function _shared_settings(Ts; Np, q, sx, r, su, umin, umax, rate)
     isfinite(Ts) && Ts > 0 || throw(ArgumentError("Ts must be positive and finite"))
     Np isa Integer && Np >= 2 || throw(ArgumentError("Np must be an integer at least 2"))
     lower = finite_vector(umin, 4, "umin")
@@ -350,28 +409,24 @@ function build_bank(knots, conditions, initial, Ts=0.05;
     slew = finite_vector(rate, 4, "rate")
     all(lower .< upper) || throw(ArgumentError("umin must be below umax on every channel"))
     all(>(0), slew) || throw(ArgumentError("rate must be positive on every channel"))
-    isfinite(measurement_noise) && measurement_noise > 0 ||
-        throw(ArgumentError("measurement_noise must be positive and finite"))
-
-    designs = [member_design(v, h, Ts; xcg, q, sx, r, su) for (v, h) in conditions]
-    for (design, (v, h)) in zip(designs, conditions)
-        all(lower .<= design.u .<= upper) || throw(ArgumentError(
-            "the trim command at $v m/s and $h m, $(design.u), is outside [umin, umax]"))
-    end
-    # Only these vary between members; the keyword arguments below are shared.
-    members = Dict(k => (; d.A, d.B, d.f_offset, d.eu, d.Qf) for (k, d) in zip(grid, designs))
     Inu = Matrix{Float64}(I, 4, 4)
-    Inx = Matrix{Float64}(I, 10, 10)
-    x0 = _trim(initial..., xcg).x[FLIGHT]
-
-    return MPCComponents.Experimental.build_linear_mpc_bank(grid, k -> members[k];
-        C=Inx, continuous=true, Ts, Np, Nc=Np,
-        Q1=first(designs).Q1, Q2=first(designs).Q2,
+    settings = (; C=Matrix{Float64}(I, 10, 10), continuous=true, Ts, Np, Nc=Np,
+        Q1=diagm(finite_vector(q, 10, "q") ./ finite_vector(sx, 10, "sx") .^ 2),
+        Q2=diagm(finite_vector(r, 4, "r") ./ finite_vector(su, 4, "su") .^ 2),
         umin=lower, umax=upper,
         # Slew limit as a general constraint block: -rate*Ts <= u - u_prev <= rate*Ts.
         Au=Inu, Aup=-Inu, lb=-slew .* Ts, ub=slew .* Ts, constraint_ks=1:Np,
-        reference_tracking=true,
-        C_meas=Inx, R1=Inx, R2=measurement_noise .* Inx, x0)
+        reference_tracking=true)
+    return (; lower, upper, settings)
+end
+
+# The keywords that differ between members: the model, offset, command centering and
+# terminal weight of the `member_design` at one flight condition.
+function _member_data(velocity, altitude, Ts, shared; xcg, q, sx, r, su)
+    d = member_design(velocity, altitude, Ts; xcg, q, sx, r, su)
+    all(shared.lower .<= d.u .<= shared.upper) || throw(ArgumentError(
+        "the trim command at $velocity m/s and $altitude m, $(d.u), is outside [umin, umax]"))
+    return (; d.A, d.B, d.f_offset, d.eu, d.Qf)
 end
 
 end

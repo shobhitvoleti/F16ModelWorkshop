@@ -105,10 +105,8 @@ end
 
 @testset "trimmed level flight over the speed range" begin
     # S&L Table 3.6-2: alpha rises monotonically as speed drops. Both points lie inside
-    # the deck's fitted alpha range but far from `TrimDemo`'s guesses, so they are
-    # trimmed with `VelocityMPC`'s Newton solve on the same plant.
-    plant = F16ModelWorkshop.VelocityMPC.dynamics(0.35)
-    alpha(vt) = F16ModelWorkshop.VelocityMPC.trim_point(plant, vt; altitude = 0.0).x[8]
+    # the deck's fitted alpha range; `VelocityMPC.trim_point` solves `TrimDemo` at each.
+    alpha(vt) = F16ModelWorkshop.VelocityMPC.trim_point(vt; altitude = 0.0, xcg = 0.35).x[8]
     @test alpha(400 * 0.3048) > alpha(600 * 0.3048) > 0
 end
 

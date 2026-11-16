@@ -6,7 +6,7 @@
 
 using DyadInterface
 using F16ModelWorkshop: AbstractFlightAnalysisSpec, FlightAnalysisSpec
-@component function TutorialEnvelopeMPC__System(; name = nothing, var"stop"=80.0, var"panels"=["Airspeed (m/s): f16plant.vt, vt_reference", "Altitude (m): f16plant.alt, alt_reference", "Airspeed weights of the bank (140, 175, 210 m/s): sched_vt.w[1], sched_vt.w[2], sched_vt.w[3]", "Altitude weights of the bank (1000, 4000, 7000 m): sched_alt.w[1], sched_alt.w[2], sched_alt.w[3]", "Elevator (deg): f16plant.el", "Thrust (N): f16plant.T"], var"abstol"=0.000001, var"reltol"=0.000001, __overrides = Dict{String, Any}())
+@component function TutorialEnvelopeMPC__System(; name = nothing, var"stop"=80.0, var"panels"=["Airspeed (m/s): f16plant.vt, vt_reference", "Altitude (m): f16plant.alt, alt_reference", "Angle of attack and the trimmed angle of attack interpolated in the grid (rad): f16plant.alpha, alpha_ref.y", "Grid controllers built so far: optimizer.built", "Elevator (deg): f16plant.el", "Thrust (N): f16plant.T", "Solver status, 1 when every active controller solved: optimizer.exitflag"], var"abstol"=0.000001, var"reltol"=0.000001, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -95,52 +95,44 @@ export TutorialEnvelopeMPC__System
   # End time of the simulation, s.
   var"stop"::Float64 = 80.0
   # Panels of the `FlightResponse` figure, each `Title: signal, signal, ...`.
-  var"panels"::Array{String, 1} = ["Airspeed (m/s): f16plant.vt, vt_reference", "Altitude (m): f16plant.alt, alt_reference", "Airspeed weights of the bank (140, 175, 210 m/s): sched_vt.w[1], sched_vt.w[2], sched_vt.w[3]", "Altitude weights of the bank (1000, 4000, 7000 m): sched_alt.w[1], sched_alt.w[2], sched_alt.w[3]", "Elevator (deg): f16plant.el", "Thrust (N): f16plant.T"]
+  var"panels"::Array{String, 1} = ["Airspeed (m/s): f16plant.vt, vt_reference", "Altitude (m): f16plant.alt, alt_reference", "Angle of attack and the trimmed angle of attack interpolated in the grid (rad): f16plant.alpha, alpha_ref.y", "Grid controllers built so far: optimizer.built", "Elevator (deg): f16plant.el", "Thrust (N): f16plant.T", "Solver status, 1 when every active controller solved: optimizer.exitflag"]
   # Absolute tolerance of the ODE solver.
   var"abstol"::Float64 = 0.000001
   # Relative tolerance of the ODE solver.
   var"reltol"::Float64 = 0.000001
   # Tutorial 9 — Altitude- and velocity-scheduled linear MPC.
   # 
-  # Step 8's bank extended from one altitude to a rectangle of the flight envelope: one
-  # constrained `LinearMPC` member at every node of a `velocities × altitudes` grid, scheduled
-  # on measured airspeed and altitude.
+  # Step 8's controller extended from one altitude to a rectangle of the flight envelope: one
+  # constrained `LinearMPC` controller at every node of a `velocities × altitudes` grid,
+  # scheduled on measured airspeed and altitude. `GridMPCOptimizer` solves only the (at most
+  # four) nodes of the cell the aircraft is in and builds each node the first time it is
+  # needed, so the grid can be as fine as the envelope survey of step 9a.
   # 
-  # `MPCComponents.Experimental.LinearMPCScheduler` takes one scalar scheduling variable, so
-  # each axis gets its own scheduler, and `VectorBlocks.OuterProduct` multiplies the two
-  # hat-function weight vectors into the bilinear weights of the grid (at most four nonzero).
-  # The observer and optimizer see one weight per member, so they are the same components as
-  # in step 8.
+  # Signal flow:
   # 
-  # Signal flow (whole-array connections except where a channel is named):
-  # 
-  #   f16plant.y_out (12) --> meas_select (3:12) --> sample (20 Hz) --> observer.y (10)
-  #   sample.y[5] --> sched_vt.rho, clock                  airspeed: schedule and clock
-  #   sample.y[1] --> sched_alt.rho                        altitude: schedule
-  #   sched_vt.w (nv), sched_alt.w (nh) --> weights --> observer.w, optimizer.w
+  #   f16plant.y_out (12) --> meas_select (3:12) --> sample (20 Hz) --> optimizer.xhat (10)
+  #   sample.y[5] --> sched_vt.rho, alpha_ref.u1, clock    airspeed: schedule, reference, clock
+  #   sample.y[1] --> sched_alt.rho, alpha_ref.u2          altitude: schedule, reference
+  #   sched_vt.w (nv), sched_alt.w (nh) --> optimizer.wv, optimizer.wh
   #   vt_cmd --> sr_vt --> ref_map.u[1]                    commanded airspeed
   #   alt_cmd --> sr_alt --> ref_map.u[2]                  commanded altitude
-  #   weights.y --> ref_map.u[3:end]                       member weights
+  #   alpha_ref --> ref_map.u[3]                           trimmed angle of attack
   #   ref_map (10) --> optimizer.r
   #   optimizer.u (4) --> zoh --> cmd_map (5) --> f16plant.u_in
   # 
   # The grid comes from the lookup-table asset `envelope_trim_alpha.csv`
-  # (`DyadData.DyadInterpolationTable2D`): its axes are the bank's knots and its values the
-  # trimmed angle of attack at each node, which in level flight is also the trimmed pitch
-  # attitude. `EnvelopeMPC.write_trim_table()` regenerates it (analysis 9c).
+  # (`DyadData.DyadInterpolationTable2D`): its axes are the knots and its values the trimmed
+  # angle of attack at each node, which in level flight is also the trimmed pitch attitude.
+  # `alpha_ref` interpolates it at the measured airspeed and altitude, so the pitch and
+  # angle-of-attack references are the same bilinear blend of node trims as the commands.
+  # `EnvelopeMPC.write_trim_table()` regenerates the table (analysis 9c).
   # 
-  # The bank (`F16ModelWorkshop.EnvelopeMPC.bank`) is step 8's member design (absolute frame,
-  # cost, limits, affine offset) at each node, flattened airspeed-fastest in the order
-  # `OuterProduct` emits its weights. `ref_map` puts the two commands on their own channels and
-  # the weighted tabulated trims on pitch and angle of attack, so those references are bilinear
-  # in airspeed and altitude.
-  # 
-  # The bank is a coarse subset of the envelope: `EnvelopeMPC.envelope()` trims and linearizes
-  # 10 000 flight conditions in seconds, but the scheduled components grow with the member
-  # count, which keeps the bank to tens of members (MPCComponents.jl#94).
+  # A node's controller is step 8's member design at that node (absolute frame, cost, limits,
+  # affine offset), built by `VelocityMPC.member_controller`. All ten regulated states are
+  # measured, so the controller takes the sampled states directly, without an observer.
   # 
   # Scenario: trimmed at 150 m/s and 3000 m, commanded to 190 m/s and 4500 m on overlapping
-  # ramps that cross a knot on each axis.
+  # ramps.
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.EnvelopeMPCDemo(; name=:EnvelopeMPCDemo)
   __system::System = TutorialEnvelopeMPC__System(; name, var"stop"=var"stop", var"panels"=var"panels", var"abstol"=var"abstol", var"reltol"=var"reltol")
 end

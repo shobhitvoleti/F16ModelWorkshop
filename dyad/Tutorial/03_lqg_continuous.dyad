@@ -26,12 +26,12 @@ component LQGDemo
   demux_air = F16ModelWorkshop.Utils.Demux3() {^demux_air}
   demux_rate = F16ModelWorkshop.Utils.Demux3() {^demux_rate}
   "Stage 2 regather: each group's 3 scalars back into a 3-vector."
-  mux_pos = F16ModelWorkshop.Utils.Mux3(u_guess = [ref_vals[1], ref_vals[2], ref_vals[3]]) {^mux_pos}
-  mux_att = F16ModelWorkshop.Utils.Mux3(u_guess = [ref_vals[4], ref_vals[5], ref_vals[6]]) {^mux_att}
-  mux_air = F16ModelWorkshop.Utils.Mux3(u_guess = [ref_vals[7], ref_vals[8], ref_vals[9]]) {^mux_air}
-  mux_rate = F16ModelWorkshop.Utils.Mux3(u_guess = [ref_vals[10], ref_vals[11], ref_vals[12]]) {^mux_rate}
+  mux_pos = F16ModelWorkshop.Utils.Mux3(u_guess = [ref.k[1], ref.k[2], ref.k[3]]) {^mux_pos}
+  mux_att = F16ModelWorkshop.Utils.Mux3(u_guess = [ref.k[4], ref.k[5], ref.k[6]]) {^mux_att}
+  mux_air = F16ModelWorkshop.Utils.Mux3(u_guess = [ref.k[7], ref.k[8], ref.k[9]]) {^mux_air}
+  mux_rate = F16ModelWorkshop.Utils.Mux3(u_guess = [ref.k[10], ref.k[11], ref.k[12]]) {^mux_rate}
   "Stage 1 regather: the 12-vector for the error block."
-  meas_mux = F16ModelWorkshop.Utils.Mux4x3(u_guess = ref_vals) {^meas_mux}
+  meas_mux = F16ModelWorkshop.Utils.Mux4x3(u_guess = ref.k) {^meas_mux}
   "Tracking error: ref - measurement (12 ch)."
   err = F16ModelWorkshop.VectorBlocks.VectorAdd(n = 12, k1 = 1, k2 = -1) {^err}
   "Embedded LQG controller (state space); the LQG analysis redesigns these gains."
@@ -49,30 +49,28 @@ component LQGDemo
   control_rud = BlockComponents.Math.Add(k1 = 1, k2 = 1) {^control_rud}
   control_lef = BlockComponents.Math.Add(k1 = 1, k2 = 1) {^control_lef}
   "Gather the 5 control scalars into the plant's vector input."
-  ctrl_mux = F16ModelWorkshop.Utils.Mux5(u_guess = trim_vals) {^ctrl_mux}
-  "State set-points [npos,epos,alt,phi,theta,psi,vt,alpha,beta,P,Q,R] from the applied trim asset, so the initialization guesses equal the operating point."
-  structural parameter ref_vals::Real[12] = F16ModelWorkshop.trim_asset("trim_reference")
-  "Trim control offsets [T,el,ail,rud,lef] from the applied trim asset."
-  structural parameter trim_vals::Real[5] = F16ModelWorkshop.trim_asset("trim_controls")
+  ctrl_mux = F16ModelWorkshop.Utils.Mux5(u_guess = trim.k) {^ctrl_mux}
 relations
   # ---- Initialization guesses at the applied trim ----
-  guess f16plant.T = trim_vals[1]
+  # Seeded from the trim assets applied to `ref` (state set-points) and `trim` (control
+  # offsets), so the initializer starts at the operating point.
+  guess f16plant.T = trim.k[1]
   # Aero and atmosphere seeds; the solver refines them.
   guess f16plant.rho = 0.909
   guess f16plant.qbar = 10557.0
   guess f16plant.Udot = 0.0
-  guess f16plant.el_rad = trim_vals[2] * 0.017453292519943295
+  guess f16plant.el_rad = trim.k[2] * 0.017453292519943295
   guess f16plant.ail_rad = 0.0
   guess f16plant.rud_rad = 0.0
   guess f16plant.lef_rad = 0.0
-  guess f16plant.x_lon = [ref_vals[8], ref_vals[8] * ref_vals[8], trim_vals[2] * 0.017453292519943295, ref_vals[11]]
+  guess f16plant.x_lon = [ref.k[8], ref.k[8] * ref.k[8], trim.k[2] * 0.017453292519943295, ref.k[11]]
   guess f16plant.x_lat = [0.0, 0.0, 0.0, 0.0, 0.0]
   guess f16plant.C_lon = [-0.018380, -0.30927, 0.0]
   guess f16plant.C_lat = [0.0, 0.0, 0.0]
-  guess f16plant.y_out = ref_vals
-  guess f16plant.u_in = trim_vals
+  guess f16plant.y_out = ref.k
+  guess f16plant.u_in = trim.k
   # Broken-loop side of the 12 measurement analysis points.
-  guess err.u2 = ref_vals
+  guess err.u2 = ref.k
   guess controller.x = fill(0.0, 12)
   guess controller.u = fill(0.0, 12)
   guess controller.y = fill(0.0, 5)

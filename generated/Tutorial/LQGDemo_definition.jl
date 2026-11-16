@@ -5,7 +5,7 @@
 
 
 @doc Markdown.doc"""
-   LQGDemo(; name, ref_vals, trim_vals, __overrides)
+   LQGDemo(; name, __overrides)
 
 Tutorial 3 — Continuous LQG control.
 
@@ -20,15 +20,8 @@ gain row for `uLef`; it stays a design control so the controller covers all 5 pl
 
 `TutorialLQG` linearizes the plant between these points and synthesizes the LQG gains;
 `TutorialLinearize` (step 2) linearizes the same model.
-
-## Parameters:
-
-| Name         | Description                         | Units  |   Default value |
-| ------------ | ----------------------------------- | ------ | --------------- |
-| `ref_vals`         | State set-points [npos,epos,alt,phi,theta,psi,vt,alpha,beta,P,Q,R] from the applied trim asset, so the initialization guesses equal the operating point.                         | --  |   F16ModelWor...reference") |
-| `trim_vals`         | Trim control offsets [T,el,ail,rud,lef] from the applied trim asset.                         | --  |   F16ModelWor..._controls") |
 """
-@component function LQGDemo(; name = nothing, var"ref_vals"=F16ModelWorkshop.trim_asset("trim_reference"), var"trim_vals"=F16ModelWorkshop.trim_asset("trim_controls"), __overrides = Dict{String, Any}())
+@component function LQGDemo(; name = nothing, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -45,10 +38,6 @@ gain row for `uLef`; it stays a design control so the controller covers all 5 pl
   __initialization_eqs = Equation[]
   __eqs = Equation[]
   __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
-
-  ### Keyword argument overrides
-  haskey(__overrides, "ref_vals") && (ref_vals = pop!(__overrides, "ref_vals"))
-  haskey(__overrides, "trim_vals") && (trim_vals = pop!(__overrides, "trim_vals"))
 
   ### Structural Parameters (functions)
 
@@ -198,19 +187,19 @@ gain row for `uLef`; it stays a design control so the controller covers all 5 pl
   push!(__systems, @named demux_rate = F16ModelWorkshop.Utils.Demux3(; __overrides = demux_rate_overrides))
   # Subcomponent mux_pos of type F16ModelWorkshop.Utils.Mux3
   mux_pos_overrides = __pop_subcomponent_overrides!(__overrides, "mux_pos")
-  push!(__systems, @named mux_pos = F16ModelWorkshop.Utils.Mux3(; u_guess=[ref_vals[1], ref_vals[2], ref_vals[3]], __overrides = mux_pos_overrides))
+  push!(__systems, @named mux_pos = F16ModelWorkshop.Utils.Mux3(; u_guess=[ref.k[1], ref.k[2], ref.k[3]], __overrides = mux_pos_overrides))
   # Subcomponent mux_att of type F16ModelWorkshop.Utils.Mux3
   mux_att_overrides = __pop_subcomponent_overrides!(__overrides, "mux_att")
-  push!(__systems, @named mux_att = F16ModelWorkshop.Utils.Mux3(; u_guess=[ref_vals[4], ref_vals[5], ref_vals[6]], __overrides = mux_att_overrides))
+  push!(__systems, @named mux_att = F16ModelWorkshop.Utils.Mux3(; u_guess=[ref.k[4], ref.k[5], ref.k[6]], __overrides = mux_att_overrides))
   # Subcomponent mux_air of type F16ModelWorkshop.Utils.Mux3
   mux_air_overrides = __pop_subcomponent_overrides!(__overrides, "mux_air")
-  push!(__systems, @named mux_air = F16ModelWorkshop.Utils.Mux3(; u_guess=[ref_vals[7], ref_vals[8], ref_vals[9]], __overrides = mux_air_overrides))
+  push!(__systems, @named mux_air = F16ModelWorkshop.Utils.Mux3(; u_guess=[ref.k[7], ref.k[8], ref.k[9]], __overrides = mux_air_overrides))
   # Subcomponent mux_rate of type F16ModelWorkshop.Utils.Mux3
   mux_rate_overrides = __pop_subcomponent_overrides!(__overrides, "mux_rate")
-  push!(__systems, @named mux_rate = F16ModelWorkshop.Utils.Mux3(; u_guess=[ref_vals[10], ref_vals[11], ref_vals[12]], __overrides = mux_rate_overrides))
+  push!(__systems, @named mux_rate = F16ModelWorkshop.Utils.Mux3(; u_guess=[ref.k[10], ref.k[11], ref.k[12]], __overrides = mux_rate_overrides))
   # Subcomponent meas_mux of type F16ModelWorkshop.Utils.Mux4x3
   meas_mux_overrides = __pop_subcomponent_overrides!(__overrides, "meas_mux")
-  push!(__systems, @named meas_mux = F16ModelWorkshop.Utils.Mux4x3(; u_guess=ref_vals, __overrides = meas_mux_overrides))
+  push!(__systems, @named meas_mux = F16ModelWorkshop.Utils.Mux4x3(; u_guess=ref.k, __overrides = meas_mux_overrides))
   # Subcomponent err of type F16ModelWorkshop.VectorBlocks.VectorAdd
   err_overrides = __pop_subcomponent_overrides!(__overrides, "err")
   push!(__systems, @named err = F16ModelWorkshop.VectorBlocks.VectorAdd(; n=12, k1=Float64(1), k2=Float64(-1), __overrides = err_overrides))
@@ -278,27 +267,27 @@ gain row for `uLef`; it stays a design control so the controller covers all 5 pl
   push!(__systems, @named control_lef = BlockComponents.Math.Add(; k1=Float64(1), k2=Float64(1), __overrides = control_lef_overrides))
   # Subcomponent ctrl_mux of type F16ModelWorkshop.Utils.Mux5
   ctrl_mux_overrides = __pop_subcomponent_overrides!(__overrides, "ctrl_mux")
-  push!(__systems, @named ctrl_mux = F16ModelWorkshop.Utils.Mux5(; u_guess=trim_vals, __overrides = ctrl_mux_overrides))
+  push!(__systems, @named ctrl_mux = F16ModelWorkshop.Utils.Mux5(; u_guess=trim.k, __overrides = ctrl_mux_overrides))
 
   ### Check there are no unmatched overrides
   isempty(__overrides) || throw(ArgumentError("overrides: [$(join(keys(__overrides), ", "))] don't match names found in model. These names may exist in the model but could have been conditionally excluded. Override keys are dotted paths as written in Dyad source (e.g. inner.rate)."))
 
   ### Guesses
-  __guesses[f16plant.T] = (trim_vals[1])
+  __guesses[f16plant.T] = (getindex(getproperty(trim, :k), 1))
   __guesses[f16plant.rho] = (0.909)
   __guesses[f16plant.qbar] = (10557.0)
   __guesses[f16plant.Udot] = (0.0)
-  __guesses[f16plant.el_rad] = (trim_vals[2] * 0.017453292519943295)
+  __guesses[f16plant.el_rad] = (getindex(getproperty(trim, :k), 2) * 0.017453292519943295)
   __guesses[f16plant.ail_rad] = (0.0)
   __guesses[f16plant.rud_rad] = (0.0)
   __guesses[f16plant.lef_rad] = (0.0)
-  __guesses[f16plant.x_lon] = ([ref_vals[8], ref_vals[8] * ref_vals[8], trim_vals[2] * 0.017453292519943295, ref_vals[11]])
+  __guesses[f16plant.x_lon] = ([getindex(getproperty(ref, :k), 8), getindex(getproperty(ref, :k), 8) * getindex(getproperty(ref, :k), 8), getindex(getproperty(trim, :k), 2) * 0.017453292519943295, getindex(getproperty(ref, :k), 11)])
   __guesses[f16plant.x_lat] = ([0.0, 0.0, 0.0, 0.0, 0.0])
   __guesses[f16plant.C_lon] = ([-0.01838, -0.30927, 0.0])
   __guesses[f16plant.C_lat] = ([0.0, 0.0, 0.0])
-  __guesses[f16plant.y_out] = (ref_vals)
-  __guesses[f16plant.u_in] = (trim_vals)
-  __guesses[err.u2] = (ref_vals)
+  __guesses[f16plant.y_out] = (ref.k)
+  __guesses[f16plant.u_in] = (trim.k)
+  __guesses[err.u2] = (ref.k)
   __guesses[controller.x] = (fill(0.0, 12))
   __guesses[controller.u] = (fill(0.0, 12))
   __guesses[controller.y] = (fill(0.0, 5))
