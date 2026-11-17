@@ -7,27 +7,15 @@
 @doc Markdown.doc"""
    ContinuousClosedLoopDemo(; name, __overrides)
 
-Tutorial 5 — 3-D visualization.
+Tutorial 5 — Animate the aircraft in 3-D.
 
-Renders a closed loop as an animation of the airframe. Each viz model `extends` its
-closed loop and adds only a measurement tap, a pose bridge and a visualizer, so the
-animation is the same simulation as the earlier steps. Both run the 10 deg pitch
-perturbation of step 4, so continuous and sampled-data control can be compared:
-  `ContinuousClosedLoopVizDemo`  the LQG regulator of step 3, running continuously
-  `DiscreteClosedLoopVizDemo`    the 100 Hz sampled-data loop of step 4
+Compare continuous control with the 100 Hz controller from step 4.
+Both models start at 10 degrees pitch and run for 10 seconds.
+The animation reads the aircraft's position and attitude without changing its motion.
 
-Both render the 10 s window of step 4. The regulator does not hold trim indefinitely:
-the `npos`/`epos` error grows with distance flown (see `TutorialLQG`) and the loop
-departs at about 19 s, so extending `stop` past that renders the departure, not the
-recovery.
-
-Measurement tap (both models), from the plant's vector output:
-  f16plant.y_out -> Demux4x3 -> y1 [npos,epos,alt] -> Demux3 -> Mux3 -> pose.pos
-                             -> y2 [phi,theta,psi] --------------------> pose.ang
-
-`SignalPoseSource` expects a Y-up world frame and the plant reports NED, so the
-Demux3/Mux3 pair reorders position to npos->x, alt->y, epos->z. The Euler triple
-[phi, theta, psi] is already [roll, pitch, yaw].
+Map north to x, altitude to y and east to z. Pass roll, pitch and yaw to `SignalPoseSource`.
+Run `TutorialVisualizeContinuous` or `TutorialVisualizeDiscrete` to save a video.
+Rendering uses GLMakie and needs a display.
 """
 @component function ContinuousClosedLoopDemo(; name = nothing, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""

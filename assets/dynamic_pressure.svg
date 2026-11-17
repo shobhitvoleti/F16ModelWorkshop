@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000" role="img" aria-labelledby="title desc">
+  <title id="title">PRESSURE</title>
+  <desc id="desc">Dynamic pressure q equals one half density times airspeed squared.</desc>
+  <!-- Dyad supplies connectors and port labels; the side lanes stay clear. -->
+  <rect x="50" y="50" width="900" height="900" rx="16" fill="#ffffff" stroke="#0a0a0a" stroke-width="16"/>
+  <text x="500" y="190" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="72" font-weight="600" fill="#0a0a0a">PRESSURE</text>
+  <g fill="none" stroke="#0a0a0a" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+    <text x="500" y="470" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="180" fill="#ff5a1f" stroke="none">q</text>
+<text x="500" y="650" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="130" fill="#0a0a0a" stroke="none">= ½ρV²</text>
+  </g>
+</svg>

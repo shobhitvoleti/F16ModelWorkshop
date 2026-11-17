@@ -1,21 +1,13 @@
 """
-Tutorial 4 — Discrete (sampled-data) closed-loop LQG.
+Tutorial 4 — Run the 100 Hz LQG controller.
 
-Sampled version of `LQGDemo` (step 3): the controller is the clocked `DiscreteStateSpace`
-with the ZOH-discretized matrices of `discrete_controller.toml` (designed by
-`TutorialDiscreteLQG` at Ts = ControllerTs). That asset also carries the trim as the
-output operating point `y0`, so `controller.y` is the absolute control command.
-
-Signal flow (all vector ports):
-  ref - measurement --> err (12 ch)
-  err --> sample (100 Hz) --> controller       continuous -> clocked (12 ch)
-  controller --> zoh --> f16plant.u_in         clocked -> continuous (5 ch)
-
-The 100 Hz clock is planted on one controller input; the controller's block clock
-carries it to the other eleven, and clock inference to the sampler and hold.
+Load the controller designed in step 3 from `discrete_controller.toml`.
+Sample the tracking error every 0.01 seconds. Hold each control command between updates.
+The saved controller includes the trim controls in its output offset `y0`.
+One clock sets the update rate for the controller, sampler and hold.
 """
 component DiscreteClosedLoopDemo
-  "Vector-I/O F16 plant, started 10 deg nose-up of trim."
+  "F16 plant with an initial pitch angle of 10 degrees."
   f16plant = F16ModelWorkshop.Plant.F16PlantModel(apply "dyad://F16ModelWorkshop/trim_point.toml", theta_init = 0.17453292519943295) {^f16plant}
   "Discrete LQG controller; trim is folded into its output operating point `y0`."
   controller = DiscreteComponents.DiscreteStateSpace(nx = 12, nu = 12, ny = 5, apply "dyad://F16ModelWorkshop/discrete_controller.toml") {^controller}
@@ -58,10 +50,11 @@ metadata {
 end
 
 """
-Tutorial 4 — fly the 100 Hz regulator.
+Tutorial 4 — Simulate recovery toward trim.
 
-Starts 10° nose-up of trim. `FlightResponse` shows pitch back at trim within 10 s while
-altitude and airspeed barely move, and the elevator as the held value of each tick.
+Start at 10 degrees pitch and simulate for 10 seconds.
+View pitch, altitude, airspeed, elevator and thrust in `FlightResponse`.
+The elevator plot shows one held value per controller update.
 """
 analysis TutorialDiscreteClosedLoop
   extends F16ModelWorkshop.FlightAnalysis(stop = 10.0, panels = ["Pitch attitude (rad), started 10 deg nose-up: f16plant.theta", "Altitude (m): f16plant.alt", "Airspeed (m/s): f16plant.vt", "Elevator (deg), one value per 100 Hz tick: f16plant.el", "Thrust (N): f16plant.T"])

@@ -17,6 +17,29 @@ function hat_weights(knots, x)
     return w
 end
 
+@testset "Dyad pressure weights at knots, midpoints and limits" begin
+    knots = knot_pressures()
+    cases = [
+        (knots[1] - 1000, [1.0, 0.0, 0.0]),
+        (knots[1], [1.0, 0.0, 0.0]),
+        ((knots[1] + knots[2]) / 2, [0.5, 0.5, 0.0]),
+        (knots[2], [0.0, 1.0, 0.0]),
+        ((knots[2] + knots[3]) / 2, [0.0, 0.5, 0.5]),
+        (knots[3], [0.0, 0.0, 1.0]),
+        (knots[3] + 1000, [0.0, 0.0, 1.0]),
+    ]
+    for (pressure, expected) in cases
+        result = F16ModelWorkshop.Tests.PressureWeightsTransient(; pressure)
+        model = symbolic_container(result)
+        weights = [result.sol[model.weights[j]][end] for j in 1:3]
+        @test SciMLBase.successful_retcode(result.sol)
+        @test weights ≈ expected atol = 1e-12
+        @test sum(weights) ≈ 1.0 atol = 1e-12
+        @test all(0.0 .<= weights .<= 1.0)
+    end
+end
+
+
 # The scheduled PID must behave as the library's standard PID whenever
 # its gains are constant, including while the output saturates.
 @testset "scheduled PID with constant gains is the standard PID" begin
@@ -93,8 +116,8 @@ end
 @testset "schedule interpolates on dynamic pressure" begin
     table = gain_table()
     knots = knot_pressures()
-    # Between two design points, on one, and below the first (held at the end column).
-    for velocity in (160.0, 152.4, 130.0)
+    # All saved columns, both interpolation intervals, and both clamped ends.
+    for velocity in (130.0, 140.0, 146.0, 152.4, 160.0, 170.0, 180.0)
         model = F16ModelWorkshop.Tests.GainScheduleInterpolates(; name = :schedule, velocity)
         sol = DyadInterface.run_analysis(DyadInterface.TransientAnalysisSpec(; model, stop = 0.5)).sol
         @test SciMLBase.successful_retcode(sol.retcode)
@@ -116,6 +139,15 @@ end
 
     # The schedule's dynamic pressure is the plant's.
     @test sol[p.qbar] ≈ dynamic_pressure.(sol[p.alt], sol[p.vt]) rtol = 1e-12
+
+    # Check interpolation throughout the flight, not only at fixed test points.
+    weights = hcat([sol[loop.schedule.scheduler.w[j]] for j in 1:3]...)
+    pressures = sol[loop.schedule.pressure.qbar]
+    expected_weights = reduce(vcat, [permutedims(hat_weights(knot_pressures(), q)) for q in pressures])
+    @test size(weights) == (500, 3)
+    @test all(0.0 .<= weights .<= 1.0)
+    @test maximum(abs, sum(weights; dims = 2) .- 1) < 1e-12
+    @test weights ≈ expected_weights atol = 1e-12
 
     # Commanded 160 m/s, holding altitude and wings level.
     @test sol[p.vt][end] ≈ 160.0 atol = 0.5

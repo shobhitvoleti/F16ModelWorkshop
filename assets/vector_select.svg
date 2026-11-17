@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000" role="img" aria-labelledby="title desc">
+  <title id="title">SELECT</title>
+  <desc id="desc">Selected entries of an input vector are routed to a shorter output vector.</desc>
+  <!-- Dyad supplies connectors and port labels; the side lanes stay clear. -->
+  <rect x="50" y="50" width="900" height="900" rx="16" fill="#ffffff" stroke="#0a0a0a" stroke-width="16"/>
+  <text x="500" y="190" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="72" font-weight="600" fill="#0a0a0a">SELECT</text>
+  <g fill="none" stroke="#0a0a0a" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 320 300 H 280 V 700 H 320 M 680 380 H 720 V 620 H 680"/>
+<path d="M 345 340 H 420 M 345 660 H 420"/>
+<path d="M 345 445 H 440 L 580 435 H 655 M 345 555 H 440 L 580 565 H 655" stroke="#ff5a1f"/>
+<circle cx="375" cy="445" r="19" fill="#ff5a1f" stroke="none"/>
+<circle cx="375" cy="555" r="19" fill="#ff5a1f" stroke="none"/>
+  </g>
+</svg>

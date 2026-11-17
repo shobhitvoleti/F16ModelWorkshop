@@ -88,8 +88,10 @@ _with_prob(setup, prob) = DyadInterface.TransientAnalysisSetup(
     (f === :prob ? prob : getfield(setup, f) for f in fieldnames(typeof(setup)))...)
 
 function DyadInterface.run_analysis(spec::TrimExportAnalysisSpec)
+    # Initialization only: a nominal positive dt skips automatic timestep estimation
+    # on the zero-length interval (which otherwise emits dt_epsilon). No step is taken.
     setup = DyadInterface.setup_analysis(TransientAnalysisSpec(;
-        name = spec.name, model = spec.model, stop = 0.0,
+        name = spec.name, model = spec.model, stop = 0.0, dt = 1.0,
         abstol = spec.abstol, reltol = spec.reltol, overrides = spec.overrides))
     setup = _with_prob(setup, remake(setup.prob; initializealg = _TRIM_INIT))
     inner = DyadInterface.run_analysis(setup)

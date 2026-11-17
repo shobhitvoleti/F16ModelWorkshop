@@ -1,17 +1,12 @@
 """
-Tutorial 3 — Continuous LQG control.
+Tutorial 3 — Continuous LQR control.
 
-Design model: the F16 plant (vector I/O) closed with an LQG regulator, trim added as a
-control offset. Analysis points must be scalar, because LQGAnalysis counts each AP name
-as one channel, not a vector's N. The vector signals therefore pass through a demux/mux
-pair at the 17 analysis points and stay vector elsewhere:
-  measurements: plant.y_out -> Demux4x3 -> 4x Demux3 -[yn..yR]-> 4x Mux3 -> Mux4x3 -> err
-  controls:     controller  -> Demux5 -> (+trim) -[uT,uEl,uAil,uRud,uLef]-> Mux5 -> plant.u_in
-The leading-edge flap has no aero effect in the plant, so the synthesis returns a zero
-gain row for `uLef`; it stays a design control so the controller covers all 5 plant inputs.
+Use state feedback to control the aircraft near trim.
+Add the trim controls to the controller output.
+Split vector signals into single channels at the analysis points.
+Keep all 5 control inputs, although this plant ignores the leading-edge flap.
 
-`TutorialLQG` linearizes the plant between these points and synthesizes the LQG gains;
-`TutorialLinearize` (step 2) linearizes the same model.
+Steps 2 and 3 use this model. Run `TutorialLQG` to design the controller.
 """
 component LQGDemo
   "Vector-I/O F16 plant at the 3000 m / 152.4 m/s trim."
@@ -35,7 +30,7 @@ component LQGDemo
   "Tracking error: ref - measurement (12 ch)."
   err = F16ModelWorkshop.VectorBlocks.VectorAdd(n = 12, k1 = 1, k2 = -1) {^err}
   "Embedded LQG controller (state space); the LQG analysis redesigns these gains."
-  controller = BlockComponents.Continuous.StateSpace(nx = 12, nu = 12, ny = 5, apply "dyad://F16ModelWorkshop/controller.toml") {^controller}
+  controller = BlockComponents.Continuous.StateSpace(nx = 12, nu = 12, ny = 5, apply "dyad://F16ModelWorkshop/controller.toml", x = initial fill(0.0, 12)) {^controller}
   "Split the 5 controller outputs into scalars for the control analysis points."
   ctrl_demux = F16ModelWorkshop.Utils.Demux5() {^ctrl_demux}
   "Trim control offset [T,el,ail,rud,lef]."
@@ -71,7 +66,6 @@ relations
   guess f16plant.u_in = trim.k
   # Broken-loop side of the 12 measurement analysis points.
   guess err.u2 = ref.k
-  guess controller.x = fill(0.0, 12)
   guess controller.u = fill(0.0, 12)
   guess controller.y = fill(0.0, 5)
   # ---- Analysis points at the scalar demux/mux taps ----
@@ -206,57 +200,24 @@ metadata {
 end
 
 """
-Tutorial 3 — synthesize the continuous LQG regulator.
+Tutorial 3 — Design the continuous LQG controller.
 
-Every weight is set per channel in that channel's units: with thrust in newtons and the
-surfaces in degrees, a uniform penalty makes thrust ~10^6 times too expensive and the
-synthesis returns a controller with no usable throttle.
+`LQGAnalysis` opens the measurement and control points before it designs the controller.
+No extra loop openings are needed here.
 
-`q1`/`q2` are **cost** weights by Bryson's rule, `1 / (largest acceptable deviation)^2`;
-bigger means the channel matters more:
+Choose each weight in the units of its signal:
+- `q1_diag`: penalize output errors.
+- `q2_diag`: penalize control effort.
+- `r1_diag`: set the assumed input disturbance variances.
+- `r2_diag`: set the assumed sensor noise variances. Larger values mean less trust.
 
-  q1  (controlled outputs)          q2  (control inputs)
-    yalt    0.5 m                     uT     3000 N
-    ypitch  5 deg                     uEl    10 deg
-    yvt     1 m/s                     uAil   10 deg
-    yalpha  2 deg                     uRud   10 deg
-    ybeta   2 deg                     uLef   10 deg
-    yQ      10 deg/s
+Cost weights use `1 / deviation^2`. Noise variances use `standard deviation^2`.
+Measured angles use radians and rates use rad/s. Surface commands use degrees.
+Thrust uses newtons. The small position weights let the aircraft move forward.
+Control weights discourage large commands but do not enforce actuator limits.
 
-`r1`/`r2` are **noise covariances**, `sigma^2`; bigger means the channel is trusted *less*:
-
-  r1  (input disturbance)           r2  (sensor noise)
-    T       200 N                     npos/epos  50 m
-    surfaces  0.5 deg                 alt        0.1 m
-                                      angles     0.2 deg
-                                      vt         0.05 m/s
-                                      alpha/beta 0.1 deg
-                                      P/Q/R      0.05 deg/s
-
-The tables list angles in degrees for readability. The vectors use the plant's units:
-radians for the measured angles and rates (`ypitch` 5 deg enters `q1_diag` as
-1/0.0873^2 = 131.3), degrees for the surface commands.
-
-The altitude and airspeed entries make the loop hold trim, not only stay stable: they are
-the only measurements of the energy state, and loosening them leaves the regulator unable
-to tell a climb from a deceleration.
-
-`yn`/`ye` carry a placeholder 1e-6 (the solver rejects a zero entry), and position is the
-loosest sensor channel: north and east position have no equilibrium in forward flight, so
-against a fixed reference the error grows with distance flown until it dominates the cost
-and the loop departs. Position belongs to an outer guidance loop.
-
-The 3000 N thrust tolerance tracks the 10 795 N trim thrust: a much larger one lets the
-synthesis buy authority by commanding negative thrust, which the plant accepts and no
-engine can deliver. The plant has no thrust limits, so this weight alone keeps the
-commanded thrust physical.
-
-The airframe is unstable in pitch (step 2); without the regulator it departs (see
-`Trimming.F16OpenLoopDeparture`).
-
-`duration = 30` is the step-response horizon: altitude settles in about 8 s and sideslip
-in about 27 s. The automatic horizon follows the ~1000 s position modes and produces a
-multi-gigabyte figure.
+Show 30 seconds of the step response. An automatic duration can be very long
+because the position modes are slow.
 """
 analysis TutorialLQG
   extends DyadControlSystems.LQGAnalysis(measurement = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"], controlled_output = ["yn", "ye", "yalt", "ypitch", "yvt", "yalpha", "ybeta", "yQ"], control_input = ["uT", "uEl", "uAil", "uRud", "uLef"], loop_openings = [], q1_diag = [1e-6, 1e-6, 4.0, 131.312, 1.0, 820.702, 820.702, 32.8281], q2_diag = [1.1111111e-7, 0.01, 0.01, 0.01, 0.01], r1_diag = [40000.0, 0.25, 0.25, 0.25, 0.25], r2_diag = [2500.0, 2500.0, 0.01, 1.2184697e-5, 1.2184697e-5, 1.2184697e-5, 0.0025, 3.0461742e-6, 3.0461742e-6, 7.6154355e-7, 7.6154355e-7, 7.6154355e-7], duration = 30.0)
@@ -265,10 +226,10 @@ relations
 end
 
 """
-Tutorial 3b — the same LQG design, ZOH-discretized at `ControllerTs` (100 Hz).
+Tutorial 3b — Design the 100 Hz LQG controller for step 4.
 
-Produces the sampled-data controller that step 4 simulates. The weights are those of
-`TutorialLQG`; change both together.
+Convert the plant to discrete time using a zero-order hold, then design the controller.
+Use `ControllerTs` as the sample period. Keep the weights in sync with `TutorialLQG`.
 """
 analysis TutorialDiscreteLQG
   extends DyadControlSystems.LQGAnalysis(measurement = ["yn", "ye", "yalt", "yphi", "ypitch", "ypsi", "yvt", "yalpha", "ybeta", "yP", "yQ", "yR"], controlled_output = ["yn", "ye", "yalt", "ypitch", "yvt", "yalpha", "ybeta", "yQ"], control_input = ["uT", "uEl", "uAil", "uRud", "uLef"], loop_openings = [], q1_diag = [1e-6, 1e-6, 4.0, 131.312, 1.0, 820.702, 820.702, 32.8281], q2_diag = [1.1111111e-7, 0.01, 0.01, 0.01, 0.01], r1_diag = [40000.0, 0.25, 0.25, 0.25, 0.25], r2_diag = [2500.0, 2500.0, 0.01, 1.2184697e-5, 1.2184697e-5, 1.2184697e-5, 0.0025, 3.0461742e-6, 3.0461742e-6, 7.6154355e-7, 7.6154355e-7, 7.6154355e-7], duration = 30.0, disc = "zoh", Ts = ControllerTs)

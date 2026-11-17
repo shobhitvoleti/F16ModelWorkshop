@@ -20,10 +20,10 @@ relations
   connect(clock.y, controller.u[1]) {^id2}
   connect(controller.y, y) {^id3}
 metadata {
-  "Dyad": {"icons": {"default": "dyad://Dyad/Default.svg"}},
+  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/clocked_discrete_controller.svg"}, "labels": [{"label": "$(instance)", "x": 500, "y": 1100, "attrs": {"font-size": "110", "font-family": "Helvetica, Arial, sans-serif"}}]},
   "_links": {
-    "u": {"Dyad": {"placement": {"icon": {"x1": -50, "y1": 450, "x2": 50, "y2": 550}, "diagram": {"x1": 100, "y1": 450, "x2": 200, "y2": 550}}}},
-    "y": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 450, "x2": 1050, "y2": 550}, "diagram": {"x1": 800, "y1": 450, "x2": 900, "y2": 550}}}},
+    "u": {"Dyad": {"placement": {"icon": {"x1": 0, "y1": 450, "x2": 100, "y2": 550}, "diagram": {"x1": 100, "y1": 450, "x2": 200, "y2": 550}}}},
+    "y": {"Dyad": {"placement": {"icon": {"x1": 900, "y1": 450, "x2": 1000, "y2": 550}, "diagram": {"x1": 800, "y1": 450, "x2": 900, "y2": 550}}}},
     "controller": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 400, "y1": 400, "x2": 600, "y2": 600, "rot": 0}}}},
     "clock": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 430, "y1": 690, "x2": 570, "y2": 830, "rot": 0}}}},
     "id1": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},

@@ -58,15 +58,27 @@ relations
   end
   built = F16ModelWorkshop.EnvelopeMPC.grid_bank_built(exitflag, bank)
 metadata {
-  "Dyad": {"icons": {"default": "dyad://Dyad/Default.svg"}},
+  "Dyad": {
+    "icons": {"default": "dyad://F16ModelWorkshop/grid_mpc_optimizer.svg"},
+    "labels": [
+      {"label": "$(instance)", "x": 500, "y": 1100, "attrs": {"font-size": "110", "font-family": "Helvetica, Arial, sans-serif"}},
+      {"label": "wv", "x": 130, "y": 112, "layer": "icon", "attrs": {"font-size": "56", "text-anchor": "start"}},
+      {"label": "wh", "x": 130, "y": 362, "layer": "icon", "attrs": {"font-size": "56", "text-anchor": "start"}},
+      {"label": "xhat", "x": 130, "y": 662, "layer": "icon", "attrs": {"font-size": "56", "text-anchor": "start"}},
+      {"label": "r", "x": 130, "y": 912, "layer": "icon", "attrs": {"font-size": "56", "text-anchor": "start"}},
+      {"label": "u", "x": 870, "y": 312, "layer": "icon", "attrs": {"font-size": "56", "text-anchor": "end"}},
+      {"label": "flag", "x": 870, "y": 562, "layer": "icon", "attrs": {"font-size": "56", "text-anchor": "end"}},
+      {"label": "nodes", "x": 870, "y": 812, "layer": "icon", "attrs": {"font-size": "56", "text-anchor": "end"}}
+    ]
+  },
   "_links": {
-    "wv": {"Dyad": {"placement": {"icon": {"x1": -50, "y1": 50, "x2": 50, "y2": 150}}}},
-    "wh": {"Dyad": {"placement": {"icon": {"x1": -50, "y1": 300, "x2": 50, "y2": 400}}}},
-    "xhat": {"Dyad": {"placement": {"icon": {"x1": -50, "y1": 600, "x2": 50, "y2": 700}}}},
-    "r": {"Dyad": {"placement": {"icon": {"x1": -50, "y1": 850, "x2": 50, "y2": 950}}}},
-    "u": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 250, "x2": 1050, "y2": 350}}}},
-    "exitflag": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 500, "x2": 1050, "y2": 600}}}},
-    "built": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 750, "x2": 1050, "y2": 850}}}}
+    "wv": {"Dyad": {"placement": {"icon": {"x1": 0, "y1": 50, "x2": 100, "y2": 150}}}},
+    "wh": {"Dyad": {"placement": {"icon": {"x1": 0, "y1": 300, "x2": 100, "y2": 400}}}},
+    "xhat": {"Dyad": {"placement": {"icon": {"x1": 0, "y1": 600, "x2": 100, "y2": 700}}}},
+    "r": {"Dyad": {"placement": {"icon": {"x1": 0, "y1": 850, "x2": 100, "y2": 950}}}},
+    "u": {"Dyad": {"placement": {"icon": {"x1": 900, "y1": 250, "x2": 1000, "y2": 350}}}},
+    "exitflag": {"Dyad": {"placement": {"icon": {"x1": 900, "y1": 500, "x2": 1000, "y2": 600}}}},
+    "built": {"Dyad": {"placement": {"icon": {"x1": 900, "y1": 750, "x2": 1000, "y2": 850}}}}
   }
 }
 end
@@ -194,7 +206,7 @@ relations
   connect(cmd_map.y, f16plant.u_in) {^id16}
 metadata {
   "_links": {
-    "f16plant": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1900, "y1": 500, "x2": 2000, "y2": 600, "rot": 0}}}},
+    "f16plant": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1900, "y1": 410, "x2": 2000, "y2": 510, "rot": 0}}}},
     "sched_vt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 650, "y1": 450, "x2": 750, "y2": 550, "rot": 0}}}},
     "sched_alt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 650, "y1": 600, "x2": 750, "y2": 700, "rot": 0}}}},
     "optimizer": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1200, "y1": 400, "x2": 1400, "y2": 600, "rot": 0}}}},
@@ -202,25 +214,25 @@ metadata {
     "meas_select": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 150, "y1": 850, "x2": 250, "y2": 950, "rot": 0}}}},
     "sample": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 350, "y1": 850, "x2": 450, "y2": 950, "rot": 0}}}},
     "vt_cmd": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 100, "y1": 123, "x2": 200, "y2": 223, "rot": 0}}}},
-    "alt_cmd": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 100, "y1": 250, "x2": 200, "y2": 350, "rot": 0}}}},
+    "alt_cmd": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 100, "y1": 260, "x2": 200, "y2": 360, "rot": 0}}}},
     "sr_vt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 270, "y1": 123, "x2": 370, "y2": 223, "rot": 0}}}},
-    "sr_alt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 270, "y1": 250, "x2": 370, "y2": 350, "rot": 0}}}},
+    "sr_alt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 270, "y1": 260, "x2": 370, "y2": 360, "rot": 0}}}},
     "alpha_ref": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 650, "y1": 300, "x2": 750, "y2": 400, "rot": 0}}}},
     "ref_map": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 150, "x2": 1000, "y2": 250, "rot": 0}}}},
-    "zoh": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1500, "y1": 500, "x2": 1600, "y2": 600, "rot": 0}}}},
-    "cmd_map": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1700, "y1": 500, "x2": 1800, "y2": 600, "rot": 0}}}},
-    "id1": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2050, "y": 550}, {"x": 2050, "y": 1000}, {"x": 30, "y": 1000}, {"x": 30, "y": 900}], "E": 2}], "renderStyle": "standard"}},
+    "zoh": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1500, "y1": 410, "x2": 1600, "y2": 510, "rot": 0}}}},
+    "cmd_map": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1700, "y1": 410, "x2": 1800, "y2": 510, "rot": 0}}}},
+    "id1": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2050, "y": 460}, {"x": 2050, "y": 1020}, {"x": 80, "y": 1020}, {"x": 80, "y": 900}], "E": 2}], "renderStyle": "standard"}},
     "id2": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id3": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1100, "y": 900}, {"x": 1100, "y": 520}], "E": 2}], "renderStyle": "standard"}},
-    "id4": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 520, "y": 900}, {"x": 520, "y": 500}], "E": -1}, {"S": -1, "M": [], "E": 2}, {"S": -1, "M": [{"x": 520, "y": 330}], "E": 3}, {"S": -1, "M": [{"x": 520, "y": 800}], "E": 4}], "junctions": [{"x": 520, "y": 500}], "renderStyle": "standard"}},
-    "id5": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 560, "y": 900}, {"x": 560, "y": 650}], "E": -1}, {"S": -1, "M": [], "E": 2}, {"S": -1, "M": [{"x": 560, "y": 370}], "E": 3}], "junctions": [{"x": 560, "y": 650}], "renderStyle": "standard"}},
-    "id6": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 900, "y": 500}, {"x": 900, "y": 410}], "E": 2}], "renderStyle": "standard"}},
+    "id3": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1100, "y": 900}, {"x": 1100, "y": 530}], "E": 2}], "renderStyle": "standard"}},
+    "id4": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 445, "y": 840}, {"x": 520, "y": 840}], "E": -2}, {"S": -2, "M": [], "E": -1}, {"S": -1, "M": [], "E": 2}, {"S": -1, "M": [{"x": 520, "y": 320}], "E": 3}, {"S": -2, "M": [], "E": 4}], "junctions": [{"x": 520, "y": 500}, {"x": 520, "y": 800}], "renderStyle": "standard"}},
+    "id5": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 445, "y": 950}, {"x": 560, "y": 950}], "E": -1}, {"S": -1, "M": [], "E": 2}, {"S": -1, "M": [{"x": 560, "y": 380}], "E": 3}], "junctions": [{"x": 560, "y": 650}], "renderStyle": "standard"}},
+    "id6": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 900, "y": 500}, {"x": 900, "y": 420}], "E": 2}], "renderStyle": "standard"}},
     "id7": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 950, "y": 650}, {"x": 950, "y": 470}], "E": 2}], "renderStyle": "standard"}},
     "id8": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
     "id9": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id10": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 850, "y": 173}, {"x": 850, "y": 170}], "E": 2}], "renderStyle": "standard"}},
-    "id11": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 820, "y": 300}, {"x": 820, "y": 200}], "E": 2}], "renderStyle": "standard"}},
-    "id12": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 800, "y": 350}, {"x": 800, "y": 230}], "E": 2}], "renderStyle": "standard"}},
+    "id10": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 895, "y": 173}], "E": 2}], "renderStyle": "standard"}},
+    "id11": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 450, "y": 310}, {"x": 450, "y": 270}, {"x": 820, "y": 270}, {"x": 820, "y": 200}], "E": 2}], "renderStyle": "standard"}},
+    "id12": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 850, "y": 350}, {"x": 850, "y": 240}, {"x": 895, "y": 240}], "E": 2}], "renderStyle": "standard"}},
     "id13": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1150, "y": 200}, {"x": 1150, "y": 580}], "E": 2}], "renderStyle": "standard"}},
     "id14": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
     "id15": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},

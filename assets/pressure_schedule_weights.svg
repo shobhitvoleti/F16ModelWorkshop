@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000" role="img" aria-labelledby="title desc">
+  <title id="title">WEIGHTS</title>
+  <desc id="desc">Three adjacent piecewise-linear interpolation weights, with clamped end weights and the middle hat highlighted.</desc>
+  <!-- Dyad supplies connectors and port labels; the side lanes stay clear. -->
+  <rect x="50" y="50" width="900" height="900" rx="16" fill="#ffffff" stroke="#0a0a0a" stroke-width="16"/>
+  <text x="500" y="190" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="72" font-weight="600" fill="#0a0a0a">WEIGHTS</text>
+  <g fill="none" stroke="#0a0a0a" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 280 680 H 720"/>
+<path d="M 280 390 H 330 L 500 660 M 500 660 L 670 390 H 720"/>
+<path d="M 330 660 L 500 390 L 670 660" stroke="#ff5a1f"/>
+<text x="500" y="320" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="110" fill="#0a0a0a" stroke="none">w</text>
+  </g>
+</svg>

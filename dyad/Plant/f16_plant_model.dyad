@@ -218,12 +218,12 @@ relations
   der(theta) = Q * cphi - R * sphi
   der(psi) = (Q * sphi + R * cphi) / ct
 metadata {
-  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/f16_plant_model.svg"}},
+  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/f16_plant_model.svg"}, "labels": [{"label": "$(instance)", "x": 500, "y": 1100, "attrs": {"font-size": "110", "font-family": "Helvetica, Arial, sans-serif"}}]},
   "_links": {
     "u_in": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 0, "y1": 450, "x2": 100, "y2": 550, "rot": 0}
+          "icon": {"iconName": "default", "x1": 0, "y1": 450, "x2": 100, "y2": 550, "rot": 0}
         },
         "tags": []
       }
@@ -231,7 +231,7 @@ metadata {
     "y_out": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 550, "rot": 0}
+          "icon": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 550, "rot": 0}
         },
         "tags": []
       }
@@ -252,10 +252,10 @@ component F16PlantFromState
   "Initial state [npos, epos, alt, phi, theta, psi, vt, alpha, beta, P, Q, R]; defaults to those of F16PlantModel"
   parameter x0::Real[12] = [0.0, 0.0, 1000.0, 0.0, 0.0591, 0.0, 152.4, 0.0591, 0.0, 0.0, 0.0, 0.0]
 metadata {
-  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/f16_plant_model.svg"}},
+  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/f16_plant_model.svg"}, "labels": [{"label": "$(instance)", "x": 500, "y": 1100, "attrs": {"font-size": "110", "font-family": "Helvetica, Arial, sans-serif"}}]},
   "_links": {
-    "u_in": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 450, "x2": 100, "y2": 550, "rot": 0}}, "tags": []}},
-    "y_out": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 550, "rot": 0}}, "tags": []}}
+    "u_in": {"Dyad": {"placement": {"icon": {"iconName": "default", "x1": 0, "y1": 450, "x2": 100, "y2": 550, "rot": 0}}, "tags": []}},
+    "y_out": {"Dyad": {"placement": {"icon": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 550, "rot": 0}}, "tags": []}}
   }
 }
 end

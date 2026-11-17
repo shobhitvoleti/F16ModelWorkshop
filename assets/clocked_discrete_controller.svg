@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000" role="img" aria-labelledby="title desc">
+  <title id="title">CONTROL</title>
+  <desc id="desc">Discrete state-space matrices A, B, C and D, with a clock pulse below.</desc>
+  <!-- Dyad supplies connectors and port labels; the side lanes stay clear. -->
+  <rect x="50" y="50" width="900" height="900" rx="16" fill="#ffffff" stroke="#0a0a0a" stroke-width="16"/>
+  <text x="500" y="190" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="72" font-weight="600" fill="#0a0a0a">CONTROL</text>
+  <g fill="none" stroke="#0a0a0a" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 330 300 H 280 V 620 H 330 M 670 300 H 720 V 620 H 670"/>
+<g stroke="none" fill="#0a0a0a" font-family="Helvetica, Arial, sans-serif" font-size="116" text-anchor="middle">
+  <text x="410" y="425">A</text><text x="590" y="425">B</text>
+  <text x="410" y="580">C</text><text x="590" y="580">D</text>
+</g>
+<path d="M 300 755 H 390 V 690 H 500 V 755 H 610 V 690 H 700" stroke="#ff5a1f"/>
+  </g>
+</svg>

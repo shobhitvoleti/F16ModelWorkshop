@@ -16,12 +16,12 @@ relations
   guess u2 = u_guess[2]
   guess u3 = u_guess[3]
 metadata {
-  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/mux3.svg"}},
+  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/mux3.svg"}, "labels": [{"label": "$(instance)", "x": 500, "y": 1100, "attrs": {"font-size": "110", "font-family": "Helvetica, Arial, sans-serif"}}]},
   "_links": {
-    "u1": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 150, "x2": 100, "y2": 250, "rot": 0}}, "tags": []}},
-    "u2": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 450, "x2": 100, "y2": 550, "rot": 0}}, "tags": []}},
-    "u3": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 750, "x2": 100, "y2": 850, "rot": 0}}, "tags": []}},
-    "y": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 550, "rot": 0}}, "tags": []}}
+    "u1": {"Dyad": {"placement": {"icon": {"iconName": "default", "x1": 0, "y1": 150, "x2": 100, "y2": 250, "rot": 0}}, "tags": []}},
+    "u2": {"Dyad": {"placement": {"icon": {"iconName": "default", "x1": 0, "y1": 450, "x2": 100, "y2": 550, "rot": 0}}, "tags": []}},
+    "u3": {"Dyad": {"placement": {"icon": {"iconName": "default", "x1": 0, "y1": 750, "x2": 100, "y2": 850, "rot": 0}}, "tags": []}},
+    "y": {"Dyad": {"placement": {"icon": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 550, "rot": 0}}, "tags": []}}
   }
 }
 end
@@ -46,13 +46,13 @@ relations
   guess u3 = [u_guess[7], u_guess[8], u_guess[9]]
   guess u4 = [u_guess[10], u_guess[11], u_guess[12]]
 metadata {
-  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/mux4x3.svg"}},
+  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/mux4x3.svg"}, "labels": [{"label": "$(instance)", "x": 500, "y": 1100, "attrs": {"font-size": "110", "font-family": "Helvetica, Arial, sans-serif"}}]},
   "_links": {
-    "u1": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 75, "x2": 100, "y2": 175, "rot": 0}}, "tags": []}},
-    "u2": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 325, "x2": 100, "y2": 425, "rot": 0}}, "tags": []}},
-    "u3": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 575, "x2": 100, "y2": 675, "rot": 0}}, "tags": []}},
-    "u4": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 825, "x2": 100, "y2": 925, "rot": 0}}, "tags": []}},
-    "y": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 550, "rot": 0}}, "tags": []}}
+    "u1": {"Dyad": {"placement": {"icon": {"iconName": "default", "x1": 0, "y1": 75, "x2": 100, "y2": 175, "rot": 0}}, "tags": []}},
+    "u2": {"Dyad": {"placement": {"icon": {"iconName": "default", "x1": 0, "y1": 325, "x2": 100, "y2": 425, "rot": 0}}, "tags": []}},
+    "u3": {"Dyad": {"placement": {"icon": {"iconName": "default", "x1": 0, "y1": 575, "x2": 100, "y2": 675, "rot": 0}}, "tags": []}},
+    "u4": {"Dyad": {"placement": {"icon": {"iconName": "default", "x1": 0, "y1": 825, "x2": 100, "y2": 925, "rot": 0}}, "tags": []}},
+    "y": {"Dyad": {"placement": {"icon": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 550, "rot": 0}}, "tags": []}}
   }
 }
 end
@@ -72,14 +72,14 @@ relations
   y4 = u[4]
   y5 = u[5]
 metadata {
-  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/demux5.svg"}},
+  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/demux5.svg"}, "labels": [{"label": "$(instance)", "x": 500, "y": 1100, "attrs": {"font-size": "110", "font-family": "Helvetica, Arial, sans-serif"}}]},
   "_links": {
-    "u": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 0, "y1": 450, "x2": 100, "y2": 550, "rot": 0}}, "tags": []}},
-    "y1": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 50, "x2": 1000, "y2": 150, "rot": 0}}, "tags": []}},
-    "y2": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 250, "x2": 1000, "y2": 350, "rot": 0}}, "tags": []}},
-    "y3": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 550, "rot": 0}}, "tags": []}},
-    "y4": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 650, "x2": 1000, "y2": 750, "rot": 0}}, "tags": []}},
-    "y5": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 900, "y1": 850, "x2": 1000, "y2": 950, "rot": 0}}, "tags": []}}
+    "u": {"Dyad": {"placement": {"icon": {"iconName": "default", "x1": 0, "y1": 450, "x2": 100, "y2": 550, "rot": 0}}, "tags": []}},
+    "y1": {"Dyad": {"placement": {"icon": {"iconName": "default", "x1": 900, "y1": 50, "x2": 1000, "y2": 150, "rot": 0}}, "tags": []}},
+    "y2": {"Dyad": {"placement": {"icon": {"iconName": "default", "x1": 900, "y1": 250, "x2": 1000, "y2": 350, "rot": 0}}, "tags": []}},
+    "y3": {"Dyad": {"placement": {"icon": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 550, "rot": 0}}, "tags": []}},
+    "y4": {"Dyad": {"placement": {"icon": {"iconName": "default", "x1": 900, "y1": 650, "x2": 1000, "y2": 750, "rot": 0}}, "tags": []}},
+    "y5": {"Dyad": {"placement": {"icon": {"iconName": "default", "x1": 900, "y1": 850, "x2": 1000, "y2": 950, "rot": 0}}, "tags": []}}
   }
 }
 end
@@ -106,12 +106,12 @@ relations
   guess u4 = u_guess[4]
   guess u5 = u_guess[5]
 metadata {
-  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/mux5.svg"}},
+  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/mux5.svg"}, "labels": [{"label": "$(instance)", "x": 500, "y": 1100, "attrs": {"font-size": "110", "font-family": "Helvetica, Arial, sans-serif"}}]},
   "_links": {
     "u1": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 0, "y1": 0, "x2": 100, "y2": 100, "rot": 0}
+          "icon": {"iconName": "default", "x1": 0, "y1": 0, "x2": 100, "y2": 100, "rot": 0}
         },
         "tags": []
       }
@@ -119,7 +119,7 @@ metadata {
     "u2": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 0, "y1": 210, "x2": 100, "y2": 310, "rot": 0}
+          "icon": {"iconName": "default", "x1": 0, "y1": 210, "x2": 100, "y2": 310, "rot": 0}
         },
         "tags": []
       }
@@ -127,7 +127,7 @@ metadata {
     "u3": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 0, "y1": 450, "x2": 100, "y2": 550, "rot": 0}
+          "icon": {"iconName": "default", "x1": 0, "y1": 450, "x2": 100, "y2": 550, "rot": 0}
         },
         "tags": []
       }
@@ -135,7 +135,7 @@ metadata {
     "u4": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 0, "y1": 670, "x2": 100, "y2": 770, "rot": 0}
+          "icon": {"iconName": "default", "x1": 0, "y1": 670, "x2": 100, "y2": 770, "rot": 0}
         },
         "tags": []
       }
@@ -143,7 +143,7 @@ metadata {
     "u5": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 0, "y1": 900, "x2": 100, "y2": 1000, "rot": 0}
+          "icon": {"iconName": "default", "x1": 0, "y1": 900, "x2": 100, "y2": 1000, "rot": 0}
         },
         "tags": []
       }
@@ -151,7 +151,7 @@ metadata {
     "y": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 550, "rot": 0}
+          "icon": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 550, "rot": 0}
         },
         "tags": []
       }
@@ -174,13 +174,13 @@ relations
   y4 = [u[10], u[11], u[12]]
 metadata {
   "Dyad": {
-    "icons": {"default": "dyad://F16ModelWorkshop/demux4x3.svg"}
+    "icons": {"default": "dyad://F16ModelWorkshop/demux4x3.svg"}, "labels": [{"label": "$(instance)", "x": 500, "y": 1100, "attrs": {"font-size": "110", "font-family": "Helvetica, Arial, sans-serif"}}]
   },
   "_links": {
     "u": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 0, "y1": 450, "x2": 100, "y2": 550, "rot": 0}
+          "icon": {"iconName": "default", "x1": 0, "y1": 450, "x2": 100, "y2": 550, "rot": 0}
         },
         "tags": []
       }
@@ -188,7 +188,7 @@ metadata {
     "y1": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 900, "y1": 75, "x2": 1000, "y2": 175, "rot": 0}
+          "icon": {"iconName": "default", "x1": 900, "y1": 75, "x2": 1000, "y2": 175, "rot": 0}
         },
         "tags": []
       }
@@ -196,7 +196,7 @@ metadata {
     "y2": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 900, "y1": 325, "x2": 1000, "y2": 425, "rot": 0}
+          "icon": {"iconName": "default", "x1": 900, "y1": 325, "x2": 1000, "y2": 425, "rot": 0}
         },
         "tags": []
       }
@@ -204,7 +204,7 @@ metadata {
     "y3": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 900, "y1": 575, "x2": 1000, "y2": 675, "rot": 0}
+          "icon": {"iconName": "default", "x1": 900, "y1": 575, "x2": 1000, "y2": 675, "rot": 0}
         },
         "tags": []
       }
@@ -212,7 +212,7 @@ metadata {
     "y4": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 900, "y1": 825, "x2": 1000, "y2": 925, "rot": 0}
+          "icon": {"iconName": "default", "x1": 900, "y1": 825, "x2": 1000, "y2": 925, "rot": 0}
         },
         "tags": []
       }
@@ -233,13 +233,13 @@ relations
   y3 = u[3]
 metadata {
   "Dyad": {
-    "icons": {"default": "dyad://F16ModelWorkshop/demux3.svg"}
+    "icons": {"default": "dyad://F16ModelWorkshop/demux3.svg"}, "labels": [{"label": "$(instance)", "x": 500, "y": 1100, "attrs": {"font-size": "110", "font-family": "Helvetica, Arial, sans-serif"}}]
   },
   "_links": {
     "u": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 0, "y1": 450, "x2": 100, "y2": 550, "rot": 0}
+          "icon": {"iconName": "default", "x1": 0, "y1": 450, "x2": 100, "y2": 550, "rot": 0}
         },
         "tags": []
       }
@@ -247,7 +247,7 @@ metadata {
     "y1": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 900, "y1": 150, "x2": 1000, "y2": 250, "rot": 0}
+          "icon": {"iconName": "default", "x1": 900, "y1": 150, "x2": 1000, "y2": 250, "rot": 0}
         },
         "tags": []
       }
@@ -255,7 +255,7 @@ metadata {
     "y2": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 550, "rot": 0}
+          "icon": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 550, "rot": 0}
         },
         "tags": []
       }
@@ -263,7 +263,7 @@ metadata {
     "y3": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 900, "y1": 750, "x2": 1000, "y2": 850, "rot": 0}
+          "icon": {"iconName": "default", "x1": 900, "y1": 750, "x2": 1000, "y2": 850, "rot": 0}
         },
         "tags": []
       }
