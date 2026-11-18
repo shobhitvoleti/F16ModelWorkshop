@@ -5,33 +5,34 @@
 
 
 @doc Markdown.doc"""
-   PressureScheduleWeights(; name, rho_grid, __overrides)
+   PressureScheduleWeights(; name, qbar_knots, __overrides)
 
-Blend three table columns using dynamic pressure, once per controller tick.
+Weights of three design points from dynamic pressure, once per controller tick.
 
 Below the first knot use [1, 0, 0]; above the last use [0, 0, 1].
 Between knots 1 and 2 use [1-a, a, 0], where a is the fraction across that interval.
 Between knots 2 and 3 use [0, 1-b, b]. Weights are nonnegative and sum to one.
+The block takes exactly three knots; another number of design points needs another block.
 
 ## Parameters:
 
 | Name         | Description                         | Units  |   Default value |
 | ------------ | ----------------------------------- | ------ | --------------- |
-| `rho_grid`         | Three strictly increasing pressure knots, Pa                         | --  |    |
+| `qbar_knots`         | Dynamic pressure of the three design points, Pa, strictly increasing                         | --  |    |
 
 ## Connectors
 
- * `rho` - This connector represents a real signal as an input to a component ([`RealInput`](@ref))
+ * `qbar` - This connector represents a real signal as an input to a component ([`RealInput`](@ref))
  * `w` - This connector represents a real signal as an output from a component ([`RealOutput`](@ref))
 
 ## Variables
 
 | Name         | Description                         | Units  | 
 | ------------ | ----------------------------------- | ------ |
-| `a`         |                          | --  |
-| `b`         |                          | --  |
+| `a`         | Fraction of the way from knot 1 to knot 2, clamped to [0, 1]                         | --  |
+| `b`         | Fraction of the way from knot 2 to knot 3, clamped to [0, 1]                         | --  |
 """
-@component function PressureScheduleWeights(; name = nothing, var"rho_grid"=nothing, __overrides = Dict{String, Any}())
+@component function PressureScheduleWeights(; name = nothing, var"qbar_knots"=nothing, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -50,7 +51,7 @@ Between knots 2 and 3 use [0, 1-b, b]. Weights are nonnegative and sum to one.
   __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
 
   ### Keyword argument overrides
-  haskey(__overrides, "rho_grid") && (rho_grid = pop!(__overrides, "rho_grid"))
+  haskey(__overrides, "qbar_knots") && (qbar_knots = pop!(__overrides, "qbar_knots"))
 
   ### Structural Parameters (functions)
 
@@ -65,19 +66,19 @@ Between knots 2 and 3 use [0, 1-b, b]. Weights are nonnegative and sum to one.
   ### Deferred assignment (default values that depend on final parameters)
 
   ### Symbolic Parameters
-  __local__rho_grid = rho_grid
-  append!(__params, @parameters (rho_grid[1:3]::Real), [description = "Three strictly increasing pressure knots, Pa"])
-  __dyad_seed_parameter!(__initial_conditions, __bindings, rho_grid, __local__rho_grid)
+  __local__qbar_knots = qbar_knots
+  append!(__params, @parameters (qbar_knots[1:3]::Real), [description = "Dynamic pressure of the three design points, Pa, strictly increasing"])
+  __dyad_seed_parameter!(__initial_conditions, __bindings, qbar_knots, __local__qbar_knots)
 
   ### Final Parameters (assignments)
 
   ### Final Path Parameters
-  append!(__vars, @variables (rho(t)::Real), [input = true])
+  append!(__vars, @variables (qbar(t)::Real), [input = true])
   append!(__vars, @variables (w(t)[1:3]::Real), [output = true])
 
   ### Variables (declarations)
-  append!(__vars, @variables (a(t)::Real))
-  append!(__vars, @variables (b(t)::Real))
+  append!(__vars, @variables (a(t)::Real), [description = "Fraction of the way from knot 1 to knot 2, clamped to [0, 1]"])
+  append!(__vars, @variables (b(t)::Real), [description = "Fraction of the way from knot 2 to knot 3, clamped to [0, 1]"])
 
   ### Variables (assignments)
   __ovr_a = pop!(__overrides, "a", nothing); isnothing(__ovr_a) || push!(__eqs, a ~ __ovr_a)
@@ -103,12 +104,12 @@ Between knots 2 and 3 use [0, 1-b, b]. Weights are nonnegative and sum to one.
 
   ### Assertions
   __assertions = []
-  push!(__assertions, (rho_grid[2] > rho_grid[1] => "Pressure knots must increase (at 07_gain_scheduled_pid.dyad:18:3)"))
-  push!(__assertions, (rho_grid[3] > rho_grid[2] => "Pressure knots must increase (at 07_gain_scheduled_pid.dyad:19:3)"))
+  push!(__assertions, (qbar_knots[2] > qbar_knots[1] => "Pressure knots must increase (at 07_gain_scheduled_pid.dyad:21:3)"))
+  push!(__assertions, (qbar_knots[3] > qbar_knots[2] => "Pressure knots must increase (at 07_gain_scheduled_pid.dyad:22:3)"))
 
   ### Equations
-  push!(__eqs, a ~ min(1.0, max(0.0, (rho - rho_grid[1]) / (rho_grid[2] - rho_grid[1]))))
-  push!(__eqs, b ~ min(1.0, max(0.0, (rho - rho_grid[2]) / (rho_grid[3] - rho_grid[2]))))
+  push!(__eqs, a ~ min(1.0, max(0.0, (qbar - qbar_knots[1]) / (qbar_knots[2] - qbar_knots[1]))))
+  push!(__eqs, b ~ min(1.0, max(0.0, (qbar - qbar_knots[2]) / (qbar_knots[3] - qbar_knots[2]))))
   push!(__eqs, w[1] ~ 1.0 - a)
   push!(__eqs, w[2] ~ a - b)
   push!(__eqs, w[3] ~ b)

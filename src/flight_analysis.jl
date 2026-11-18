@@ -110,17 +110,30 @@ function flight_panels(fsol::FlightAnalysisSolution)
     end
 end
 
+"""
+Plotly draws one legend for a whole multi-panel figure, inside the top-right corner of the
+plotting area unless told otherwise. Passed as `extra_plot_kwargs`, this moves it to the
+right of every panel, off the data. Other backends ignore it.
+"""
+const PLOTLY_OUTER_LEGEND = Dict{Symbol, Any}(
+    :legend => Dict{Symbol, Any}(:x => 1.02, :xanchor => "left", :y => 1.0, :yanchor => "top"))
+
 function flight_figure(fsol::FlightAnalysisSolution)
     panels = flight_panels(fsol)
+    # The panels share one legend, so every signal gets its own color across the figure.
+    color = 0
     plots = map(enumerate(panels)) do (i, (title, series))
-        p = Plots.plot(; title, titlefontsize = 10, legend = :best, left_margin = 12Plots.mm,
+        p = Plots.plot(; title, titlefontsize = 10, legend = :outerright, left_margin = 12Plots.mm,
             xlabel = i == length(panels) ? "t (s)" : "")
         for (path, t, values, clocked) in series
-            Plots.plot!(p, t, values; label = path, seriestype = clocked ? :steppost : :path)
+            color += 1
+            Plots.plot!(p, t, values; label = path, color, linewidth = 2,
+                seriestype = clocked ? :steppost : :path)
         end
         p
     end
-    return Plots.plot(plots...; layout = (length(plots), 1), size = (900, 230 * length(plots)))
+    return Plots.plot(plots...; layout = (length(plots), 1), size = (900, 230 * length(plots)),
+        extra_plot_kwargs = PLOTLY_OUTER_LEGEND)
 end
 
 DyadInterface.symbolic_container(sol::FlightAnalysisSolution) = symbolic_container(sol.inner)

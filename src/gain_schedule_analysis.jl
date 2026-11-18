@@ -59,42 +59,56 @@ function _crossover(L)
     return (wpm[1], mod(pm[1], 360))
 end
 
+# `lo` and `hi` widened by `fraction` of their span on each side, so markers and their
+# labels at the ends of the data stay inside the axes.
+function _padded(lo, hi, fraction)
+    pad = fraction * (hi - lo)
+    return (lo - pad, hi + pad)
+end
+
 function gain_schedule_figure(sol::GainScheduleAnalysisSolution)
     rows = Dict(r => i for (i, r) in enumerate(ScheduledPID.SCHEDULE_ROWS))
     q = sol.pressures ./ 1000
     labels = string.(sol.spec.velocities, " m/s")
-    panels = map(((:K_pitch, "Pitch gain (deg of elevator per rad)"),
-                  (:K_alt, "Altitude gain (rad of pitch per m)"),
-                  (:K_speed, "Airspeed gain (kN of thrust per m/s)"))) do (row, title)
+    panels = map(enumerate(((:K_pitch, "Pitch gain (deg of elevator per rad)"),
+                            (:K_alt, "Altitude gain (rad of pitch per m)"),
+                            (:K_speed, "Airspeed gain (kN of thrust per m/s)")))) do (i, (row, title))
         k = sol.table[rows[row], :]
-        p = Plots.plot(q, k; label = "interpolated", title, titlefontsize = 10,
-            left_margin = 12Plots.mm, legend = :best)
-        Plots.scatter!(p, q, k; label = "design points", series_annotations = Plots.text.(labels, 7, :bottom))
+        # One legend serves every panel, so only the first panel's series are named.
+        p = Plots.plot(q, k; label = i == 1 ? "interpolated" : "", color = 1, linewidth = 2, title,
+            titlefontsize = 10, left_margin = 12Plots.mm, legend = :outerright,
+            xlims = _padded(extrema(q)..., 0.06), ylims = _padded(extrema(k)..., 0.25))
+        Plots.scatter!(p, q, k; label = i == 1 ? "design points" : "", color = 2,
+            series_annotations = Plots.text.(labels, 7, :bottom))
         p
     end
     Plots.xlabel!(panels[end], "dynamic pressure (kPa)")
-    return Plots.plot(panels...; layout = (3, 1), size = (900, 720))
+    return Plots.plot(panels...; layout = (3, 1), size = (900, 720),
+        extra_plot_kwargs = PLOTLY_OUTER_LEGEND)
 end
 
 function loop_shapes_figure(sol::GainScheduleAnalysisSolution)
     w = exp10.(range(log10(0.3), 1; length = 300))
     fixed_label = string(sol.spec.velocities[sol.spec.fixed_point], " m/s")
-    panels = map(((sol.scheduled, "Pitch loop, each design point's own gains"),
-                  (sol.fixed, "Pitch loop, the gains of $fixed_label at every design point"))) do (loops, title)
+    panels = map(enumerate(((sol.scheduled, "Pitch loop, each design point's own gains"),
+                            (sol.fixed, "Pitch loop, the gains of $fixed_label at every design point")))) do (i, (loops, title))
+        crossovers = [round(first(_crossover(L.pitch)); digits = 2) for L in loops]
+        title = string(title, ": crosses 0 dB at ", join(crossovers, ", "), " rad/s")
         p = Plots.plot(; xscale = :log10, title, titlefontsize = 10, ylabel = "loop gain (dB)",
-            left_margin = 12Plots.mm, legend = :topright, ylims = (-20, 20))
+            left_margin = 12Plots.mm, legend = :outerright, ylims = (-20, 20))
+        # Each design point keeps its color in both panels; one legend serves both.
         for (j, v) in enumerate(sol.spec.velocities)
             mag = abs.(vec(ControlSystemsBase.freqresp(loops[j].pitch, w)))
-            wc = round(first(_crossover(loops[j].pitch)); digits = 2)
-            Plots.plot!(p, w, 20 .* log10.(mag); label = "$v m/s, crosses 0 dB at $wc rad/s")
+            Plots.plot!(p, w, 20 .* log10.(mag); color = j, linewidth = 2, label = i == 1 ? "$v m/s" : "")
         end
         Plots.hline!(p, [0.0]; color = :black, linestyle = :dot, label = "")
         Plots.vline!(p, [ScheduledPID.PITCH_LOOP.crossover]; color = :gray, linestyle = :dash,
-            label = "design crossover")
+            label = i == 1 ? "design crossover" : "")
         p
     end
     Plots.xlabel!(panels[end], "frequency (rad/s)")
-    return Plots.plot(panels...; layout = (2, 1), size = (900, 650))
+    return Plots.plot(panels...; layout = (2, 1), size = (900, 650),
+        extra_plot_kwargs = PLOTLY_OUTER_LEGEND)
 end
 
 function margins_table(sol::GainScheduleAnalysisSolution)

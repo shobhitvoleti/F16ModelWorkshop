@@ -31,8 +31,8 @@ Start at 148 m/s and 3000 m, with pitch 2° above trim. Ramp the airspeed comman
 | `ramp_duration`         | Ramp duration, s.                         | --  |   12.0 |
 | `pitch_perturbation`         | Initial pitch-attitude perturbation from trim, rad (2 deg).                         | --  |   0.03490658503988659 |
 | `newtons_per_kilonewton`         | Thrust unit conversion, N per kN.                         | --  |   1000.0 |
-| `trim_init`         | Saved trim at 148 m/s and 3000 m: [north, east, altitude, roll, pitch, yaw, speed, alpha, beta, P, Q, R]. Regenerate with u_trim for a new starting condition.                         | --  |   [0.0, 0.0, ..., 0.0, 0.0] |
-| `u_trim`         | Saved trim commands [thrust kN, elevator deg, aileron deg, rudder deg].                         | --  |   [10.6184165..., 0.0, 0.0] |
+| `trim_init`         | Saved trim at 148 m/s and 3000 m: [north, east, altitude, roll, pitch, yaw, speed, alpha, beta, P, Q, R]. For another starting condition, set it to `F16ModelWorkshop.VelocityMPC.trim_states(velocity, altitude)` and `u_trim` to `trim_command` of the same condition.                         | --  |   [0.0, 0.0, ..., 0.0, 0.0] |
+| `u_trim`         | Saved trim commands at 148 m/s and 3000 m, [thrust kN, elevator deg, aileron deg, rudder deg]: `F16ModelWorkshop.VelocityMPC.trim_command(velocity, altitude)`.                         | --  |   [10.6184165..., 0.0, 0.0] |
 | `elevator_limit`         | Elevator limit, deg, symmetric.                         | --  |   25.0 |
 | `pitch_limit`         | Pitch-attitude command limit, rad (15 deg), symmetric.                         | --  |   0.2617993877991494 |
 | `thrust_max`         | Thrust limit, kN.                         | --  |   50.0 |

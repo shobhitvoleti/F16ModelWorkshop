@@ -110,19 +110,19 @@ relations
 end
 
 
-"Sample pressure at 20 Hz and check the three held interpolation weights."
+"Sample dynamic pressure at 20 Hz and check the three held interpolation weights."
 test component PressureWeightsCheck
   parameter pressure::Real = 10000.0
   source = BlockComponents.Sources.Constant(k = pressure)
   sample = DiscreteComponents.Sampler()
   clock = DiscreteComponents.PeriodicClock(dt = 0.05)
-  scheduler = F16ModelWorkshop.Tutorial.PressureScheduleWeights(rho_grid = [8909.319075865858, 10557.434011198075, 13136.700065945068])
+  scheduler = F16ModelWorkshop.Tutorial.PressureScheduleWeights(qbar_knots = [8909.319075865858, 10557.434011198075, 13136.700065945068])
   zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(n = 3)
   intg = BlockComponents.Continuous.Integrator()
   variable weights::Real[3]
 relations
   connect(source.y, sample.u)
-  connect(sample.y, scheduler.rho, clock.y)
+  connect(sample.y, scheduler.qbar, clock.y)
   connect(scheduler.w, zoh.u)
   connect(zoh.y[1], intg.u)
   weights = zoh.y

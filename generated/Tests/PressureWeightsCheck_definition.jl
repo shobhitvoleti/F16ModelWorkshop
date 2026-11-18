@@ -7,7 +7,7 @@
 @doc Markdown.doc"""
    PressureWeightsCheck(; name, pressure, __overrides)
 
-Sample pressure at 20 Hz and check the three held interpolation weights.
+Sample dynamic pressure at 20 Hz and check the three held interpolation weights.
 
 ## Parameters:
 
@@ -86,7 +86,7 @@ Sample pressure at 20 Hz and check the three held interpolation weights.
   push!(__systems, @named clock = DiscreteComponents.PeriodicClock(; dt=0.05, __symbol_overrides(clock_overrides)...))
   # Subcomponent scheduler of type F16ModelWorkshop.Tutorial.PressureScheduleWeights
   scheduler_overrides = __pop_subcomponent_overrides!(__overrides, "scheduler")
-  push!(__systems, @named scheduler = F16ModelWorkshop.Tutorial.PressureScheduleWeights(; rho_grid=[8909.319075865858, 10557.434011198075, 13136.700065945068], __overrides = scheduler_overrides))
+  push!(__systems, @named scheduler = F16ModelWorkshop.Tutorial.PressureScheduleWeights(; qbar_knots=[8909.319075865858, 10557.434011198075, 13136.700065945068], __overrides = scheduler_overrides))
   # Subcomponent zoh of type F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold
   zoh_overrides = __pop_subcomponent_overrides!(__overrides, "zoh")
   push!(__systems, @named zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(; n=3, __overrides = zoh_overrides))
@@ -108,7 +108,7 @@ Sample pressure at 20 Hz and check the three held interpolation weights.
   ### Equations
   push!(__eqs, weights ~ zoh.y)
   push!(__eqs, connect(source.y, sample.u))
-  push!(__eqs, connect(sample.y, scheduler.rho, clock.y))
+  push!(__eqs, connect(sample.y, scheduler.qbar, clock.y))
   push!(__eqs, connect(scheduler.w, zoh.u))
   push!(__eqs, connect(zoh.y[1], intg.u))
 

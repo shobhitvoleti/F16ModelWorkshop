@@ -7,21 +7,24 @@
 @doc Markdown.doc"""
    AutopilotGainSchedule(; name, qbar_knots, gains, __overrides)
 
-At each tick: sampled altitude and airspeed -> pressure -> three weights -> gains.
+At each tick: sampled altitude and airspeed -> dynamic pressure -> three weights -> gains.
 For every row, the table output is w[1]*column1 + w[2]*column2 + w[3]*column3.
-Only neighboring columns are blended; outside the table the nearest end is used.
+Only neighboring columns are blended; outside the table the nearest end column is used.
 
 Saved design: 140, 152.4 and 170 m/s at 3000 m. No Julia design calls at model setup.
 Rows: K_pitch, Td_pitch, K_alt, Ti_alt, Td_alt, K_speed, Ti_speed, theta_trim, el_trim, T_trim.
-To change the design points, regenerate both `gains` and `qbar_knots` with `ScheduledPID`.
+To fly other design points, set `gains` to `F16ModelWorkshop.ScheduledPID.gain_table(velocities, altitude)`
+and `qbar_knots` to `F16ModelWorkshop.ScheduledPID.knot_pressures(velocities, altitude)`,
+evaluated in Julia. `velocities` must be three increasing airspeeds: `PressureScheduleWeights`
+takes three knots.
 
 ## Parameters:
 
 | Name         | Description                         | Units  |   Default value |
 | ------------ | ----------------------------------- | ------ | --------------- |
-| `n_points`         | Number of saved design points                         | --  |   3 |
+| `n_points`         | Number of saved design points, three because `PressureScheduleWeights` takes three knots                         | --  |   3 |
 | `n_rows`         | Number of scheduled signals                         | --  |   10 |
-| `qbar_knots`         | Pressure knots for 140, 152.4 and 170 m/s at 3000 m, Pa                         | --  |   [8909.31907...0065945068] |
+| `qbar_knots`         | Dynamic pressure at 140, 152.4 and 170 m/s at 3000 m, Pa                         | --  |   [8909.31907...0065945068] |
 | `gains`         | Saved gains and trims; one column per pressure knot                         | --  |   [-30.380751...1750087175] |
 
 ## Connectors
@@ -106,7 +109,7 @@ To change the design points, regenerate both `gains` and `qbar_knots` with `Sche
   push!(__systems, @named pressure = F16ModelWorkshop.Tutorial.DynamicPressure(; __overrides = pressure_overrides))
   # Subcomponent scheduler of type F16ModelWorkshop.Tutorial.PressureScheduleWeights
   scheduler_overrides = __pop_subcomponent_overrides!(__overrides, "scheduler")
-  push!(__systems, @named scheduler = F16ModelWorkshop.Tutorial.PressureScheduleWeights(; rho_grid=qbar_knots, __overrides = scheduler_overrides))
+  push!(__systems, @named scheduler = F16ModelWorkshop.Tutorial.PressureScheduleWeights(; qbar_knots=qbar_knots, __overrides = scheduler_overrides))
   # Subcomponent table of type DiscreteComponents.Examples.MatrixGain
   table_overrides = __pop_subcomponent_overrides!(__overrides, "table")
   push!(__systems, @named table = DiscreteComponents.Examples.MatrixGain(; ny=n_rows, nu=n_points, K=gains, __overrides = table_overrides))
@@ -124,7 +127,7 @@ To change the design points, regenerate both `gains` and `qbar_knots` with `Sche
   ### Equations
   push!(__eqs, connect(h, pressure.h))
   push!(__eqs, connect(V, pressure.V))
-  push!(__eqs, connect(pressure.qbar, scheduler.rho))
+  push!(__eqs, connect(pressure.qbar, scheduler.qbar))
   push!(__eqs, connect(scheduler.w, table.u))
   push!(__eqs, connect(table.y[1], K_pitch))
   push!(__eqs, connect(table.y[2], Td_pitch))

@@ -1,7 +1,7 @@
 using Test
 using F16ModelWorkshop
 using F16ModelWorkshop.ScheduledPID
-using F16ModelWorkshop.VelocityMPC: KNOTS, ALTITUDE
+using F16ModelWorkshop.VelocityMPC: KNOTS, ALTITUDE, trim_command, trim_states
 using DyadInterface
 using SciMLBase
 import ControlSystemsBase as CS
@@ -127,7 +127,7 @@ end
     end
 end
 
-# Step 8's manoeuvre, so both controllers are held to the same tolerances.
+# Step 8's maneuver, so both controllers are held to the same tolerances.
 @testset "gain-scheduled PID tracks the airspeed ramp" begin
     result = F16ModelWorkshop.Tutorial.TutorialGainScheduledPID()
     sol = result.sol
@@ -136,6 +136,13 @@ end
 
     @test SciMLBase.successful_retcode(sol.retcode)
     @test sol.t[end] ≈ 25.0
+
+    # The saved trim is that of 148 m/s at 3000 m, and the flight starts 2° nose-up of it.
+    x_trim, u_trim = trim_states(148.0, 3000.0), trim_command(148.0, 3000.0)
+    @test sol.ps[p.x0] ≈ x_trim rtol = 1e-10
+    @test sol.ps[loop.autothrottle.initialization__y0] ≈ u_trim[1] rtol = 1e-10
+    @test sol.ps[loop.pitch.initialization__y0] ≈ u_trim[2] rtol = 1e-10
+    @test sol[p.theta][1] ≈ x_trim[5] + deg2rad(2.0) rtol = 1e-10
 
     # The schedule's dynamic pressure is the plant's.
     @test sol[p.qbar] ≈ dynamic_pressure.(sol[p.alt], sol[p.vt]) rtol = 1e-12
@@ -152,9 +159,11 @@ end
     # Commanded 160 m/s, holding altitude and wings level.
     @test sol[p.vt][end] ≈ 160.0 atol = 0.5
     @test sol[p.alt][end] ≈ 3000.0 atol = 10.0
+    # The README's "altitude stays within 7 m of 3000 m", over the whole flight.
+    @test maximum(abs, sol[p.alt] .- 3000.0) < 7.0
     @test maximum(abs, sol[p.phi]) < 0.02
     @test maximum(abs, sol[p.theta]) < 0.25
-    # The ramp crosses the middle design point, so both neighbouring columns are scheduled in.
+    # The ramp crosses the middle design point, so both neighboring columns are scheduled in.
     @test maximum(sol[p.vt]) > 153.0
 
     # Held commands stay inside the controllers' output limits (thrust in newtons here).

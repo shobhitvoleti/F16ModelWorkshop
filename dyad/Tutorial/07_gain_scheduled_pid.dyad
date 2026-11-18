@@ -1,31 +1,34 @@
 """
-Blend three table columns using dynamic pressure, once per controller tick.
+Weights of three design points from dynamic pressure, once per controller tick.
 
 Below the first knot use [1, 0, 0]; above the last use [0, 0, 1].
 Between knots 1 and 2 use [1-a, a, 0], where a is the fraction across that interval.
 Between knots 2 and 3 use [0, 1-b, b]. Weights are nonnegative and sum to one.
+The block takes exactly three knots; another number of design points needs another block.
 """
 component PressureScheduleWeights@[input clk extends Discrete]
   "Sampled dynamic pressure, Pa"
-  rho = RealInput@[clk]() {^rho}
-  "Weights for the three table columns"
+  qbar = RealInput@[clk]() {^qbar}
+  "Weights of the three design points"
   w = [RealOutput@[clk]() for j in 1:3] {^w}
-  "Three strictly increasing pressure knots, Pa"
-  parameter rho_grid::Real[3]
+  "Dynamic pressure of the three design points, Pa, strictly increasing"
+  parameter qbar_knots::Real[3]
+  "Fraction of the way from knot 1 to knot 2, clamped to [0, 1]"
   variable a::Real
+  "Fraction of the way from knot 2 to knot 3, clamped to [0, 1]"
   variable b::Real
 relations
-  assert(rho_grid[2] > rho_grid[1], "Pressure knots must increase")
-  assert(rho_grid[3] > rho_grid[2], "Pressure knots must increase")
-  a = min(1.0, max(0.0, (rho - rho_grid[1]) / (rho_grid[2] - rho_grid[1])))
-  b = min(1.0, max(0.0, (rho - rho_grid[2]) / (rho_grid[3] - rho_grid[2])))
+  assert(qbar_knots[2] > qbar_knots[1], "Pressure knots must increase")
+  assert(qbar_knots[3] > qbar_knots[2], "Pressure knots must increase")
+  a = min(1.0, max(0.0, (qbar - qbar_knots[1]) / (qbar_knots[2] - qbar_knots[1])))
+  b = min(1.0, max(0.0, (qbar - qbar_knots[2]) / (qbar_knots[3] - qbar_knots[2])))
   w[1] = 1.0 - a
   w[2] = a - b
   w[3] = b
 metadata {
-  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/pressure_schedule_weights.svg"}, "labels": [{"label": "$(instance)", "x": 500, "y": 1100, "layer": "icon", "attrs": {"font-size": "70", "text-anchor": "middle", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "rho", "x": 130, "y": 512, "layer": "icon", "attrs": {"font-size": "56", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "w", "x": 870, "y": 512, "layer": "icon", "attrs": {"font-size": "56", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}]},
+  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/pressure_schedule_weights.svg"}, "labels": [{"label": "$(instance)", "x": 500, "y": 1100, "layer": "icon", "attrs": {"font-size": "70", "text-anchor": "middle", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "qbar", "x": 130, "y": 512, "layer": "icon", "attrs": {"font-size": "56", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "w", "x": 870, "y": 512, "layer": "icon", "attrs": {"font-size": "56", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}]},
   "_links": {
-    "rho": {"Dyad": {"placement": {"icon": {"x1": 0.0, "y1": 450.0, "x2": 100.0, "y2": 550.0}}}},
+    "qbar": {"Dyad": {"placement": {"icon": {"x1": 0.0, "y1": 450.0, "x2": 100.0, "y2": 550.0}}}},
     "w": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 450.0, "x2": 1000.0, "y2": 550.0}}}}
   }
 }
@@ -55,13 +58,16 @@ metadata {
 end
 
 """
-At each tick: sampled altitude and airspeed -> pressure -> three weights -> gains.
+At each tick: sampled altitude and airspeed -> dynamic pressure -> three weights -> gains.
 For every row, the table output is w[1]*column1 + w[2]*column2 + w[3]*column3.
-Only neighboring columns are blended; outside the table the nearest end is used.
+Only neighboring columns are blended; outside the table the nearest end column is used.
 
 Saved design: 140, 152.4 and 170 m/s at 3000 m. No Julia design calls at model setup.
 Rows: K_pitch, Td_pitch, K_alt, Ti_alt, Td_alt, K_speed, Ti_speed, theta_trim, el_trim, T_trim.
-To change the design points, regenerate both `gains` and `qbar_knots` with `ScheduledPID`.
+To fly other design points, set `gains` to `F16ModelWorkshop.ScheduledPID.gain_table(velocities, altitude)`
+and `qbar_knots` to `F16ModelWorkshop.ScheduledPID.knot_pressures(velocities, altitude)`,
+evaluated in Julia. `velocities` must be three increasing airspeeds: `PressureScheduleWeights`
+takes three knots.
 """
 component AutopilotGainSchedule@[input clk extends Discrete]
   "Sampled altitude, m"
@@ -91,14 +97,14 @@ component AutopilotGainSchedule@[input clk extends Discrete]
   "Dynamic pressure of the sampled flight condition"
   pressure = F16ModelWorkshop.Tutorial.DynamicPressure() {^pressure}
   "Dynamic pressure to interpolation weights, one per design point, summing to one"
-  scheduler = F16ModelWorkshop.Tutorial.PressureScheduleWeights@[clk = clk](rho_grid = qbar_knots) {^scheduler}
+  scheduler = F16ModelWorkshop.Tutorial.PressureScheduleWeights@[clk = clk](qbar_knots = qbar_knots) {^scheduler}
   "Gain table: weights in, interpolated gains and trims out"
   table = DiscreteComponents.Examples.MatrixGain(ny = n_rows, nu = n_points, K = gains) {^table}
-  "Number of saved design points"
+  "Number of saved design points, three because `PressureScheduleWeights` takes three knots"
   final structural parameter n_points::Integer = 3
   "Number of scheduled signals"
   final structural parameter n_rows::Integer = 10
-  "Pressure knots for 140, 152.4 and 170 m/s at 3000 m, Pa"
+  "Dynamic pressure at 140, 152.4 and 170 m/s at 3000 m, Pa"
   structural parameter qbar_knots::Real[n_points] = [8909.319075865858, 10557.434011198075, 13136.700065945068]
   "Saved gains and trims; one column per pressure knot"
   structural parameter gains::Real[n_rows, n_points] = [
@@ -116,7 +122,7 @@ component AutopilotGainSchedule@[input clk extends Discrete]
 relations
   connect(h, pressure.h) {^id1}
   connect(V, pressure.V) {^id2}
-  connect(pressure.qbar, scheduler.rho) {^id3}
+  connect(pressure.qbar, scheduler.qbar) {^id3}
   connect(scheduler.w, table.u) {^id4}
   connect(table.y[1], K_pitch) {^id5}
   connect(table.y[2], Td_pitch) {^id6}
@@ -129,20 +135,20 @@ relations
   connect(table.y[9], el_trim) {^id13}
   connect(table.y[10], T_trim) {^id14}
 metadata {
-  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/autopilot_gain_schedule.svg"}, "labels": [{"label": "$(instance)", "x": 500, "y": 1050, "layer": "icon", "attrs": {"font-size": "50", "text-anchor": "middle", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "h", "x": 130, "y": 262, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "V", "x": 130, "y": 762, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "K_pitch", "x": 870, "y": 107, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "Td_pitch", "x": 870, "y": 197, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "el_trim", "x": 870, "y": 287, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "K_alt", "x": 870, "y": 377, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "Ti_alt", "x": 870, "y": 467, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "Td_alt", "x": 870, "y": 557, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "theta_trim", "x": 870, "y": 647, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "K_speed", "x": 870, "y": 737, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "Ti_speed", "x": 870, "y": 827, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "T_trim", "x": 870, "y": 917, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "h", "x": -80.0, "y": 512.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "V", "x": -80.0, "y": 1012.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "K_pitch", "x": 1560.0, "y": 132.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "Td_pitch", "x": 1560.0, "y": 272.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "K_alt", "x": 1560.0, "y": 552.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "Ti_alt", "x": 1560.0, "y": 692.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "Td_alt", "x": 1560.0, "y": 832.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "K_speed", "x": 1560.0, "y": 1112.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "Ti_speed", "x": 1560.0, "y": 1252.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "theta_trim", "x": 1560.0, "y": 972.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "el_trim", "x": 1560.0, "y": 412.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "T_trim", "x": 1560.0, "y": 1392.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}]},
+  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/autopilot_gain_schedule.svg"}, "labels": [{"label": "$(instance)", "x": 500, "y": 1050, "layer": "icon", "attrs": {"font-size": "50", "text-anchor": "middle", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "h", "x": 130, "y": 262, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "V", "x": 130, "y": 762, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "K_pitch", "x": 870, "y": 467, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "Td_pitch", "x": 870, "y": 377, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "el_trim", "x": 870, "y": 557, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "K_alt", "x": 870, "y": 827, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "Ti_alt", "x": 870, "y": 737, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "Td_alt", "x": 870, "y": 647, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "theta_trim", "x": 870, "y": 917, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "K_speed", "x": 870, "y": 197, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "Ti_speed", "x": 870, "y": 107, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "T_trim", "x": 870, "y": 287, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "h", "x": -80.0, "y": 512.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "V", "x": -80.0, "y": 1012.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "K_pitch", "x": 1560.0, "y": 692.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "Td_pitch", "x": 1560.0, "y": 552.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "K_alt", "x": 1560.0, "y": 1252.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "Ti_alt", "x": 1560.0, "y": 1112.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "Td_alt", "x": 1560.0, "y": 972.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "K_speed", "x": 1560.0, "y": 272.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "Ti_speed", "x": 1560.0, "y": 132.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "theta_trim", "x": 1560.0, "y": 1392.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "el_trim", "x": 1560.0, "y": 832.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "T_trim", "x": 1560.0, "y": 412.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}]},
   "_links": {
     "h": {"Dyad": {"placement": {"icon": {"x1": 0.0, "y1": 200.0, "x2": 100.0, "y2": 300.0}, "diagram": {"x1": -50, "y1": 450, "x2": 50, "y2": 550}}}},
     "V": {"Dyad": {"placement": {"icon": {"x1": 0.0, "y1": 700.0, "x2": 100.0, "y2": 800.0}, "diagram": {"x1": -50, "y1": 950, "x2": 50, "y2": 1050}}}},
-    "K_pitch": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 65, "x2": 1000.0, "y2": 125}, "diagram": {"x1": 1430, "y1": 90, "x2": 1530, "y2": 150}}}},
-    "Td_pitch": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 155, "x2": 1000.0, "y2": 215}, "diagram": {"x1": 1430, "y1": 230, "x2": 1530, "y2": 290}}}},
-    "K_alt": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 335, "x2": 1000.0, "y2": 395}, "diagram": {"x1": 1430, "y1": 510, "x2": 1530, "y2": 570}}}},
-    "Ti_alt": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 425, "x2": 1000.0, "y2": 485}, "diagram": {"x1": 1430, "y1": 650, "x2": 1530, "y2": 710}}}},
-    "Td_alt": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 515, "x2": 1000.0, "y2": 575}, "diagram": {"x1": 1430, "y1": 790, "x2": 1530, "y2": 850}}}},
-    "K_speed": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 695, "x2": 1000.0, "y2": 755}, "diagram": {"x1": 1430, "y1": 1070, "x2": 1530, "y2": 1130}}}},
-    "Ti_speed": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 785, "x2": 1000.0, "y2": 845}, "diagram": {"x1": 1430, "y1": 1210, "x2": 1530, "y2": 1270}}}},
-    "theta_trim": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 605, "x2": 1000.0, "y2": 665}, "diagram": {"x1": 1430, "y1": 930, "x2": 1530, "y2": 990}}}},
-    "el_trim": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 245, "x2": 1000.0, "y2": 305}, "diagram": {"x1": 1430, "y1": 370, "x2": 1530, "y2": 430}}}},
-    "T_trim": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 875, "x2": 1000.0, "y2": 935}, "diagram": {"x1": 1430, "y1": 1350, "x2": 1530, "y2": 1410}}}},
+    "K_pitch": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 425, "x2": 1000.0, "y2": 485}, "diagram": {"x1": 1430, "y1": 650, "x2": 1530, "y2": 710}}}},
+    "Td_pitch": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 335, "x2": 1000.0, "y2": 395}, "diagram": {"x1": 1430, "y1": 510, "x2": 1530, "y2": 570}}}},
+    "K_alt": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 785, "x2": 1000.0, "y2": 845}, "diagram": {"x1": 1430, "y1": 1210, "x2": 1530, "y2": 1270}}}},
+    "Ti_alt": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 695, "x2": 1000.0, "y2": 755}, "diagram": {"x1": 1430, "y1": 1070, "x2": 1530, "y2": 1130}}}},
+    "Td_alt": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 605, "x2": 1000.0, "y2": 665}, "diagram": {"x1": 1430, "y1": 930, "x2": 1530, "y2": 990}}}},
+    "K_speed": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 155, "x2": 1000.0, "y2": 215}, "diagram": {"x1": 1430, "y1": 230, "x2": 1530, "y2": 290}}}},
+    "Ti_speed": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 65, "x2": 1000.0, "y2": 125}, "diagram": {"x1": 1430, "y1": 90, "x2": 1530, "y2": 150}}}},
+    "theta_trim": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 875, "x2": 1000.0, "y2": 935}, "diagram": {"x1": 1430, "y1": 1350, "x2": 1530, "y2": 1410}}}},
+    "el_trim": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 515, "x2": 1000.0, "y2": 575}, "diagram": {"x1": 1430, "y1": 790, "x2": 1530, "y2": 850}}}},
+    "T_trim": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 245, "x2": 1000.0, "y2": 305}, "diagram": {"x1": 1430, "y1": 370, "x2": 1530, "y2": 430}}}},
     "pressure": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 160, "y1": 630, "x2": 400, "y2": 870, "rot": 0}}}},
     "scheduler": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 460, "y1": 640, "x2": 680, "y2": 860, "rot": 0}}}},
     "table": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 760, "y1": 650, "x2": 960, "y2": 850, "rot": 0}}}},
@@ -150,16 +156,16 @@ metadata {
     "id2": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 100, "y": 1000}, {"x": 100, "y": 810}], "E": 2}], "renderStyle": "standard"}},
     "id3": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
     "id4": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id5": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1040, "y": 750}, {"x": 1040, "y": 120}], "E": 2}], "renderStyle": "standard"}},
-    "id6": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1070, "y": 750}, {"x": 1070, "y": 260}], "E": 2}], "renderStyle": "standard"}},
-    "id7": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1130, "y": 750}, {"x": 1130, "y": 540}], "E": 2}], "renderStyle": "standard"}},
-    "id8": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1160, "y": 750}, {"x": 1160, "y": 680}], "E": 2}], "renderStyle": "standard"}},
-    "id9": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1175, "y": 750}, {"x": 1175, "y": 820}], "E": 2}], "renderStyle": "standard"}},
-    "id10": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1115, "y": 750}, {"x": 1115, "y": 1100}], "E": 2}], "renderStyle": "standard"}},
-    "id11": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1085, "y": 750}, {"x": 1085, "y": 1240}], "E": 2}], "renderStyle": "standard"}},
-    "id12": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1145, "y": 750}, {"x": 1145, "y": 960}], "E": 2}], "renderStyle": "standard"}},
-    "id13": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1100, "y": 750}, {"x": 1100, "y": 400}], "E": 2}], "renderStyle": "standard"}},
-    "id14": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1055, "y": 750}, {"x": 1055, "y": 1380}], "E": 2}], "renderStyle": "standard"}}
+    "id5": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1160, "y": 750}, {"x": 1160, "y": 680}], "E": 2}], "renderStyle": "standard"}},
+    "id6": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1130, "y": 750}, {"x": 1130, "y": 540}], "E": 2}], "renderStyle": "standard"}},
+    "id7": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1085, "y": 750}, {"x": 1085, "y": 1240}], "E": 2}], "renderStyle": "standard"}},
+    "id8": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1115, "y": 750}, {"x": 1115, "y": 1100}], "E": 2}], "renderStyle": "standard"}},
+    "id9": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1145, "y": 750}, {"x": 1145, "y": 960}], "E": 2}], "renderStyle": "standard"}},
+    "id10": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1070, "y": 750}, {"x": 1070, "y": 260}], "E": 2}], "renderStyle": "standard"}},
+    "id11": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1040, "y": 750}, {"x": 1040, "y": 120}], "E": 2}], "renderStyle": "standard"}},
+    "id12": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1055, "y": 750}, {"x": 1055, "y": 1380}], "E": 2}], "renderStyle": "standard"}},
+    "id13": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1175, "y": 750}, {"x": 1175, "y": 820}], "E": 2}], "renderStyle": "standard"}},
+    "id14": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1100, "y": 750}, {"x": 1100, "y": 400}], "E": 2}], "renderStyle": "standard"}}
   }
 }
 end
@@ -184,7 +190,7 @@ component GainScheduledPIDDemo
   meas_select = F16ModelWorkshop.VectorBlocks.VectorSelect(n = 12, indices = [3, 5, 7]) {^meas_select}
   "Measurement clock crossing at `Ts`."
   sample = F16ModelWorkshop.VectorBlocks.MultiSampler(n = 3) {^sample}
-  "Controller sample clock, planted on the airspeed connection set."
+  "Controller sample clock, period `Ts`. Connected to the sampled airspeed only; every block wired to it, directly or through other blocks, runs on this clock."
   clock = DiscreteComponents.PeriodicClock(dt = Ts) {^clock}
   "Altitude and airspeed to the scheduled gains and trims."
   schedule = F16ModelWorkshop.Tutorial.AutopilotGainSchedule() {^schedule}
@@ -228,9 +234,9 @@ component GainScheduledPIDDemo
   parameter pitch_limit::Real = 0.2617993877991494
   "Thrust limit, kN."
   parameter thrust_max::Real = 50.0
-  "Saved trim at 148 m/s and 3000 m: [north, east, altitude, roll, pitch, yaw, speed, alpha, beta, P, Q, R]. Regenerate with u_trim for a new starting condition."
+  "Saved trim at 148 m/s and 3000 m: [north, east, altitude, roll, pitch, yaw, speed, alpha, beta, P, Q, R]. For another starting condition, set it to `F16ModelWorkshop.VelocityMPC.trim_states(velocity, altitude)` and `u_trim` to `trim_command` of the same condition."
   structural parameter trim_init::Real[12] = [0.0, 0.0, 3000.0, 0.0, 0.06417863476156813, 0.0, 148.0, 0.06417863476156811, 0.0, 0.0, 0.0, 0.0]
-  "Saved trim commands [thrust kN, elevator deg, aileron deg, rudder deg]."
+  "Saved trim commands at 148 m/s and 3000 m, [thrust kN, elevator deg, aileron deg, rudder deg]: `F16ModelWorkshop.VelocityMPC.trim_command(velocity, altitude)`."
   structural parameter u_trim::Real[4] = [10.618416543532156, -0.6788674562875213, 0.0, 0.0]
   "Commanded airspeed on the continuous time base, for plotting."
   variable vt_reference::Real
@@ -266,42 +272,42 @@ relations
   connect(cmd_map.y, f16plant.u_in) {^id24}
 metadata {
   "_links": {
-    "f16plant": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2240, "y1": 940, "x2": 2460, "y2": 1160, "rot": 0}}}},
-    "meas_select": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2020, "y1": 1320, "x2": 2180, "y2": 1480, "rot": 0}}}},
-    "sample": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2270, "y1": 1320, "x2": 2430, "y2": 1480, "rot": 0}}}},
+    "f16plant": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2740, "y1": 940, "x2": 2960, "y2": 1160, "rot": 0}}}},
+    "meas_select": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2300, "y1": 1320, "x2": 2460, "y2": 1480, "rot": 0}}}},
+    "sample": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2520, "y1": 1320, "x2": 2680, "y2": 1480, "rot": 0}}}},
     "clock": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 240, "y1": 1440, "x2": 360, "y2": 1560, "rot": 0}}}},
     "schedule": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": -70, "y1": 40, "x2": 530, "y2": 640, "rot": 0}}}},
-    "pitch": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1490, "y1": 940, "x2": 1710, "y2": 1160, "rot": 0}}}},
-    "altitude_hold": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1040, "y1": 940, "x2": 1260, "y2": 1160, "rot": 0}}}},
-    "autothrottle": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 540, "y1": 940, "x2": 760, "y2": 1160, "rot": 0}}}},
-    "vt_cmd": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 190, "y1": 928.4, "x2": 310, "y2": 1048.4, "rot": 0}}}},
-    "sr_vt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 370, "y1": 928.4, "x2": 490, "y2": 1048.4, "rot": 0}}}},
-    "alt_cmd": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 720, "y1": 790, "x2": 840, "y2": 910, "rot": 0}}}},
-    "sr_alt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 880, "y1": 790, "x2": 1000, "y2": 910, "rot": 0}}}},
-    "zoh": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1770, "y1": 970, "x2": 1930, "y2": 1130, "rot": 0}}}},
-    "cmd_map": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2020, "y1": 970, "x2": 2180, "y2": 1130, "rot": 0}}}},
-    "id1": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2500, "y": 1050}, {"x": 2500, "y": 1280}, {"x": 1980, "y": 1280}, {"x": 1980, "y": 1400}], "E": 2}], "renderStyle": "standard"}},
+    "pitch": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1330, "y1": 940, "x2": 1550, "y2": 1160, "rot": 0}}}},
+    "altitude_hold": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 960, "y1": 940, "x2": 1180, "y2": 1160, "rot": 0}}}},
+    "autothrottle": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2010, "y1": 940, "x2": 2230, "y2": 1160, "rot": 0}}}},
+    "vt_cmd": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1660, "y1": 740, "x2": 1780, "y2": 860, "rot": 0}}}},
+    "sr_vt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1840, "y1": 740, "x2": 1960, "y2": 860, "rot": 0}}}},
+    "alt_cmd": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 600, "y1": 740, "x2": 720, "y2": 860, "rot": 0}}}},
+    "sr_alt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 780, "y1": 740, "x2": 900, "y2": 860, "rot": 0}}}},
+    "zoh": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2300, "y1": 970, "x2": 2460, "y2": 1130, "rot": 0}}}},
+    "cmd_map": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2520, "y1": 970, "x2": 2680, "y2": 1130, "rot": 0}}}},
+    "id1": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2990, "y": 1050}, {"x": 2990, "y": 1260}, {"x": 2250, "y": 1260}, {"x": 2250, "y": 1400}], "E": 2}], "renderStyle": "standard"}},
     "id2": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id3": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2600, "y": 1400}, {"x": 2600, "y": 1700}], "E": -1}, {"S": -1, "M": [{"x": 980, "y": 1102.8}], "E": 3}, {"S": -1, "M": [{"x": -160, "y": 1700}, {"x": -160, "y": 190}], "E": 2}], "junctions": [{"x": 980, "y": 1700}], "renderStyle": "standard"}},
-    "id4": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2520, "y": 1400}, {"x": 2520, "y": 1540}, {"x": 1430, "y": 1540}, {"x": 1430, "y": 1102.8}], "E": 2}], "renderStyle": "standard"}},
-    "id5": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2560, "y": 1400}, {"x": 2560, "y": 1620}], "E": -1}, {"S": -1, "M": [{"x": 500, "y": 1102.8}], "E": 3}, {"S": -1, "M": [], "E": -2}, {"S": -2, "M": [{"x": 200, "y": 1500}], "E": 4}, {"S": -2, "M": [{"x": -120, "y": 1620}, {"x": -120, "y": 490}], "E": 2}], "junctions": [{"x": 500, "y": 1620}, {"x": 200, "y": 1620}], "renderStyle": "standard"}},
-    "id6": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1545, "y": 97.0}], "E": 2}], "renderStyle": "standard"}},
-    "id7": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1655, "y": 151.0}], "E": 2}], "renderStyle": "standard"}},
-    "id8": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1450, "y": 205.0}, {"x": 1450, "y": 1045.6}], "E": 2}], "renderStyle": "standard"}},
-    "id9": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1095, "y": 259.0}], "E": 2}], "renderStyle": "standard"}},
-    "id10": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1150, "y": 313.0}], "E": 2}], "renderStyle": "standard"}},
-    "id11": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1205, "y": 367.0}], "E": 2}], "renderStyle": "standard"}},
-    "id12": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1005, "y": 421.0}, {"x": 1005, "y": 1045.6}], "E": 2}], "renderStyle": "standard"}},
-    "id13": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 595, "y": 475.0}], "E": 2}], "renderStyle": "standard"}},
-    "id14": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 650, "y": 529.0}], "E": 2}], "renderStyle": "standard"}},
-    "id15": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 515, "y": 583.0}, {"x": 515, "y": 1045.6}], "E": 2}], "renderStyle": "standard"}},
+    "id3": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2760, "y": 1400}, {"x": 2760, "y": 1640}, {"x": 900, "y": 1640}, {"x": 900, "y": 1102.8}], "E": 3}, {"S": 1, "M": [{"x": 2820, "y": 1400}, {"x": 2820, "y": 1720}, {"x": -160, "y": 1720}, {"x": -160, "y": 190}], "E": 2}], "renderStyle": "standard"}},
+    "id4": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2730, "y": 1400}, {"x": 2730, "y": 1600}, {"x": 1290, "y": 1600}, {"x": 1290, "y": 1102.8}], "E": 2}], "renderStyle": "standard"}},
+    "id5": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2700, "y": 1400}, {"x": 2700, "y": 1560}, {"x": 1975, "y": 1560}, {"x": 1975, "y": 1102.8}], "E": 3}, {"S": 1, "M": [{"x": 2790, "y": 1400}, {"x": 2790, "y": 1680}], "E": -1}, {"S": -1, "M": [{"x": -120, "y": 1680}, {"x": -120, "y": 490}], "E": 2}, {"S": -1, "M": [{"x": 200, "y": 1680}, {"x": 200, "y": 1500}], "E": 4}], "junctions": [{"x": 200, "y": 1680}], "renderStyle": "standard"}},
+    "id6": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1385, "y": 313}], "E": 2}], "renderStyle": "standard"}},
+    "id7": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1495, "y": 259}], "E": 2}], "renderStyle": "standard"}},
+    "id8": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1250, "y": 367}, {"x": 1250, "y": 1045.6}], "E": 2}], "renderStyle": "standard"}},
+    "id9": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1015, "y": 529}], "E": 2}], "renderStyle": "standard"}},
+    "id10": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1070, "y": 475}], "E": 2}], "renderStyle": "standard"}},
+    "id11": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1125, "y": 421}], "E": 2}], "renderStyle": "standard"}},
+    "id12": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 560, "y": 583}, {"x": 560, "y": 1045.6}], "E": 2}], "renderStyle": "standard"}},
+    "id13": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2065, "y": 151}], "E": 2}], "renderStyle": "standard"}},
+    "id14": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2120, "y": 97}], "E": 2}], "renderStyle": "standard"}},
+    "id15": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1620, "y": 205}, {"x": 1620, "y": 1045.6}], "E": 2}], "renderStyle": "standard"}},
     "id16": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id17": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1020, "y": 850}, {"x": 1020, "y": 988.4}], "E": 2}], "renderStyle": "standard"}},
-    "id18": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1400, "y": 1050}, {"x": 1400, "y": 988.4}], "E": 2}], "renderStyle": "standard"}},
+    "id17": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 930, "y": 800}, {"x": 930, "y": 988.4}], "E": 2}], "renderStyle": "standard"}},
+    "id18": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1215, "y": 1050}, {"x": 1215, "y": 988.4}], "E": 2}], "renderStyle": "standard"}},
     "id19": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id20": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id21": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 800, "y": 1050}, {"x": 800, "y": 1220}, {"x": 1750, "y": 1220}, {"x": 1750, "y": 1050}], "E": 2}], "renderStyle": "standard"}},
-    "id22": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id20": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1985, "y": 800}, {"x": 1985, "y": 988.4}], "E": 2}], "renderStyle": "standard"}},
+    "id21": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id22": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1580, "y": 1050}, {"x": 1580, "y": 1220}, {"x": 2280, "y": 1220}, {"x": 2280, "y": 1050}], "E": 2}], "renderStyle": "standard"}},
     "id23": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
     "id24": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}}
   }
@@ -313,7 +319,9 @@ Tutorial 7a — optional Julia design check; not needed to run 7b.
 
 Design at 140, 152.4 and 170 m/s, all at 3000 m.
 `LoopShapes` compares scheduled and fixed gains. `Margins` and `GainTable` list the results.
-This analysis does not overwrite the saved Dyad data.
+This analysis does not overwrite the saved Dyad data, and it designs at any number of
+airspeeds; 7b flies the three-point table saved in `AutopilotGainSchedule`. `model` names
+the block that table feeds; the analysis does not simulate it.
 """
 analysis TutorialGainScheduleDesign
   extends F16ModelWorkshop.GainScheduleAnalysis(velocities = [140.0, 152.4, 170.0], altitude = 3000.0, fixed_point = 2)

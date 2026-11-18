@@ -94,13 +94,16 @@ export TutorialGainScheduleDesign__System
   var"altitude"::Float64 = 3000.0
   # Design point whose gains the fixed-gain comparison uses at every design point.
   var"fixed_point"::Int = 2
-  # At each tick: sampled altitude and airspeed -> pressure -> three weights -> gains.
+  # At each tick: sampled altitude and airspeed -> dynamic pressure -> three weights -> gains.
   # For every row, the table output is w[1]*column1 + w[2]*column2 + w[3]*column3.
-  # Only neighboring columns are blended; outside the table the nearest end is used.
+  # Only neighboring columns are blended; outside the table the nearest end column is used.
   # 
   # Saved design: 140, 152.4 and 170 m/s at 3000 m. No Julia design calls at model setup.
   # Rows: K_pitch, Td_pitch, K_alt, Ti_alt, Td_alt, K_speed, Ti_speed, theta_trim, el_trim, T_trim.
-  # To change the design points, regenerate both `gains` and `qbar_knots` with `ScheduledPID`.
+  # To fly other design points, set `gains` to `F16ModelWorkshop.ScheduledPID.gain_table(velocities, altitude)`
+  # and `qbar_knots` to `F16ModelWorkshop.ScheduledPID.knot_pressures(velocities, altitude)`,
+  # evaluated in Julia. `velocities` must be three increasing airspeeds: `PressureScheduleWeights`
+  # takes three knots.
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.AutopilotGainSchedule(; name=:AutopilotGainSchedule)
   __system::System = TutorialGainScheduleDesign__System(; name, var"velocities"=var"velocities", var"altitude"=var"altitude", var"fixed_point"=var"fixed_point")
 end

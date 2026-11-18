@@ -156,7 +156,7 @@ export PressureWeightsTransient__System
   var"verbose"::DEVerbosity.Type = DEVerbosity.Standard()
   var"log_file"::String = ""
   var"pressure"::Float64 = 10000.0
-  # Sample pressure at 20 Hz and check the three held interpolation weights.
+  # Sample dynamic pressure at 20 Hz and check the three held interpolation weights.
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Tests.PressureWeightsCheck(; name=:PressureWeightsCheck)
   __system::System = PressureWeightsTransient__System(; name, var"alg"=var"alg", var"start"=var"start", var"stop"=var"stop", var"abstol"=var"abstol", var"reltol"=var"reltol", var"saveat"=var"saveat", var"dtmax"=var"dtmax", var"tstops"=var"tstops", var"automatic_discontinuity_detection"=var"automatic_discontinuity_detection", var"optimize"=var"optimize", var"progress"=var"progress", var"respecialize"=var"respecialize", var"specialization"=var"specialization", var"verbose"=var"verbose", var"log_file"=var"log_file", var"pressure"=var"pressure")
 end
