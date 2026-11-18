@@ -130,6 +130,10 @@ function flight_figure(fsol::FlightAnalysisSolution)
             Plots.plot!(p, t, values; label = path, color, linewidth = 2,
                 seriestype = clocked ? :steppost : :path)
         end
+        # A panel whose signals never change (a solver status that always succeeds) would
+        # otherwise sit on the edge of its axis.
+        lo, hi = extrema(reduce(vcat, [values for (_, _, values, _) in series]))
+        lo == hi && Plots.ylims!(p, (lo - 1, hi + 1))
         p
     end
     return Plots.plot(plots...; layout = (length(plots), 1), size = (900, 230 * length(plots)),

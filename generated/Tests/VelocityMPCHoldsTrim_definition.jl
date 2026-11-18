@@ -35,7 +35,7 @@ per knot (`velocity = 140.0` etc.).
 | `el_cmd`         | Held elevator command, deg.                         | --  |
 | `ail_cmd`         | Held aileron command, deg.                         | --  |
 | `rud_cmd`         | Held rudder command, deg.                         | --  |
-| `exitflag`         | Composite solver status of the last tick, held so it can be read from the solution.                         | --  |
+| `exitflag`         | Composite solver status of the last tick, held between ticks.                         | --  |
 """
 @component function VelocityMPCHoldsTrim(; name = nothing, var"velocity"=152.4, var"altitude"=Float64(3000.0), var"Ts"=0.05, var"velocities"=[Float64(140.0), 152.4, Float64(170.0)], var"n_states"=10, var"trim_full"=nothing, var"u_trim"=nothing, var"mpc_bank"=nothing, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
@@ -93,7 +93,7 @@ per knot (`velocity = 140.0` etc.).
   append!(__vars, @variables (el_cmd(t)::Real), [description = "Held elevator command, deg."])
   append!(__vars, @variables (ail_cmd(t)::Real), [description = "Held aileron command, deg."])
   append!(__vars, @variables (rud_cmd(t)::Real), [description = "Held rudder command, deg."])
-  append!(__vars, @variables (exitflag(t)::Real), [description = "Composite solver status of the last tick, held so it can be read from the solution."])
+  append!(__vars, @variables (exitflag(t)::Real), [description = "Composite solver status of the last tick, held between ticks."])
 
   ### Variables (assignments)
   __ovr_T_cmd = pop!(__overrides, "T_cmd", nothing); isnothing(__ovr_T_cmd) || push!(__eqs, T_cmd ~ __ovr_T_cmd)

@@ -39,7 +39,7 @@ test component PIDScheduledMatchesStandard
   standard = DiscreteComponents.DiscretePIDStandard(final K = K, final Ti = Ti, final Td = Td, final y_max = y_limit, final y_min = -y_limit) {^standard}
   "The scheduled controller with the gains as inputs."
   scheduled = DiscreteComponents.DiscretePIDScheduled(final y_max = y_limit, final y_min = -y_limit) {^scheduled}
-  "Holds both outputs so they can be read from the solution."
+  "Holds both outputs between ticks, read as `y_standard` and `y_scheduled`."
   zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(n = 2) {^zoh}
   "Continuous consumer of a held output, so the model has a state."
   intg = BlockComponents.Continuous.Integrator() {^intg}
@@ -85,7 +85,7 @@ test component GainScheduleInterpolates
   clock = DiscreteComponents.PeriodicClock(dt = Ts) {^clock}
   "The schedule under test, at its default design points."
   schedule = F16ModelWorkshop.Tutorial.AutopilotGainSchedule() {^schedule}
-  "Holds the ten scheduled signals so they can be read from the solution."
+  "Holds the ten scheduled signals between ticks, read as `scheduled`."
   zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(n = 10) {^zoh}
   "Continuous consumer of a held signal, so the model has a state."
   intg = BlockComponents.Continuous.Integrator() {^intg}

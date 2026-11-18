@@ -355,7 +355,7 @@ The stage cost is `(x - r)' Q1 (x - r) + (u - u_j)' Q2 (u - u_j)` with the Bryso
 of `member_design`; the centering on `u_j` is LinearMPC's linear cost `eu = -Q2 u_j`. The
 terminal weight is the discrete Riccati cost-to-go, so each member's unconstrained optimum
 is its infinite-horizon LQR for any `Np`: the horizon buys constraint handling, not
-closed-loop behaviour.
+closed-loop behavior.
 
 `umin`/`umax` bound the command and `rate` its change per second. They are common to all
 members, so the convex blend of member commands respects them too. The observer starts at

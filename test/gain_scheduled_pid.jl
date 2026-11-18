@@ -127,7 +127,9 @@ end
     end
 end
 
-# Step 8's maneuver, so both controllers are held to the same tolerances.
+# Step 8's maneuver. The tracking bounds (final airspeed and altitude, roll, pitch) are
+# those of step 8's test; the whole-flight altitude bound is each step's README number
+# (7 m here, 8 m in step 8).
 @testset "gain-scheduled PID tracks the airspeed ramp" begin
     result = F16ModelWorkshop.Tutorial.TutorialGainScheduledPID()
     sol = result.sol

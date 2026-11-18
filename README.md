@@ -189,12 +189,14 @@ docstring shows how to replace it.
 and respects limits such as maximum thrust and elevator travel. A linear model is accurate
 only near one airspeed, so the controller is a *bank* with one MPC per airspeed *knot*
 (140, 152.4 and 170 m/s), blended between the two knots either side of the measured
-airspeed: the gain scheduling of step 7, applied to whole controllers.
+airspeed: the gain scheduling of step 7, applied to whole controllers and scheduled on
+airspeed instead of dynamic pressure.
 
 - **Run** `TutorialVelocityMPC` and open **`FlightResponse`**.
-- **Expect** airspeed to reach 160 m/s while altitude holds at 3000 m, and the members'
-  weights to hand over as airspeed crosses 152.4 m/s. The first run takes a few minutes
-  while the solvers compile.
+- **Expect** step 7's maneuver, from 148 m/s and 2° nose-up to 160 m/s at 3000 m: airspeed
+  reaches 160 m/s and altitude stays within 8 m of 3000 m. The members' weights hand over
+  as airspeed crosses 152.4 m/s, at about t = 9 s. The first run in a session takes about
+  two minutes; later runs take seconds.
 
 ### Step 9 — Scheduling on airspeed and altitude
 
