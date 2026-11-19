@@ -1,8 +1,42 @@
 """
-Dynamic pressure from altitude and true airspeed.
+Weights of three design points from dynamic pressure, once per controller tick.
 
-``q̄ = \tfrac{1}{2} ρ(h) V^2``, with the troposphere density of `F16PlantModel`,
-``ρ = 1.225 (1 - 0.0065 h / 288.15)^{4.256}``.
+Below the first knot use [1, 0, 0]; above the last use [0, 0, 1].
+Between knots 1 and 2 use [1-a, a, 0], where a is the fraction across that interval.
+Between knots 2 and 3 use [0, 1-b, b]. Weights are nonnegative and sum to one.
+The block takes exactly three knots; another number of design points needs another block.
+"""
+component PressureScheduleWeights@[input clk extends Discrete]
+  "Sampled dynamic pressure, Pa"
+  qbar = RealInput@[clk]() {^qbar}
+  "Weights of the three design points"
+  w = [RealOutput@[clk]() for j in 1:3] {^w}
+  "Dynamic pressure of the three design points, Pa, strictly increasing"
+  parameter qbar_knots::Real[3]
+  "Fraction of the way from knot 1 to knot 2, clamped to [0, 1]"
+  variable a::Real
+  "Fraction of the way from knot 2 to knot 3, clamped to [0, 1]"
+  variable b::Real
+relations
+  assert(qbar_knots[2] > qbar_knots[1], "Pressure knots must increase")
+  assert(qbar_knots[3] > qbar_knots[2], "Pressure knots must increase")
+  a = min(1.0, max(0.0, (qbar - qbar_knots[1]) / (qbar_knots[2] - qbar_knots[1])))
+  b = min(1.0, max(0.0, (qbar - qbar_knots[2]) / (qbar_knots[3] - qbar_knots[2])))
+  w[1] = 1.0 - a
+  w[2] = a - b
+  w[3] = b
+metadata {
+  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/pressure_schedule_weights.svg"}, "labels": [{"label": "$(instance)", "x": 500, "y": 1100, "layer": "icon", "attrs": {"font-size": "70", "text-anchor": "middle", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "qbar", "x": 130, "y": 512, "layer": "icon", "attrs": {"font-size": "56", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "w", "x": 870, "y": 512, "layer": "icon", "attrs": {"font-size": "56", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}]},
+  "_links": {
+    "qbar": {"Dyad": {"placement": {"icon": {"x1": 0.0, "y1": 450.0, "x2": 100.0, "y2": 550.0}}}},
+    "w": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 450.0, "x2": 1000.0, "y2": 550.0}}}}
+  }
+}
+end
+
+
+"""
+Dynamic pressure from altitude and airspeed, using the plant's troposphere density.
 """
 component DynamicPressure
   "Altitude, m"
@@ -14,31 +48,26 @@ component DynamicPressure
 relations
   qbar = 0.5 * 1.225 * (1 - 0.0065 * h / 288.15) ^ 4.256 * V ^ 2
 metadata {
-  "Dyad": {"icons": {"default": "dyad://Dyad/Default.svg"}},
+  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/dynamic_pressure.svg"}, "labels": [{"label": "$(instance)", "x": 500, "y": 1100, "layer": "icon", "attrs": {"font-size": "70", "text-anchor": "middle", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "h", "x": 130, "y": 262, "layer": "icon", "attrs": {"font-size": "56", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "V", "x": 130, "y": 762, "layer": "icon", "attrs": {"font-size": "56", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "qbar", "x": 870, "y": 512, "layer": "icon", "attrs": {"font-size": "56", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}]},
   "_links": {
-    "h": {"Dyad": {"placement": {"icon": {"x1": -50, "y1": 200, "x2": 50, "y2": 300}}}},
-    "V": {"Dyad": {"placement": {"icon": {"x1": -50, "y1": 700, "x2": 50, "y2": 800}}}},
-    "qbar": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 450, "x2": 1050, "y2": 550}}}}
+    "h": {"Dyad": {"placement": {"icon": {"x1": 0.0, "y1": 200.0, "x2": 100.0, "y2": 300.0}}}},
+    "V": {"Dyad": {"placement": {"icon": {"x1": 0.0, "y1": 700.0, "x2": 100.0, "y2": 800.0}}}},
+    "qbar": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 450.0, "x2": 1000.0, "y2": 550.0}}}}
   }
 }
 end
 
 """
-Gain schedule of the step-7 autopilot, interpolated in dynamic pressure.
+At each tick: sampled altitude and airspeed -> dynamic pressure -> three weights -> gains.
+For every row, the table output is w[1]*column1 + w[2]*column2 + w[3]*column3.
+Only neighboring columns are blended; outside the table the nearest end column is used.
 
-The gain-scheduling procedure of Stevens & Lewis, *Aircraft Control and Simulation*:
-`F16ModelWorkshop.ScheduledPID.loop_design` designs the loops at straight-and-level design
-points, one per airspeed of `velocities` at `altitude`; `gains` holds one column per point;
-the table is interpolated linearly in the ``q̄`` of the sampled altitude and airspeed, and
-held at its end columns outside the design points.
-
-``q̄`` is the scheduling variable because every aerodynamic force and moment, and so every
-control's effectiveness, is proportional to it. From the first design point to the last,
-``q̄`` grows by 47 % and the pitch gain falls by 26 %, keeping the pitch loop's crossover
-frequency and phase margin.
-
-Outputs, in the order of `ScheduledPID.SCHEDULE_ROWS`: the standard-form gains of
-`GainScheduledPIDDemo`'s three PID controllers, and the trims they add as feed-forward.
+Saved design: 140, 152.4 and 170 m/s at 3000 m. No Julia design calls at model setup.
+Rows: K_pitch, Td_pitch, K_alt, Ti_alt, Td_alt, K_speed, Ti_speed, theta_trim, el_trim, T_trim.
+To fly other design points, set `gains` to `F16ModelWorkshop.ScheduledPID.gain_table(velocities, altitude)`
+and `qbar_knots` to `F16ModelWorkshop.ScheduledPID.knot_pressures(velocities, altitude)`,
+evaluated in Julia. `velocities` must be three increasing airspeeds: `PressureScheduleWeights`
+takes three knots.
 """
 component AutopilotGainSchedule@[input clk extends Discrete]
   "Sampled altitude, m"
@@ -68,25 +97,32 @@ component AutopilotGainSchedule@[input clk extends Discrete]
   "Dynamic pressure of the sampled flight condition"
   pressure = F16ModelWorkshop.Tutorial.DynamicPressure() {^pressure}
   "Dynamic pressure to interpolation weights, one per design point, summing to one"
-  scheduler = MPCComponents.Experimental.LinearMPCScheduler@[clk = clk](rho_grid = qbar_knots) {^scheduler}
+  scheduler = F16ModelWorkshop.Tutorial.PressureScheduleWeights@[clk = clk](qbar_knots = qbar_knots) {^scheduler}
   "Gain table: weights in, interpolated gains and trims out"
   table = DiscreteComponents.Examples.MatrixGain(ny = n_rows, nu = n_points, K = gains) {^table}
-  "Airspeeds of the design points, m/s, strictly increasing"
-  structural parameter velocities::Real[:] = [140.0, 152.4, 170.0]
-  "Altitude of the design points, m"
-  structural parameter altitude::Real = 3000.0
-  "Number of design points (derived)"
-  final structural parameter n_points::Integer = size(velocities, 1)
-  "Number of scheduled signals, the rows of `gains`"
+  "Number of saved design points, three because `PressureScheduleWeights` takes three knots"
+  final structural parameter n_points::Integer = 3
+  "Number of scheduled signals"
   final structural parameter n_rows::Integer = 10
-  "Interpolation knots: dynamic pressure of each design point, Pa (derived)"
-  final structural parameter qbar_knots::Real[n_points] = F16ModelWorkshop.ScheduledPID.knot_pressures(velocities, altitude)
-  "Gains and trims, one column per design point (derived)"
-  final structural parameter gains::Real[n_rows, n_points] = F16ModelWorkshop.ScheduledPID.gain_table(velocities, altitude)
+  "Dynamic pressure at 140, 152.4 and 170 m/s at 3000 m, Pa"
+  structural parameter qbar_knots::Real[n_points] = [8909.319075865858, 10557.434011198075, 13136.700065945068]
+  "Saved gains and trims; one column per pressure knot"
+  structural parameter gains::Real[n_rows, n_points] = [
+    [-30.380751515134307, -26.67783790570538, -22.533206920113443],
+    [0.43327181973618584, 0.43337415371223864, 0.4380809665938033],
+    [0.0022390247531131886, 0.002006340088409029, 0.0017478606880856088],
+    [5.781648373740246, 5.6043106730776495, 5.379547665067732],
+    [1.4454120934350616, 1.4010776682694124, 1.344886916266933],
+    [4.417339115074497, 4.391945327493983, 4.367470685184356],
+    [5.170649064462581, 5.144244586794114, 5.103331264171048],
+    [0.07462672036232981, 0.059129200651428154, 0.042744363171899356],
+    [-0.652618803097518, -0.6949065187612248, -0.7620012850535551],
+    [10.41192987568892, 10.794889866362622, 11.878571750087175]
+  ]
 relations
   connect(h, pressure.h) {^id1}
   connect(V, pressure.V) {^id2}
-  connect(pressure.qbar, scheduler.rho) {^id3}
+  connect(pressure.qbar, scheduler.qbar) {^id3}
   connect(scheduler.w, table.u) {^id4}
   connect(table.y[1], K_pitch) {^id5}
   connect(table.y[2], Td_pitch) {^id6}
@@ -99,84 +135,53 @@ relations
   connect(table.y[9], el_trim) {^id13}
   connect(table.y[10], T_trim) {^id14}
 metadata {
-  "Dyad": {"icons": {"default": "dyad://Dyad/Default.svg"}},
+  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/autopilot_gain_schedule.svg"}, "labels": [{"label": "$(instance)", "x": 500, "y": 1050, "layer": "icon", "attrs": {"font-size": "50", "text-anchor": "middle", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "h", "x": 130, "y": 262, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "V", "x": 130, "y": 762, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "K_pitch", "x": 870, "y": 467, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "Td_pitch", "x": 870, "y": 377, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "el_trim", "x": 870, "y": 557, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "K_alt", "x": 870, "y": 827, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "Ti_alt", "x": 870, "y": 737, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "Td_alt", "x": 870, "y": 647, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "theta_trim", "x": 870, "y": 917, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "K_speed", "x": 870, "y": 197, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "Ti_speed", "x": 870, "y": 107, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "T_trim", "x": 870, "y": 287, "layer": "icon", "attrs": {"font-size": "36", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "h", "x": -80.0, "y": 512.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "V", "x": -80.0, "y": 1012.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "end", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "K_pitch", "x": 1560.0, "y": 692.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "Td_pitch", "x": 1560.0, "y": 552.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "K_alt", "x": 1560.0, "y": 1252.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "Ti_alt", "x": 1560.0, "y": 1112.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "Td_alt", "x": 1560.0, "y": 972.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "K_speed", "x": 1560.0, "y": 272.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "Ti_speed", "x": 1560.0, "y": 132.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "theta_trim", "x": 1560.0, "y": 1392.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "el_trim", "x": 1560.0, "y": 832.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}, {"label": "T_trim", "x": 1560.0, "y": 412.0, "layer": "diagram", "attrs": {"font-size": "32", "text-anchor": "start", "font-family": "Helvetica, Arial, sans-serif"}}]},
   "_links": {
-    "h": {"Dyad": {"placement": {"icon": {"x1": -50, "y1": 200, "x2": 50, "y2": 300}, "diagram": {"x1": -50, "y1": 200, "x2": 50, "y2": 300}}}},
-    "V": {"Dyad": {"placement": {"icon": {"x1": -50, "y1": 700, "x2": 50, "y2": 800}, "diagram": {"x1": -50, "y1": 700, "x2": 50, "y2": 800}}}},
-    "K_pitch": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 100, "x2": 1050, "y2": 200}, "diagram": {"x1": 950, "y1": 100, "x2": 1050, "y2": 200}}}},
-    "Td_pitch": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 0, "x2": 1050, "y2": 100}, "diagram": {"x1": 950, "y1": 0, "x2": 1050, "y2": 100}}}},
-    "K_alt": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 500, "x2": 1050, "y2": 600}, "diagram": {"x1": 950, "y1": 500, "x2": 1050, "y2": 600}}}},
-    "Ti_alt": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 400, "x2": 1050, "y2": 500}, "diagram": {"x1": 950, "y1": 400, "x2": 1050, "y2": 500}}}},
-    "Td_alt": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 300, "x2": 1050, "y2": 400}, "diagram": {"x1": 950, "y1": 300, "x2": 1050, "y2": 400}}}},
-    "K_speed": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 800, "x2": 1050, "y2": 900}, "diagram": {"x1": 950, "y1": 800, "x2": 1050, "y2": 900}}}},
-    "Ti_speed": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 700, "x2": 1050, "y2": 800}, "diagram": {"x1": 950, "y1": 700, "x2": 1050, "y2": 800}}}},
-    "theta_trim": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 600, "x2": 1050, "y2": 700}, "diagram": {"x1": 950, "y1": 600, "x2": 1050, "y2": 700}}}},
-    "el_trim": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 200, "x2": 1050, "y2": 300}, "diagram": {"x1": 950, "y1": 200, "x2": 1050, "y2": 300}}}},
-    "T_trim": {"Dyad": {"placement": {"icon": {"x1": 950, "y1": 900, "x2": 1050, "y2": 1000}, "diagram": {"x1": 950, "y1": 900, "x2": 1050, "y2": 1000}}}},
-    "pressure": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 170, "y1": 420, "x2": 330, "y2": 580, "rot": 0}}}},
-    "scheduler": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 420, "y1": 440, "x2": 540, "y2": 560, "rot": 0}}}},
-    "table": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 640, "y1": 440, "x2": 760, "y2": 560, "rot": 0}}}},
-    "id1": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 100, "y": 250}, {"x": 100, "y": 460}], "E": 2}], "renderStyle": "standard"}},
-    "id2": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 100, "y": 750}, {"x": 100, "y": 540}], "E": 2}], "renderStyle": "standard"}},
+    "h": {"Dyad": {"placement": {"icon": {"x1": 0.0, "y1": 200.0, "x2": 100.0, "y2": 300.0}, "diagram": {"x1": -50, "y1": 450, "x2": 50, "y2": 550}}}},
+    "V": {"Dyad": {"placement": {"icon": {"x1": 0.0, "y1": 700.0, "x2": 100.0, "y2": 800.0}, "diagram": {"x1": -50, "y1": 950, "x2": 50, "y2": 1050}}}},
+    "K_pitch": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 425, "x2": 1000.0, "y2": 485}, "diagram": {"x1": 1430, "y1": 650, "x2": 1530, "y2": 710}}}},
+    "Td_pitch": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 335, "x2": 1000.0, "y2": 395}, "diagram": {"x1": 1430, "y1": 510, "x2": 1530, "y2": 570}}}},
+    "K_alt": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 785, "x2": 1000.0, "y2": 845}, "diagram": {"x1": 1430, "y1": 1210, "x2": 1530, "y2": 1270}}}},
+    "Ti_alt": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 695, "x2": 1000.0, "y2": 755}, "diagram": {"x1": 1430, "y1": 1070, "x2": 1530, "y2": 1130}}}},
+    "Td_alt": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 605, "x2": 1000.0, "y2": 665}, "diagram": {"x1": 1430, "y1": 930, "x2": 1530, "y2": 990}}}},
+    "K_speed": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 155, "x2": 1000.0, "y2": 215}, "diagram": {"x1": 1430, "y1": 230, "x2": 1530, "y2": 290}}}},
+    "Ti_speed": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 65, "x2": 1000.0, "y2": 125}, "diagram": {"x1": 1430, "y1": 90, "x2": 1530, "y2": 150}}}},
+    "theta_trim": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 875, "x2": 1000.0, "y2": 935}, "diagram": {"x1": 1430, "y1": 1350, "x2": 1530, "y2": 1410}}}},
+    "el_trim": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 515, "x2": 1000.0, "y2": 575}, "diagram": {"x1": 1430, "y1": 790, "x2": 1530, "y2": 850}}}},
+    "T_trim": {"Dyad": {"placement": {"icon": {"x1": 900.0, "y1": 245, "x2": 1000.0, "y2": 305}, "diagram": {"x1": 1430, "y1": 370, "x2": 1530, "y2": 430}}}},
+    "pressure": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 160, "y1": 630, "x2": 400, "y2": 870, "rot": 0}}}},
+    "scheduler": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 460, "y1": 640, "x2": 680, "y2": 860, "rot": 0}}}},
+    "table": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 760, "y1": 650, "x2": 960, "y2": 850, "rot": 0}}}},
+    "id1": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 100, "y": 500}, {"x": 100, "y": 690}], "E": 2}], "renderStyle": "standard"}},
+    "id2": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 100, "y": 1000}, {"x": 100, "y": 810}], "E": 2}], "renderStyle": "standard"}},
     "id3": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
     "id4": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id5": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 870, "y": 500}, {"x": 870, "y": 150}], "E": 2}], "renderStyle": "standard"}},
-    "id6": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 870, "y": 500}, {"x": 870, "y": 50}], "E": 2}], "renderStyle": "standard"}},
-    "id7": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 870, "y": 500}, {"x": 870, "y": 550}], "E": 2}], "renderStyle": "standard"}},
-    "id8": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 870, "y": 500}, {"x": 870, "y": 450}], "E": 2}], "renderStyle": "standard"}},
-    "id9": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 870, "y": 500}, {"x": 870, "y": 350}], "E": 2}], "renderStyle": "standard"}},
-    "id10": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 870, "y": 500}, {"x": 870, "y": 850}], "E": 2}], "renderStyle": "standard"}},
-    "id11": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 870, "y": 500}, {"x": 870, "y": 750}], "E": 2}], "renderStyle": "standard"}},
-    "id12": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 870, "y": 500}, {"x": 870, "y": 650}], "E": 2}], "renderStyle": "standard"}},
-    "id13": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 870, "y": 500}, {"x": 870, "y": 250}], "E": 2}], "renderStyle": "standard"}},
-    "id14": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 870, "y": 500}, {"x": 870, "y": 950}], "E": 2}], "renderStyle": "standard"}}
+    "id5": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1160, "y": 750}, {"x": 1160, "y": 680}], "E": 2}], "renderStyle": "standard"}},
+    "id6": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1130, "y": 750}, {"x": 1130, "y": 540}], "E": 2}], "renderStyle": "standard"}},
+    "id7": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1085, "y": 750}, {"x": 1085, "y": 1240}], "E": 2}], "renderStyle": "standard"}},
+    "id8": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1115, "y": 750}, {"x": 1115, "y": 1100}], "E": 2}], "renderStyle": "standard"}},
+    "id9": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1145, "y": 750}, {"x": 1145, "y": 960}], "E": 2}], "renderStyle": "standard"}},
+    "id10": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1070, "y": 750}, {"x": 1070, "y": 260}], "E": 2}], "renderStyle": "standard"}},
+    "id11": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1040, "y": 750}, {"x": 1040, "y": 120}], "E": 2}], "renderStyle": "standard"}},
+    "id12": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1055, "y": 750}, {"x": 1055, "y": 1380}], "E": 2}], "renderStyle": "standard"}},
+    "id13": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1175, "y": 750}, {"x": 1175, "y": 820}], "E": 2}], "renderStyle": "standard"}},
+    "id14": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1100, "y": 750}, {"x": 1100, "y": 400}], "E": 2}], "renderStyle": "standard"}}
   }
 }
 end
 
 """
-Tutorial 7 — Gain-scheduled PID autopilot.
+Tutorial 7 — gain-scheduled autopilot at 20 Hz.
 
-The classical longitudinal autopilot of Stevens & Lewis, flown on the nonlinear plant at
-20 Hz and gain-scheduled on dynamic pressure. Three `DiscreteComponents.DiscretePIDScheduled`
-controllers take their gains as input signals; `AutopilotGainSchedule` computes them and is
-the only component that knows the flight condition.
+Pitch PD commands elevator; altitude PID commands pitch; airspeed PI commands thrust.
+Gains and trim commands follow dynamic pressure. Commands are held between ticks.
 
-Signal flow:
+Design targets (crossover, phase margin): pitch (2 rad/s, 60°), altitude (0.3 rad/s, 60°),
+airspeed (0.5 rad/s, 70°). Inner loops are closed first; filters shift the results slightly.
+See `ScheduledPID` for the Stevens & Lewis design approach.
 
-  f16plant.y_out (12) --> meas_select ([3, 5, 7]) --> sample (20 Hz)
-  sample.y[1] altitude --> schedule.h, altitude_hold.u_m
-  sample.y[2] pitch    --> pitch.u_m
-  sample.y[3] airspeed --> schedule.V, autothrottle.u_m, clock
-  alt_cmd --> sr_alt --> altitude_hold.u_s;  altitude_hold.y --> pitch.u_s   (pitch command)
-  vt_cmd  --> sr_vt  --> autothrottle.u_s
-  schedule --> every K, Ti, Td and u_ff input
-  [autothrottle.y; pitch.y] --> zoh --> cmd_map (5) --> f16plant.u_in
-
-Loops, inner first:
-
-- `pitch` — pitch-attitude hold: elevator from pitch attitude. A PD with the derivative on
-  the measurement only (`wd = 0`), i.e. pitch-rate damping; it stabilizes the airframe,
-  which is unstable in pitch.
-- `altitude_hold` — pitch-attitude command from altitude. A PID whose derivative is
-  climb-rate damping.
-- `autothrottle` — thrust from airspeed. A PI with half the reference in the proportional
-  path (`wp = 0.5`); with all of it, the integral's slow zero makes the airspeed overshoot
-  the end of the ramp and creep back over tens of seconds.
-
-Each loop adds the scheduled trim of its output (pitch attitude, elevator, thrust) as
-feed-forward, so the feedback only corrects the departure from trim, and starts at the trim
-of the initial flight condition (`InitialOutput`), so nothing jumps at t = 0.
-
-Design (`F16ModelWorkshop.ScheduledPID`): at each design point the plant is linearized and
-each loop is designed with the inner loops closed, for a gain-crossover frequency and phase
-margin of 2 rad/s and 60° (pitch), 0.3 rad/s and 60° (altitude), 0.5 rad/s and 70°
-(airspeed). The design points are step 8's airspeed knots, so the two controllers can be
-compared on the same manoeuvre.
-
-Scenario: as in step 8, a ramp from 148 to 160 m/s at 3000 m that crosses the 152.4 m/s
-design point. Aileron and rudder stay at their trim of zero: the manoeuvre is symmetric and
-the lateral modes are stable.
+Start at 148 m/s and 3000 m, with pitch 2° above trim. Ramp the airspeed command to
+160 m/s from 2 to 14 s while holding the altitude command. Other control surfaces stay at zero.
 """
 component GainScheduledPIDDemo
   "F16 plant, started at the trim of `initial_velocity` plus `pitch_perturbation`."
@@ -185,10 +190,10 @@ component GainScheduledPIDDemo
   meas_select = F16ModelWorkshop.VectorBlocks.VectorSelect(n = 12, indices = [3, 5, 7]) {^meas_select}
   "Measurement clock crossing at `Ts`."
   sample = F16ModelWorkshop.VectorBlocks.MultiSampler(n = 3) {^sample}
-  "Controller sample clock, planted on the airspeed connection set."
+  "Controller sample clock, period `Ts`. Connected to the sampled airspeed only; every block wired to it, directly or through other blocks, runs on this clock."
   clock = DiscreteComponents.PeriodicClock(dt = Ts) {^clock}
   "Altitude and airspeed to the scheduled gains and trims."
-  schedule = F16ModelWorkshop.Tutorial.AutopilotGainSchedule(velocities = velocities, altitude = altitude) {^schedule}
+  schedule = F16ModelWorkshop.Tutorial.AutopilotGainSchedule() {^schedule}
   "Pitch-attitude hold: elevator (deg) from pitch attitude, with pitch-rate damping."
   pitch = DiscreteComponents.DiscretePIDScheduled(with_I = false, with_D = true, with_ff = true, wd = 0, final y_max = elevator_limit, final y_min = -elevator_limit, initialization = DiscreteComponents.InitialCondition.InitialOutput(y0 = u_trim[2])) {^pitch}
   "Altitude hold: pitch-attitude command (rad) from altitude, with climb-rate damping."
@@ -207,12 +212,10 @@ component GainScheduledPIDDemo
   zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(n = 2) {^zoh}
   "Controller to plant commands: thrust kN to N, elevator in deg; aileron, rudder and leading-edge flap at zero."
   cmd_map = DiscreteComponents.Examples.MatrixGain(ny = 5, nu = 2, K = [[newtons_per_kilonewton, 0.0], [0.0, 1.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]) {^cmd_map}
-  "Airspeeds of the design points, m/s, strictly increasing."
-  structural parameter velocities::Real[3] = [140.0, 152.4, 170.0]
-  "Altitude of the design points and the commanded altitude, m."
-  structural parameter altitude::Real = 3000.0
-  "Initial trimmed airspeed, m/s."
-  structural parameter initial_velocity::Real = 148.0
+  "Commanded altitude from the saved initial trim, m."
+  final structural parameter altitude::Real = trim_init[3]
+  "Initial airspeed from the saved trim, m/s."
+  final structural parameter initial_velocity::Real = trim_init[7]
   "Controller sample period, s."
   structural parameter Ts::Real = 0.05
   "Final commanded airspeed, m/s."
@@ -231,10 +234,10 @@ component GainScheduledPIDDemo
   parameter pitch_limit::Real = 0.2617993877991494
   "Thrust limit, kN."
   parameter thrust_max::Real = 50.0
-  "Trimmed initial states."
-  structural parameter trim_init::Real[12] = F16ModelWorkshop.VelocityMPC.trim_states(initial_velocity, altitude)
-  "Trimmed initial command [kN, deg, deg, deg]."
-  structural parameter u_trim::Real[4] = F16ModelWorkshop.VelocityMPC.trim_command(initial_velocity, altitude)
+  "Saved trim at 148 m/s and 3000 m: [north, east, altitude, roll, pitch, yaw, speed, alpha, beta, P, Q, R]. For another starting condition, set it to `F16ModelWorkshop.VelocityMPC.trim_states(velocity, altitude)` and `u_trim` to `trim_command` of the same condition."
+  structural parameter trim_init::Real[12] = [0.0, 0.0, 3000.0, 0.0, 0.06417863476156813, 0.0, 148.0, 0.06417863476156811, 0.0, 0.0, 0.0, 0.0]
+  "Saved trim commands at 148 m/s and 3000 m, [thrust kN, elevator deg, aileron deg, rudder deg]: `F16ModelWorkshop.VelocityMPC.trim_command(velocity, altitude)`."
+  structural parameter u_trim::Real[4] = [10.618416543532156, -0.6788674562875213, 0.0, 0.0]
   "Commanded airspeed on the continuous time base, for plotting."
   variable vt_reference::Real
 relations
@@ -269,42 +272,42 @@ relations
   connect(cmd_map.y, f16plant.u_in) {^id24}
 metadata {
   "_links": {
-    "f16plant": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2200, "y1": 900, "x2": 2300, "y2": 1000, "rot": 0}}}},
-    "meas_select": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2000, "y1": 1170, "x2": 2100, "y2": 1270, "rot": 0}}}},
-    "sample": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2200, "y1": 1170, "x2": 2300, "y2": 1270, "rot": 0}}}},
-    "clock": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 250, "y1": 1150, "x2": 350, "y2": 1250, "rot": 0}}}},
-    "schedule": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 150, "y1": 380, "x2": 510, "y2": 740, "rot": 0}}}},
-    "pitch": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1530, "y1": 880, "x2": 1670, "y2": 1020, "rot": 0}}}},
-    "altitude_hold": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1080, "y1": 880, "x2": 1220, "y2": 1020, "rot": 0}}}},
-    "autothrottle": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 580, "y1": 880, "x2": 720, "y2": 1020, "rot": 0}}}},
-    "vt_cmd": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 270, "y1": 860.8, "x2": 370, "y2": 960.8, "rot": 0}}}},
-    "sr_vt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 420, "y1": 860.8, "x2": 520, "y2": 960.8, "rot": 0}}}},
-    "alt_cmd": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 780, "y1": 860.8, "x2": 880, "y2": 960.8, "rot": 0}}}},
-    "sr_alt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 910, "y1": 860.8, "x2": 1010, "y2": 960.8, "rot": 0}}}},
-    "zoh": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1800, "y1": 900, "x2": 1900, "y2": 1000, "rot": 0}}}},
-    "cmd_map": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2000, "y1": 900, "x2": 2100, "y2": 1000, "rot": 0}}}},
-    "id1": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2400, "y": 950}, {"x": 2400, "y": 1120}, {"x": 1960, "y": 1120}, {"x": 1960, "y": 1220}], "E": 2}], "renderStyle": "standard"}},
+    "f16plant": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2740, "y1": 940, "x2": 2960, "y2": 1160, "rot": 0}}}},
+    "meas_select": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2300, "y1": 1320, "x2": 2460, "y2": 1480, "rot": 0}}}},
+    "sample": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2520, "y1": 1320, "x2": 2680, "y2": 1480, "rot": 0}}}},
+    "clock": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 240, "y1": 1440, "x2": 360, "y2": 1560, "rot": 0}}}},
+    "schedule": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": -70, "y1": 40, "x2": 530, "y2": 640, "rot": 0}}}},
+    "pitch": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1330, "y1": 940, "x2": 1550, "y2": 1160, "rot": 0}}}},
+    "altitude_hold": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 960, "y1": 940, "x2": 1180, "y2": 1160, "rot": 0}}}},
+    "autothrottle": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2010, "y1": 940, "x2": 2230, "y2": 1160, "rot": 0}}}},
+    "vt_cmd": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1660, "y1": 740, "x2": 1780, "y2": 860, "rot": 0}}}},
+    "sr_vt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1840, "y1": 740, "x2": 1960, "y2": 860, "rot": 0}}}},
+    "alt_cmd": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 600, "y1": 740, "x2": 720, "y2": 860, "rot": 0}}}},
+    "sr_alt": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 780, "y1": 740, "x2": 900, "y2": 860, "rot": 0}}}},
+    "zoh": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2300, "y1": 970, "x2": 2460, "y2": 1130, "rot": 0}}}},
+    "cmd_map": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 2520, "y1": 970, "x2": 2680, "y2": 1130, "rot": 0}}}},
+    "id1": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2990, "y": 1050}, {"x": 2990, "y": 1260}, {"x": 2250, "y": 1260}, {"x": 2250, "y": 1400}], "E": 2}], "renderStyle": "standard"}},
     "id2": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id3": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2400, "y": 1220}, {"x": 2400, "y": 1400}], "E": -1}, {"S": -1, "M": [{"x": 1040, "y": 983.6}], "E": 3}, {"S": -1, "M": [{"x": 80, "y": 1400}, {"x": 80, "y": 470}], "E": 2}], "junctions": [{"x": 1040, "y": 1400}], "renderStyle": "standard"}},
-    "id4": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2400, "y": 1220}, {"x": 2400, "y": 1340}, {"x": 1440, "y": 1340}, {"x": 1440, "y": 983.6}], "E": 2}], "renderStyle": "standard"}},
-    "id5": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2400, "y": 1220}, {"x": 2400, "y": 1370}], "E": -1}, {"S": -1, "M": [{"x": 530, "y": 983.6}], "E": 3}, {"S": -1, "M": [], "E": -2}, {"S": -2, "M": [{"x": 200, "y": 1200}], "E": 4}, {"S": -2, "M": [{"x": 120, "y": 1370}, {"x": 120, "y": 650}], "E": 2}], "junctions": [{"x": 530, "y": 1370}, {"x": 200, "y": 1370}], "renderStyle": "standard"}},
-    "id6": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1565, "y": 434}], "E": 2}], "renderStyle": "standard"}},
-    "id7": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1635, "y": 398}], "E": 2}], "renderStyle": "standard"}},
-    "id8": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1500, "y": 470}, {"x": 1500, "y": 947.2}], "E": 2}], "renderStyle": "standard"}},
-    "id9": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1115, "y": 578}], "E": 2}], "renderStyle": "standard"}},
-    "id10": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1150, "y": 542}], "E": 2}], "renderStyle": "standard"}},
-    "id11": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1185, "y": 506}], "E": 2}], "renderStyle": "standard"}},
-    "id12": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1050, "y": 614}, {"x": 1050, "y": 947.2}], "E": 2}], "renderStyle": "standard"}},
-    "id13": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 615, "y": 686}], "E": 2}], "renderStyle": "standard"}},
-    "id14": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 650, "y": 650}], "E": 2}], "renderStyle": "standard"}},
-    "id15": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 545, "y": 722}, {"x": 545, "y": 947.2}], "E": 2}], "renderStyle": "standard"}},
+    "id3": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2760, "y": 1400}, {"x": 2760, "y": 1640}, {"x": 900, "y": 1640}, {"x": 900, "y": 1102.8}], "E": 3}, {"S": 1, "M": [{"x": 2820, "y": 1400}, {"x": 2820, "y": 1720}, {"x": -160, "y": 1720}, {"x": -160, "y": 190}], "E": 2}], "renderStyle": "standard"}},
+    "id4": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2730, "y": 1400}, {"x": 2730, "y": 1600}, {"x": 1290, "y": 1600}, {"x": 1290, "y": 1102.8}], "E": 2}], "renderStyle": "standard"}},
+    "id5": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2700, "y": 1400}, {"x": 2700, "y": 1560}, {"x": 1975, "y": 1560}, {"x": 1975, "y": 1102.8}], "E": 3}, {"S": 1, "M": [{"x": 2790, "y": 1400}, {"x": 2790, "y": 1680}], "E": -1}, {"S": -1, "M": [{"x": -120, "y": 1680}, {"x": -120, "y": 490}], "E": 2}, {"S": -1, "M": [{"x": 200, "y": 1680}, {"x": 200, "y": 1500}], "E": 4}], "junctions": [{"x": 200, "y": 1680}], "renderStyle": "standard"}},
+    "id6": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1385, "y": 313}], "E": 2}], "renderStyle": "standard"}},
+    "id7": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1495, "y": 259}], "E": 2}], "renderStyle": "standard"}},
+    "id8": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1250, "y": 367}, {"x": 1250, "y": 1045.6}], "E": 2}], "renderStyle": "standard"}},
+    "id9": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1015, "y": 529}], "E": 2}], "renderStyle": "standard"}},
+    "id10": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1070, "y": 475}], "E": 2}], "renderStyle": "standard"}},
+    "id11": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1125, "y": 421}], "E": 2}], "renderStyle": "standard"}},
+    "id12": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 560, "y": 583}, {"x": 560, "y": 1045.6}], "E": 2}], "renderStyle": "standard"}},
+    "id13": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2065, "y": 151}], "E": 2}], "renderStyle": "standard"}},
+    "id14": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2120, "y": 97}], "E": 2}], "renderStyle": "standard"}},
+    "id15": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1620, "y": 205}, {"x": 1620, "y": 1045.6}], "E": 2}], "renderStyle": "standard"}},
     "id16": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id17": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id18": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1470, "y": 950}, {"x": 1470, "y": 910.8}], "E": 2}], "renderStyle": "standard"}},
+    "id17": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 930, "y": 800}, {"x": 930, "y": 988.4}], "E": 2}], "renderStyle": "standard"}},
+    "id18": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1215, "y": 1050}, {"x": 1215, "y": 988.4}], "E": 2}], "renderStyle": "standard"}},
     "id19": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id20": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id21": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 750, "y": 950}, {"x": 750, "y": 1060}, {"x": 1760, "y": 1060}, {"x": 1760, "y": 950}], "E": 2}], "renderStyle": "standard"}},
-    "id22": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id20": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1985, "y": 800}, {"x": 1985, "y": 988.4}], "E": 2}], "renderStyle": "standard"}},
+    "id21": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id22": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1580, "y": 1050}, {"x": 1580, "y": 1220}, {"x": 2280, "y": 1220}, {"x": 2280, "y": 1050}], "E": 2}], "renderStyle": "standard"}},
     "id23": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
     "id24": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}}
   }
@@ -312,12 +315,13 @@ metadata {
 end
 
 """
-Tutorial 7a — design the gain schedule.
+Tutorial 7a — optional Julia design check; not needed to run 7b.
 
-Designs the loops at the three design points of `AutopilotGainSchedule`. In `LoopShapes`,
-with each design point's own gains the pitch loop crosses 0 dB at the same frequency
-everywhere; with the 152.4 m/s gains held fixed, the crossover moves with dynamic pressure.
-That difference is what the schedule is for.
+Design at 140, 152.4 and 170 m/s, all at 3000 m.
+`LoopShapes` compares scheduled and fixed gains. `Margins` and `GainTable` list the results.
+This analysis does not overwrite the saved Dyad data, and it designs at any number of
+airspeeds; 7b flies the three-point table saved in `AutopilotGainSchedule`. `model` names
+the block that table feeds; the analysis does not simulate it.
 """
 analysis TutorialGainScheduleDesign
   extends F16ModelWorkshop.GainScheduleAnalysis(velocities = [140.0, 152.4, 170.0], altitude = 3000.0, fixed_point = 2)

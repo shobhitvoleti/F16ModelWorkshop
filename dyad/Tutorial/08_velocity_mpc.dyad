@@ -17,6 +17,8 @@ Signal flow (whole-array connections except where a channel is named):
   scheduler.w --> ref_map.u[2:4]                       member weights
   ref_map (10) + ref_bias (10) --> ref_sum --> optimizer.r
   optimizer.u (4) --> zoh --> cmd_map (5) --> f16plant.u_in
+  optimizer.u (4) --> observer.u                       applied command, for the prediction
+  optimizer.exitflag --> zoh_flag                      solver status
 
 Design (`F16ModelWorkshop.VelocityMPC.bank`):
 
@@ -44,7 +46,7 @@ component VelocityMPCDemo
   observer = MPCComponents.Experimental.LinearMPCScheduledObserver(mpc = mpc_bank) {^observer}
   "Weight-blended constrained optimizer, started at the trimmed command (`u0`) so the thrust rate limit need not ramp it up from zero."
   optimizer = MPCComponents.Experimental.LinearMPCScheduledOptimizer(mpc = mpc_bank, u0 = u_trim) {^optimizer}
-  "Controller sample clock, planted on the airspeed connection set."
+  "Controller sample clock, period `Ts`. Connected to the sampled airspeed only; every block wired to it, directly or through other blocks, runs on this clock."
   clock = DiscreteComponents.PeriodicClock(dt = Ts) {^clock}
   "The ten regulated states: all plant outputs but horizontal position."
   meas_select = F16ModelWorkshop.VectorBlocks.VectorSelect(n = 12, indices = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {^meas_select}
@@ -64,7 +66,7 @@ component VelocityMPCDemo
   zoh = F16ModelWorkshop.VectorBlocks.MultiZeroOrderHold(n = 4) {^zoh}
   "Controller to plant commands: thrust kN to N, surfaces in deg unchanged, leading-edge flap at zero."
   cmd_map = DiscreteComponents.Examples.MatrixGain(ny = 5, nu = 4, K = [[newtons_per_kilonewton, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 0.0, 0.0]]) {^cmd_map}
-  "Hold for the solver status: clocked signals cannot be read back from the solution."
+  "Holds the solver status between ticks, read as `exitflag`."
   zoh_flag = DiscreteComponents.ZeroOrderHold(initial_condition = 1.0) {^zoh_flag}
   "Airspeed knots of the bank, m/s, strictly increasing."
   structural parameter velocities::Real[3] = [140.0, 152.4, 170.0]
@@ -143,18 +145,18 @@ metadata {
     "zoh": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1500, "y1": 500, "x2": 1600, "y2": 600, "rot": 0}}}},
     "cmd_map": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1700, "y1": 500, "x2": 1800, "y2": 600, "rot": 0}}}},
     "zoh_flag": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1500, "y1": 250, "x2": 1600, "y2": 350, "rot": 0}}}},
-    "id1": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2050, "y": 550}, {"x": 2050, "y": 1000}, {"x": 80, "y": 1000}, {"x": 80, "y": 900}], "E": 2}], "renderStyle": "standard"}},
+    "id1": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 2050, "y": 550}, {"x": 2050, "y": 1020}, {"x": 80, "y": 1020}, {"x": 80, "y": 900}], "E": 2}], "renderStyle": "standard"}},
     "id2": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
     "id3": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 600, "y": 900}, {"x": 600, "y": 725}], "E": 2}], "renderStyle": "standard"}},
-    "id4": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 520, "y": 900}, {"x": 520, "y": 800}, {"x": 200, "y": 800}], "E": -1}, {"S": -1, "M": [{"x": 200, "y": 483}], "E": 2}, {"S": -1, "M": [], "E": 3}], "junctions": [{"x": 200, "y": 690}], "renderStyle": "standard"}},
-    "id5": {"Dyad": {"edges": [{"S": 1, "M": [], "E": -1}, {"S": -1, "M": [], "E": 3}, {"S": -1, "M": [{"x": 700, "y": 575}], "E": 2}], "junctions": [{"x": 700, "y": 483}], "renderStyle": "standard"}},
+    "id4": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 470, "y": 900}, {"x": 470, "y": 800}, {"x": 200, "y": 800}], "E": -1}, {"S": -1, "M": [{"x": 200, "y": 483}], "E": 2}, {"S": -1, "M": [], "E": 3}], "junctions": [{"x": 200, "y": 690}], "renderStyle": "standard"}},
+    "id5": {"Dyad": {"edges": [{"S": 1, "M": [], "E": -1}, {"S": -1, "M": [], "E": 3}, {"S": -1, "M": [{"x": 720, "y": 575}], "E": 2}], "junctions": [{"x": 720, "y": 483}], "renderStyle": "standard"}},
     "id6": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1100, "y": 600}, {"x": 1100, "y": 517}], "E": 2}], "renderStyle": "standard"}},
     "id7": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1460, "y": 550}, {"x": 1460, "y": 820}, {"x": 760, "y": 820}, {"x": 760, "y": 625}], "E": 2}], "renderStyle": "standard"}},
     "id8": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
     "id9": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
-    "id10": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 620, "y": 483}, {"x": 620, "y": 173}], "E": 2}], "renderStyle": "standard"}},
-    "id11": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 620, "y": 483}, {"x": 620, "y": 173}], "E": 2}], "renderStyle": "standard"}},
-    "id12": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 620, "y": 483}, {"x": 620, "y": 173}], "E": 2}], "renderStyle": "standard"}},
+    "id10": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 600, "y": 483}, {"x": 600, "y": 220}, {"x": 675, "y": 220}, {"x": 675, "y": 173}], "E": 2}], "renderStyle": "standard"}},
+    "id11": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 625, "y": 483}, {"x": 625, "y": 245}, {"x": 685, "y": 245}, {"x": 685, "y": 173}], "E": 2}], "renderStyle": "standard"}},
+    "id12": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 650, "y": 483}, {"x": 650, "y": 270}, {"x": 695, "y": 270}], "E": 2}], "renderStyle": "standard"}},
     "id13": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
     "id14": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 875, "y": 300}, {"x": 875, "y": 226}], "E": 2}], "renderStyle": "standard"}},
     "id15": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1150, "y": 200}, {"x": 1150, "y": 417}], "E": 2}], "renderStyle": "standard"}},

@@ -1,28 +1,16 @@
 """
-Tutorial 5 — 3-D visualization.
+Tutorial 5 — Animate the aircraft in 3-D.
 
-Renders a closed loop as an animation of the airframe. Each viz model `extends` its
-closed loop and adds only a measurement tap, a pose bridge and a visualizer, so the
-animation is the same simulation as the earlier steps. Both run the 10 deg pitch
-perturbation of step 4, so continuous and sampled-data control can be compared:
-  `ContinuousClosedLoopVizDemo`  the LQG regulator of step 3, running continuously
-  `DiscreteClosedLoopVizDemo`    the 100 Hz sampled-data loop of step 4
+Compare continuous control with the 100 Hz controller from step 4.
+Both models start at 10 degrees pitch and run for 10 seconds.
+The animation reads the aircraft's position and attitude without changing its motion.
 
-Both render the 10 s window of step 4. The regulator does not hold trim indefinitely:
-the `npos`/`epos` error grows with distance flown (see `TutorialLQG`) and the loop
-departs at about 19 s, so extending `stop` past that renders the departure, not the
-recovery.
-
-Measurement tap (both models), from the plant's vector output:
-  f16plant.y_out -> Demux4x3 -> y1 [npos,epos,alt] -> Demux3 -> Mux3 -> pose.pos
-                             -> y2 [phi,theta,psi] --------------------> pose.ang
-
-`SignalPoseSource` expects a Y-up world frame and the plant reports NED, so the
-Demux3/Mux3 pair reorders position to npos->x, alt->y, epos->z. The Euler triple
-[phi, theta, psi] is already [roll, pitch, yaw].
+Map north to x, altitude to y and east to z. Pass roll, pitch and yaw to `SignalPoseSource`.
+Run `TutorialVisualizeContinuous` or `TutorialVisualizeDiscrete` to save a video.
+Rendering uses GLMakie and needs a display.
 """
 component ContinuousClosedLoopDemo
-  "Vector-I/O F16 plant, started 10 deg nose-up of trim."
+  "F16 plant with an initial pitch angle of 10 degrees."
   # Modifications resolve left to right, so theta_init overrides the trim file's value.
   f16plant = F16ModelWorkshop.Plant.F16PlantModel(apply "dyad://F16ModelWorkshop/trim_point.toml", theta_init = 0.17453292519943295) {^f16plant}
   "Continuous LQG controller designed in step 3."
@@ -75,28 +63,33 @@ component ContinuousClosedLoopVizDemo
   viz = MultibodyComponents.ShapefileVisualizer(shapefile = F16ModelWorkshop.asset_path("object", "F-16.obj"), shape_scale = 1.4, shape_transform = MultibodyComponents.Rp2T(MultibodyComponents.RotXYZ(0, 0, 0), [-32.9, 2.5, 0.1])) {^viz}
 relations
   connect(f16plant.y_out, demux.u) {^id7}
-  connect(demux.y1, demux_pos.u) {^id8} # [npos, epos, alt]
-  connect(demux_pos.y1, pose_mux.u1) {^id9} # npos -> x
-  connect(demux_pos.y3, pose_mux.u2) {^id10} # alt  -> y
-  connect(demux_pos.y2, pose_mux.u3) {^id11} # epos -> z
+  # [npos, epos, alt]
+  connect(demux.y1, demux_pos.u) {^id8}
+  # npos -> x
+  connect(demux_pos.y1, pose_mux.u1) {^id9}
+  # alt  -> y
+  connect(demux_pos.y3, pose_mux.u2) {^id10}
+  # epos -> z
+  connect(demux_pos.y2, pose_mux.u3) {^id11}
   connect(pose_mux.y, pose.pos) {^id12}
-  connect(demux.y2, pose.ang) {^id13} # [phi, theta, psi]
+  # [phi, theta, psi]
+  connect(demux.y2, pose.ang) {^id13}
   connect(pose.frame_a, viz.frame_a) {^id14}
 metadata {
   "_links": {
-    "demux": {"Dyad": {"placement": {"diagram": {"x1": 1170, "y1": 450, "x2": 1270, "y2": 550}}}},
-    "demux_pos": {"Dyad": {"placement": {"diagram": {"x1": 1170, "y1": 10, "x2": 1270, "y2": 110}}}},
-    "pose_mux": {"Dyad": {"placement": {"diagram": {"x1": 1240, "y1": 120, "x2": 1340, "y2": 220}}}},
-    "pose": {"Dyad": {"placement": {"diagram": {"x1": 1310, "y1": 120, "x2": 1410, "y2": 220}}}},
-    "viz": {"Dyad": {"placement": {"diagram": {"x1": 1460, "y1": 120, "x2": 1560, "y2": 220}}}},
-    "id7": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1030, "y": 500}, {"x": 1030, "y": 196}], "E": 2}]}},
-    "id8": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1280, "y": 462.5}, {"x": 1280, "y": 60}], "E": 2}]}},
-    "id9": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
-    "id10": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
-    "id11": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
-    "id12": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}},
-    "id13": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1300, "y": 487.5}, {"x": 1300, "y": 198}], "E": 2}]}},
-    "id14": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}]}}
+    "demux": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1060, "y1": 150, "x2": 1160, "y2": 250, "rot": 0}}}},
+    "demux_pos": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1240, "y1": -10, "x2": 1340, "y2": 90, "rot": 0}}}},
+    "pose_mux": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1390, "y1": 5, "x2": 1490, "y2": 105, "rot": 0}}}},
+    "pose": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1540, "y1": 109.5, "x2": 1640, "y2": 209.5, "rot": 0}}}},
+    "viz": {"Dyad": {"placement": {"diagram": {"iconName": "default", "x1": 1690, "y1": 109.5, "x2": 1790, "y2": 209.5, "rot": 0}}}},
+    "id7": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id8": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1200, "y": 162.5}, {"x": 1200, "y": 40}], "E": 2}], "renderStyle": "standard"}},
+    "id9": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1365, "y": 10}, {"x": 1365, "y": 25}], "E": 2}], "renderStyle": "standard"}},
+    "id10": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1350, "y": 70}, {"x": 1350, "y": 55}], "E": 2}], "renderStyle": "standard"}},
+    "id11": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1380, "y": 40}, {"x": 1380, "y": 85}], "E": 2}], "renderStyle": "standard"}},
+    "id12": {"Dyad": {"edges": [{"S": 1, "M": [{"x": 1515, "y": 55}, {"x": 1515, "y": 134.5}], "E": 2}], "renderStyle": "standard"}},
+    "id13": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}},
+    "id14": {"Dyad": {"edges": [{"S": 1, "M": [], "E": 2}], "renderStyle": "standard"}}
   }
 }
 end
@@ -116,12 +109,17 @@ component DiscreteClosedLoopVizDemo
   viz = MultibodyComponents.ShapefileVisualizer(shapefile = F16ModelWorkshop.asset_path("object", "F-16.obj"), shape_scale = 1.4, shape_transform = MultibodyComponents.Rp2T(MultibodyComponents.RotXYZ(0, 0, 0), [-32.9, 2.5, 0.1])) {^viz}
 relations
   connect(f16plant.y_out, demux.u) {^id15}
-  connect(demux.y1, demux_pos.u) {^id16} # [npos, epos, alt]
-  connect(demux_pos.y1, pose_mux.u1) {^id17} # npos -> x
-  connect(demux_pos.y3, pose_mux.u2) {^id18} # alt  -> y
-  connect(demux_pos.y2, pose_mux.u3) {^id19} # epos -> z
+  # [npos, epos, alt]
+  connect(demux.y1, demux_pos.u) {^id16}
+  # npos -> x
+  connect(demux_pos.y1, pose_mux.u1) {^id17}
+  # alt  -> y
+  connect(demux_pos.y3, pose_mux.u2) {^id18}
+  # epos -> z
+  connect(demux_pos.y2, pose_mux.u3) {^id19}
   connect(pose_mux.y, pose.pos) {^id20}
-  connect(demux.y2, pose.ang) {^id21} # [phi, theta, psi]
+  # [phi, theta, psi]
+  connect(demux.y2, pose.ang) {^id21}
   connect(pose.frame_a, viz.frame_a) {^id22}
 metadata {
   "_links": {

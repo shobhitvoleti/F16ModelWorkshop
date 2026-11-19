@@ -27,6 +27,7 @@ include("EnvelopeMPCDemo_test.jl")
 include("GainScheduledPIDDemo_test.jl")
 include("GridMPCOptimizer_test.jl")
 include("LQGDemo_test.jl")
+include("PressureScheduleWeights_test.jl")
 include("TrimDemo_test.jl")
 include("VelocityMPCDemo_test.jl")
 end

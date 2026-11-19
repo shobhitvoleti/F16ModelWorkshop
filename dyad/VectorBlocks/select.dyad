@@ -21,11 +21,12 @@ relations
     y[j] = u[indices[j]]
   end
 metadata {
+  "Dyad": {"icons": {"default": "dyad://F16ModelWorkshop/vector_select.svg"}, "labels": [{"label": "$(instance)", "x": 500, "y": 1100, "attrs": {"font-size": "110", "font-family": "Helvetica, Arial, sans-serif"}}]},
   "_links": {
     "u": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 0, "y1": 450, "x2": 100, "y2": 550, "rot": 0}
+          "icon": {"iconName": "default", "x1": 0, "y1": 450, "x2": 100, "y2": 550, "rot": 0}
         },
         "tags": []
       }
@@ -33,7 +34,7 @@ metadata {
     "y": {
       "Dyad": {
         "placement": {
-          "diagram": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 550, "rot": 0}
+          "icon": {"iconName": "default", "x1": 900, "y1": 450, "x2": 1000, "y2": 550, "rot": 0}
         },
         "tags": []
       }

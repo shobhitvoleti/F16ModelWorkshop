@@ -18,6 +18,7 @@ end
 @testset "`F16ModelWorkshop.Tests`" begin
 include("GainScheduleInterpolates_test.jl")
 include("PIDScheduledMatchesStandard_test.jl")
+include("PressureWeightsCheck_test.jl")
 include("VelocityMPCHoldsTrim_test.jl")
 include("VelocityMPCMemberIsLQR_test.jl")
 end

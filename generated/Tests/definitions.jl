@@ -8,6 +8,8 @@ using ModelingToolkit
 import Markdown
 using ModelingToolkit: t_nounits as t
 using OrdinaryDiffEqDefault
+using DyadInterface: ODEAlg, DEVerbosity, OptimizationLevel, SpecializationLevel
+using ModelingToolkit: SymbolicT, toggle_namespacing
 using RuntimeGeneratedFunctions
 RuntimeGeneratedFunctions.init(@__MODULE__)
 
@@ -207,5 +209,7 @@ end
 
 include("GainScheduleInterpolates_definition.jl")
 include("PIDScheduledMatchesStandard_definition.jl")
+include("PressureWeightsCheck_definition.jl")
+include("PressureWeightsTransient_definition.jl")
 include("VelocityMPCHoldsTrim_definition.jl")
 include("VelocityMPCMemberIsLQR_definition.jl")

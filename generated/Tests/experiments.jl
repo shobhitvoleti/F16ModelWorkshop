@@ -11,5 +11,6 @@ end
 
 include("GainScheduleInterpolates_experiment.jl")
 include("PIDScheduledMatchesStandard_experiment.jl")
+include("PressureWeightsCheck_experiment.jl")
 include("VelocityMPCHoldsTrim_experiment.jl")
 include("VelocityMPCMemberIsLQR_experiment.jl")

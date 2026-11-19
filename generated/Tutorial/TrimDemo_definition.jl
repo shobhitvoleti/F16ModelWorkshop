@@ -7,24 +7,17 @@
 @doc Markdown.doc"""
    TrimDemo(; name, __overrides)
 
-Tutorial 1 — Trimming.
+Tutorial 1 — Trim for steady, level flight.
 
-Trim is the steady flight condition: the controls and states that hold every motion
-derivative at zero. The unknowns are declared `missing` and the initialization solver
-satisfies the equilibrium constraints:
-  - Unknowns: thrust `T_cmd.k`, elevator `el_cmd.k`, and the plant's `alpha_init`/`theta_init`.
-  - Constraints: `initial der(...) = 0` on the states that must be steady.
-  - `guess`es seed Newton; they do not bias the converged trim.
+Find the thrust, elevator, angle of attack and pitch angle that keep flight steady.
+The aircraft still moves forward. Solve only at the initial time; do not advance time.
+Use `missing` for unknown values and `guess` for solver starting values.
+Use `initial der(...) = 0` for states that must stay steady.
 
-`TutorialTrim` solves the operating point and shows it as the table `TrimTable`.
-`TutorialTrimExport` does the same solve and writes `assets/trim_point.toml`,
-`trim_reference.toml` and `trim_controls.toml`, which steps 2–6 `apply`; re-run it after
-changing the flight condition or the plant. Steps 7–9 solve this same model at their own
-flight conditions (`VelocityMPC.trim_point` sets `vt_init`, `alt_init` and `xcg`). Both
-analyses extend `TrimExportAnalysis` (dyad/trim_export_analysis.dyad, backed by
-src/trim_export_analysis.jl).
-
-Signal flow: Constants -> Mux5 -> F16PlantModel
+Run `TutorialTrim` to view `TrimTable`.
+Run `TutorialTrimExport` to save the trim files in `assets/` for steps 2–6.
+Run the export again after changing the flight condition or plant.
+Steps 7–9 find a new trim for each flight condition.
 """
 @component function TrimDemo(; name = nothing, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""

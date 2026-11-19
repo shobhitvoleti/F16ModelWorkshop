@@ -43,7 +43,10 @@ opens_every_artifact(result) = all(name -> (artifacts(result, name); true), arti
 end
 
 @testset "trim analysis shows the trim" begin
-    result = TutorialTrim()
+    # Initialization-only trim must not invoke the automatic timestep estimator.
+    result = @test_logs TutorialTrim()
+    @test result.inner.sol.t == [0.0]
+    @test result.inner.sol.prob.tspan == (0.0, 0.0)
     @test isempty(result.files)                       # TutorialTrim writes no assets
     table = artifacts(result, :TrimTable)
     value(name) = only(table.value[table.name .== name])

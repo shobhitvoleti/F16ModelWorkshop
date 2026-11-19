@@ -176,19 +176,14 @@ export TutorialDiscreteLQG__System
   var"wu"::Float64 = -1
   var"num_frequencies"::Int = 3000
   var"duration"::Float64 = 30.0
-  # Tutorial 3 — Continuous LQG control.
+  # Tutorial 3 — Continuous LQR control.
   # 
-  # Design model: the F16 plant (vector I/O) closed with an LQG regulator, trim added as a
-  # control offset. Analysis points must be scalar, because LQGAnalysis counts each AP name
-  # as one channel, not a vector's N. The vector signals therefore pass through a demux/mux
-  # pair at the 17 analysis points and stay vector elsewhere:
-  #   measurements: plant.y_out -> Demux4x3 -> 4x Demux3 -[yn..yR]-> 4x Mux3 -> Mux4x3 -> err
-  #   controls:     controller  -> Demux5 -> (+trim) -[uT,uEl,uAil,uRud,uLef]-> Mux5 -> plant.u_in
-  # The leading-edge flap has no aero effect in the plant, so the synthesis returns a zero
-  # gain row for `uLef`; it stays a design control so the controller covers all 5 plant inputs.
+  # Use state feedback to control the aircraft near trim.
+  # Add the trim controls to the controller output.
+  # Split vector signals into single channels at the analysis points.
+  # Keep all 5 control inputs, although this plant ignores the leading-edge flap.
   # 
-  # `TutorialLQG` linearizes the plant between these points and synthesizes the LQG gains;
-  # `TutorialLinearize` (step 2) linearizes the same model.
+  # Steps 2 and 3 use this model. Run `TutorialLQG` to design the controller.
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.LQGDemo(; name=:LQGDemo)
   __system::System = TutorialDiscreteLQG__System(; name, var"measurement"=var"measurement", var"controlled_output"=var"controlled_output", var"control_input"=var"control_input", var"disturbance_inputs"=var"disturbance_inputs", var"loop_openings"=var"loop_openings", var"t"=var"t", var"q1_diag"=var"q1_diag", var"q2_diag"=var"q2_diag", var"r1_diag"=var"r1_diag", var"r2_diag"=var"r2_diag", var"qQ"=var"qQ", var"qR"=var"qR", var"disc"=var"disc", var"Ts"=var"Ts", var"integrator_indices"=var"integrator_indices", var"integrator_r1_diag"=var"integrator_r1_diag", var"wl"=var"wl", var"wu"=var"wu", var"num_frequencies"=var"num_frequencies", var"duration"=var"duration")
 end

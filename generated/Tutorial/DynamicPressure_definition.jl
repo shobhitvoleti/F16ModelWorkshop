@@ -7,10 +7,7 @@
 @doc Markdown.doc"""
    DynamicPressure(; name, __overrides)
 
-Dynamic pressure from altitude and true airspeed.
-
-``q̄ = \tfrac{1}{2} ρ(h) V^2``, with the troposphere density of `F16PlantModel`,
-``ρ = 1.225 (1 - 0.0065 h / 288.15)^{4.256}``.
+Dynamic pressure from altitude and airspeed, using the plant's troposphere density.
 
 ## Connectors
 

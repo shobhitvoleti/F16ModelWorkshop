@@ -100,48 +100,17 @@ export TutorialGainScheduledPID__System
   var"abstol"::Float64 = 0.000001
   # Relative tolerance of the ODE solver.
   var"reltol"::Float64 = 0.000001
-  # Tutorial 7 — Gain-scheduled PID autopilot.
+  # Tutorial 7 — gain-scheduled autopilot at 20 Hz.
   # 
-  # The classical longitudinal autopilot of Stevens & Lewis, flown on the nonlinear plant at
-  # 20 Hz and gain-scheduled on dynamic pressure. Three `DiscreteComponents.DiscretePIDScheduled`
-  # controllers take their gains as input signals; `AutopilotGainSchedule` computes them and is
-  # the only component that knows the flight condition.
+  # Pitch PD commands elevator; altitude PID commands pitch; airspeed PI commands thrust.
+  # Gains and trim commands follow dynamic pressure. Commands are held between ticks.
   # 
-  # Signal flow:
+  # Design targets (crossover, phase margin): pitch (2 rad/s, 60°), altitude (0.3 rad/s, 60°),
+  # airspeed (0.5 rad/s, 70°). Inner loops are closed first; filters shift the results slightly.
+  # See `ScheduledPID` for the Stevens & Lewis design approach.
   # 
-  #   f16plant.y_out (12) --> meas_select ([3, 5, 7]) --> sample (20 Hz)
-  #   sample.y[1] altitude --> schedule.h, altitude_hold.u_m
-  #   sample.y[2] pitch    --> pitch.u_m
-  #   sample.y[3] airspeed --> schedule.V, autothrottle.u_m, clock
-  #   alt_cmd --> sr_alt --> altitude_hold.u_s;  altitude_hold.y --> pitch.u_s   (pitch command)
-  #   vt_cmd  --> sr_vt  --> autothrottle.u_s
-  #   schedule --> every K, Ti, Td and u_ff input
-  #   [autothrottle.y; pitch.y] --> zoh --> cmd_map (5) --> f16plant.u_in
-  # 
-  # Loops, inner first:
-  # 
-  # - `pitch` — pitch-attitude hold: elevator from pitch attitude. A PD with the derivative on
-  #   the measurement only (`wd = 0`), i.e. pitch-rate damping; it stabilizes the airframe,
-  #   which is unstable in pitch.
-  # - `altitude_hold` — pitch-attitude command from altitude. A PID whose derivative is
-  #   climb-rate damping.
-  # - `autothrottle` — thrust from airspeed. A PI with half the reference in the proportional
-  #   path (`wp = 0.5`); with all of it, the integral's slow zero makes the airspeed overshoot
-  #   the end of the ramp and creep back over tens of seconds.
-  # 
-  # Each loop adds the scheduled trim of its output (pitch attitude, elevator, thrust) as
-  # feed-forward, so the feedback only corrects the departure from trim, and starts at the trim
-  # of the initial flight condition (`InitialOutput`), so nothing jumps at t = 0.
-  # 
-  # Design (`F16ModelWorkshop.ScheduledPID`): at each design point the plant is linearized and
-  # each loop is designed with the inner loops closed, for a gain-crossover frequency and phase
-  # margin of 2 rad/s and 60° (pitch), 0.3 rad/s and 60° (altitude), 0.5 rad/s and 70°
-  # (airspeed). The design points are step 8's airspeed knots, so the two controllers can be
-  # compared on the same manoeuvre.
-  # 
-  # Scenario: as in step 8, a ramp from 148 to 160 m/s at 3000 m that crosses the 152.4 m/s
-  # design point. Aileron and rudder stay at their trim of zero: the manoeuvre is symmetric and
-  # the lateral modes are stable.
+  # Start at 148 m/s and 3000 m, with pitch 2° above trim. Ramp the airspeed command to
+  # 160 m/s from 2 to 14 s while holding the altitude command. Other control surfaces stay at zero.
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.GainScheduledPIDDemo(; name=:GainScheduledPIDDemo)
   __system::System = TutorialGainScheduledPID__System(; name, var"stop"=var"stop", var"panels"=var"panels", var"abstol"=var"abstol", var"reltol"=var"reltol")
 end

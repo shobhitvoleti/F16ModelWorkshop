@@ -5,34 +5,27 @@
 
 
 @doc Markdown.doc"""
-   AutopilotGainSchedule(; name, velocities, altitude, __overrides)
+   AutopilotGainSchedule(; name, qbar_knots, gains, __overrides)
 
-Gain schedule of the step-7 autopilot, interpolated in dynamic pressure.
+At each tick: sampled altitude and airspeed -> dynamic pressure -> three weights -> gains.
+For every row, the table output is w[1]*column1 + w[2]*column2 + w[3]*column3.
+Only neighboring columns are blended; outside the table the nearest end column is used.
 
-The gain-scheduling procedure of Stevens & Lewis, *Aircraft Control and Simulation*:
-`F16ModelWorkshop.ScheduledPID.loop_design` designs the loops at straight-and-level design
-points, one per airspeed of `velocities` at `altitude`; `gains` holds one column per point;
-the table is interpolated linearly in the ``q̄`` of the sampled altitude and airspeed, and
-held at its end columns outside the design points.
-
-``q̄`` is the scheduling variable because every aerodynamic force and moment, and so every
-control's effectiveness, is proportional to it. From the first design point to the last,
-``q̄`` grows by 47 % and the pitch gain falls by 26 %, keeping the pitch loop's crossover
-frequency and phase margin.
-
-Outputs, in the order of `ScheduledPID.SCHEDULE_ROWS`: the standard-form gains of
-`GainScheduledPIDDemo`'s three PID controllers, and the trims they add as feed-forward.
+Saved design: 140, 152.4 and 170 m/s at 3000 m. No Julia design calls at model setup.
+Rows: K_pitch, Td_pitch, K_alt, Ti_alt, Td_alt, K_speed, Ti_speed, theta_trim, el_trim, T_trim.
+To fly other design points, set `gains` to `F16ModelWorkshop.ScheduledPID.gain_table(velocities, altitude)`
+and `qbar_knots` to `F16ModelWorkshop.ScheduledPID.knot_pressures(velocities, altitude)`,
+evaluated in Julia. `velocities` must be three increasing airspeeds: `PressureScheduleWeights`
+takes three knots.
 
 ## Parameters:
 
 | Name         | Description                         | Units  |   Default value |
 | ------------ | ----------------------------------- | ------ | --------------- |
-| `velocities`         | Airspeeds of the design points, m/s, strictly increasing                         | --  |   [140.0, 152.4, 170.0] |
-| `altitude`         | Altitude of the design points, m                         | --  |   3000.0 |
-| `n_points`         | Number of design points (derived)                         | --  |   size(velocities, 1) |
-| `n_rows`         | Number of scheduled signals, the rows of `gains`                         | --  |   10 |
-| `qbar_knots`         | Interpolation knots: dynamic pressure of each design point, Pa (derived)                         | --  |   F16ModelWor..., altitude) |
-| `gains`         | Gains and trims, one column per design point (derived)                         | --  |   F16ModelWor..., altitude) |
+| `n_points`         | Number of saved design points, three because `PressureScheduleWeights` takes three knots                         | --  |   3 |
+| `n_rows`         | Number of scheduled signals                         | --  |   10 |
+| `qbar_knots`         | Dynamic pressure at 140, 152.4 and 170 m/s at 3000 m, Pa                         | --  |   [8909.31907...0065945068] |
+| `gains`         | Saved gains and trims; one column per pressure knot                         | --  |   [-30.380751...1750087175] |
 
 ## Connectors
 
@@ -49,7 +42,7 @@ Outputs, in the order of `ScheduledPID.SCHEDULE_ROWS`: the standard-form gains o
  * `el_trim` - This connector represents a real signal as an output from a component ([`RealOutput`](@ref))
  * `T_trim` - This connector represents a real signal as an output from a component ([`RealOutput`](@ref))
 """
-@component function AutopilotGainSchedule(; name = nothing, var"velocities"=[Float64(140.0), 152.4, Float64(170.0)], var"altitude"=Float64(3000.0), __overrides = Dict{String, Any}())
+@component function AutopilotGainSchedule(; name = nothing, var"qbar_knots"=[8909.319075865858, 10557.434011198075, 13136.700065945068], var"gains"=[-30.380751515134307 -26.67783790570538 -22.533206920113443; 0.43327181973618584 0.43337415371223864 0.4380809665938033; 0.0022390247531131886 0.002006340088409029 0.0017478606880856088; 5.781648373740246 5.6043106730776495 5.379547665067732; 1.4454120934350616 1.4010776682694124 1.344886916266933; 4.417339115074497 4.391945327493983 4.367470685184356; 5.170649064462581 5.144244586794114 5.103331264171048; 0.07462672036232981 0.059129200651428154 0.042744363171899356; -0.652618803097518 -0.6949065187612248 -0.7620012850535551; 10.41192987568892 10.794889866362622 11.878571750087175], __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
     The `name` keyword must be provided. Please consider using the `@named` macro,
     like so:
@@ -68,16 +61,14 @@ Outputs, in the order of `ScheduledPID.SCHEDULE_ROWS`: the standard-form gains o
   __bindings = Dict{Symbolics.SymbolicT, Symbolics.SymbolicT}()
 
   ### Keyword argument overrides
-  haskey(__overrides, "velocities") && (velocities = pop!(__overrides, "velocities"))
-  haskey(__overrides, "altitude") && (altitude = pop!(__overrides, "altitude"))
+  haskey(__overrides, "qbar_knots") && (qbar_knots = pop!(__overrides, "qbar_knots"))
+  haskey(__overrides, "gains") && (gains = pop!(__overrides, "gains"))
 
   ### Structural Parameters (functions)
 
   ### Structural Parameters (Final)
-  n_points = size(velocities, 1)
+  n_points = 3
   n_rows = 10
-  qbar_knots = F16ModelWorkshop.ScheduledPID.knot_pressures(velocities, altitude)
-  gains = F16ModelWorkshop.ScheduledPID.gain_table(velocities, altitude)
 
   ### Path Parameters (functions)
 
@@ -116,9 +107,9 @@ Outputs, in the order of `ScheduledPID.SCHEDULE_ROWS`: the standard-form gains o
   # Subcomponent pressure of type F16ModelWorkshop.Tutorial.DynamicPressure
   pressure_overrides = __pop_subcomponent_overrides!(__overrides, "pressure")
   push!(__systems, @named pressure = F16ModelWorkshop.Tutorial.DynamicPressure(; __overrides = pressure_overrides))
-  # Subcomponent scheduler of type MPCComponents.Experimental.LinearMPCScheduler
+  # Subcomponent scheduler of type F16ModelWorkshop.Tutorial.PressureScheduleWeights
   scheduler_overrides = __pop_subcomponent_overrides!(__overrides, "scheduler")
-  push!(__systems, @named scheduler = MPCComponents.Experimental.LinearMPCScheduler(; rho_grid=qbar_knots, __overrides = scheduler_overrides))
+  push!(__systems, @named scheduler = F16ModelWorkshop.Tutorial.PressureScheduleWeights(; qbar_knots=qbar_knots, __overrides = scheduler_overrides))
   # Subcomponent table of type DiscreteComponents.Examples.MatrixGain
   table_overrides = __pop_subcomponent_overrides!(__overrides, "table")
   push!(__systems, @named table = DiscreteComponents.Examples.MatrixGain(; ny=n_rows, nu=n_points, K=gains, __overrides = table_overrides))
@@ -136,7 +127,7 @@ Outputs, in the order of `ScheduledPID.SCHEDULE_ROWS`: the standard-form gains o
   ### Equations
   push!(__eqs, connect(h, pressure.h))
   push!(__eqs, connect(V, pressure.V))
-  push!(__eqs, connect(pressure.qbar, scheduler.rho))
+  push!(__eqs, connect(pressure.qbar, scheduler.qbar))
   push!(__eqs, connect(scheduler.w, table.u))
   push!(__eqs, connect(table.y[1], K_pitch))
   push!(__eqs, connect(table.y[2], Td_pitch))

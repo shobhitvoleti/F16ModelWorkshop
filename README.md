@@ -162,21 +162,26 @@ not right everywhere. *Gain scheduling* designs the gains at a few *design point
 152.4 and 170 m/s at 3000 m) and interpolates between them on the *dynamic pressure*
 q̄ = ½ρV², to which every aerodynamic force is proportional. `AutopilotGainSchedule` turns
 the measured altitude and airspeed into q̄ and the gains; the PID controllers contain no
-scheduling logic.
+scheduling logic. The schedule, the controllers and the aircraft are Dyad blocks: only the
+design (7a) runs in Julia, and its gains are saved in `AutopilotGainSchedule`.
 
 - **Run** `TutorialGainScheduleDesign` (7a) and open **`LoopShapes`**.
 - **Expect** the pitch loop at all three design points. With each point's own gains, the
   loops cross 0 dB at 2.06–2.07 rad/s; with the 152.4 m/s gains held fixed, the crossover
   moves from 1.87 to 2.36 rad/s. That spread is what the schedule removes. **`GainSchedule`**
-  shows the pitch gain falling from −30.4 to −22.5 deg/rad as q̄ rises from 8.9 to
+  shows the pitch gain shrinking from −30.4 to −22.5 deg/rad as q̄ rises from 8.9 to
   13.1 kPa, and **`Margins`** lists the margins of all three loops.
 
 - **Run** `TutorialGainScheduledPID` (7b) and open **`FlightResponse`**.
-- **Expect** the step-8 manoeuvre, 148 to 160 m/s at 3000 m: airspeed reaches 160 m/s and
-  altitude stays within 7 m of 3000 m. Below, q̄ crosses the middle design point at about
-  t = 9 s, the design-point weights hand over, and the scheduled pitch gain follows.
+- **Expect** the aircraft, started at 148 m/s and 3000 m with its pitch attitude 2° above
+  trim, to follow an airspeed command ramped to 160 m/s between 2 and 14 s: airspeed
+  reaches 160 m/s and altitude stays within 7 m of 3000 m. Below, q̄ crosses the middle
+  design point at about t = 9 s, the design-point weights hand over, and the scheduled
+  pitch gain follows. Step 8 flies the same maneuver with MPC.
 
-**Try it:** change the design points (`velocities`) and rerun 7a.
+**Try it:** change the design points (`velocities`) and rerun 7a. 7a designs at any number
+of airspeeds; 7b keeps flying the three-point table saved in `AutopilotGainSchedule`, whose
+docstring shows how to replace it.
 
 ### Step 8 — Gain-scheduled MPC on airspeed
 
@@ -184,12 +189,14 @@ scheduling logic.
 and respects limits such as maximum thrust and elevator travel. A linear model is accurate
 only near one airspeed, so the controller is a *bank* with one MPC per airspeed *knot*
 (140, 152.4 and 170 m/s), blended between the two knots either side of the measured
-airspeed: the gain scheduling of step 7, applied to whole controllers.
+airspeed: the gain scheduling of step 7, applied to whole controllers and scheduled on
+airspeed instead of dynamic pressure.
 
 - **Run** `TutorialVelocityMPC` and open **`FlightResponse`**.
-- **Expect** airspeed to reach 160 m/s while altitude holds at 3000 m, and the members'
-  weights to hand over as airspeed crosses 152.4 m/s. The first run takes a few minutes
-  while the solvers compile.
+- **Expect** step 7's maneuver, from 148 m/s and 2° nose-up to 160 m/s at 3000 m: airspeed
+  reaches 160 m/s and altitude stays within 8 m of 3000 m. The members' weights hand over
+  as airspeed crosses 152.4 m/s, at about t = 9 s. The first run in a session takes about
+  two minutes; later runs take seconds.
 
 ### Step 9 — Scheduling on airspeed and altitude
 

@@ -7,19 +7,14 @@
 @doc Markdown.doc"""
    LQGDemo(; name, __overrides)
 
-Tutorial 3 — Continuous LQG control.
+Tutorial 3 — Continuous LQR control.
 
-Design model: the F16 plant (vector I/O) closed with an LQG regulator, trim added as a
-control offset. Analysis points must be scalar, because LQGAnalysis counts each AP name
-as one channel, not a vector's N. The vector signals therefore pass through a demux/mux
-pair at the 17 analysis points and stay vector elsewhere:
-  measurements: plant.y_out -> Demux4x3 -> 4x Demux3 -[yn..yR]-> 4x Mux3 -> Mux4x3 -> err
-  controls:     controller  -> Demux5 -> (+trim) -[uT,uEl,uAil,uRud,uLef]-> Mux5 -> plant.u_in
-The leading-edge flap has no aero effect in the plant, so the synthesis returns a zero
-gain row for `uLef`; it stays a design control so the controller covers all 5 plant inputs.
+Use state feedback to control the aircraft near trim.
+Add the trim controls to the controller output.
+Split vector signals into single channels at the analysis points.
+Keep all 5 control inputs, although this plant ignores the leading-edge flap.
 
-`TutorialLQG` linearizes the plant between these points and synthesizes the LQG gains;
-`TutorialLinearize` (step 2) linearizes the same model.
+Steps 2 and 3 use this model. Run `TutorialLQG` to design the controller.
 """
 @component function LQGDemo(; name = nothing, __overrides = Dict{String, Any}())
   isnothing(name) && throw(ArgumentError("""
@@ -206,6 +201,7 @@ gain row for `uLef`; it stays a design control so the controller covers all 5 pl
   # Subcomponent controller of type BlockComponents.Continuous.StateSpace
   controller_overrides = __pop_subcomponent_overrides!(__overrides, "controller")
   __controller_apply_exclude = Set{String}(["nx", "nu", "ny"])
+  __controller_apply_1_exclude = Set{String}(["nx", "nu", "ny", "x.initial"])
   __controller_apply_schema = Dict{String,NamedTuple}(
     "nx" => (base="Integer", dims=Int[], min=nothing, max=nothing, structural=true, final=false, initial=false, guess=false),
     "nu" => (base="Integer", dims=Int[], min=nothing, max=nothing, structural=true, final=false, initial=false, guess=false),
@@ -224,9 +220,10 @@ gain row for `uLef`; it stays a design control so the controller covers all 5 pl
   __controller_apply_1 = __dyad_load_parameters(pkgdir(@__MODULE__), String(nameof(Base.moduleroot(@__MODULE__))), "dyad://F16ModelWorkshop/controller.toml")
   __controller_apply_1_flat = __dyad_flatten(__controller_apply_1)
   __dyad_check_apply(__controller_apply_1_flat, __controller_apply_schema, "dyad://F16ModelWorkshop/controller.toml")
-  __controller_apply_1_ovr = __dyad_apply_overrides(__controller_apply_1, __controller_apply_1_flat, __controller_apply_exclude, __controller_apply_schema)
+  __controller_apply_1_ovr = __dyad_apply_overrides(__controller_apply_1, __controller_apply_1_flat, __controller_apply_1_exclude, __controller_apply_schema)
   controller_dict = Dict{String, Any}()
   merge!(controller_dict, __controller_apply_1_ovr)
+  controller_dict["x.initial"] = ModelingToolkit.default_to_parentscope(fill(0.0, 12))
   merge!(controller_dict, controller_overrides)
   push!(__systems, @named controller = BlockComponents.Continuous.StateSpace(; nx=12, nu=12, ny=5, __overrides = controller_dict))
   # Subcomponent ctrl_demux of type F16ModelWorkshop.Utils.Demux5
@@ -288,7 +285,6 @@ gain row for `uLef`; it stays a design control so the controller covers all 5 pl
   __guesses[f16plant.y_out] = (ref.k)
   __guesses[f16plant.u_in] = (trim.k)
   __guesses[err.u2] = (ref.k)
-  __guesses[controller.x] = (fill(0.0, 12))
   __guesses[controller.u] = (fill(0.0, 12))
   __guesses[controller.y] = (fill(0.0, 5))
 

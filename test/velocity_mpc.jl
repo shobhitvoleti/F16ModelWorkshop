@@ -154,10 +154,28 @@ end
     # Commanded 160 m/s, holding altitude and wings level.
     @test sol[p.vt][end]≈160.0 atol=0.5
     @test sol[p.alt][end]≈3000.0 atol=10.0
+    # The README's "altitude stays within 8 m of 3000 m", over the whole flight.
+    @test maximum(abs, sol[p.alt] .- 3000.0) < 8.0
     @test maximum(abs, sol[p.phi]) < 0.02
     @test maximum(abs, sol[p.theta]) < 0.25
     # The ramp crosses the middle knot, so both of the outer members are scheduled in.
     @test maximum(sol[p.vt]) > 153.0
+
+    # At every tick the members' weights are the hat functions of the sampled airspeed
+    # over the knots, clamped at the ends: the handover the README describes.
+    function hat(x, knots = VelocityMPC.KNOTS)
+        x = clamp(x, first(knots), last(knots))
+        j = clamp(searchsortedlast(knots, x), 1, length(knots) - 1)
+        t = (x - knots[j]) / (knots[j + 1] - knots[j])
+        return [i == j ? 1 - t : i == j + 1 ? t : 0.0 for i in eachindex(knots)]
+    end
+    weights = reduce(hcat, [sol[loop.scheduler.w[j]] for j in 1:3])
+    airspeeds = sol[loop.sample.y[5]]
+    @test size(weights) == (500, 3)
+    @test weights ≈ reduce(vcat, permutedims.(hat.(airspeeds))) atol = 1e-12
+    # The middle member's weight peaks where the airspeed crosses its knot, near t = 9 s
+    # (ticks every 0.05 s from t = 0).
+    @test 8.5 < 0.05 * (argmax(weights[:, 2]) - 1) < 9.5
 
     # Held commands stay inside the limits the QP was given (thrust in newtons here).
     @test all(-1.0 .<= sol[p.T] .<= 5.0e4)

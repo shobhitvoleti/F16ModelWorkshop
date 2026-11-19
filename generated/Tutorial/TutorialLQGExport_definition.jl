@@ -94,19 +94,14 @@ export TutorialLQGExport__System
   var"file"::String = "assets/controller.toml"
   # Whether to add the trim controls as the controller's output offset `y0`.
   var"add_trim"::Bool = false
-  # Tutorial 3 — Continuous LQG control.
+  # Tutorial 3 — Continuous LQR control.
   # 
-  # Design model: the F16 plant (vector I/O) closed with an LQG regulator, trim added as a
-  # control offset. Analysis points must be scalar, because LQGAnalysis counts each AP name
-  # as one channel, not a vector's N. The vector signals therefore pass through a demux/mux
-  # pair at the 17 analysis points and stay vector elsewhere:
-  #   measurements: plant.y_out -> Demux4x3 -> 4x Demux3 -[yn..yR]-> 4x Mux3 -> Mux4x3 -> err
-  #   controls:     controller  -> Demux5 -> (+trim) -[uT,uEl,uAil,uRud,uLef]-> Mux5 -> plant.u_in
-  # The leading-edge flap has no aero effect in the plant, so the synthesis returns a zero
-  # gain row for `uLef`; it stays a design control so the controller covers all 5 plant inputs.
+  # Use state feedback to control the aircraft near trim.
+  # Add the trim controls to the controller output.
+  # Split vector signals into single channels at the analysis points.
+  # Keep all 5 control inputs, although this plant ignores the leading-edge flap.
   # 
-  # `TutorialLQG` linearizes the plant between these points and synthesizes the LQG gains;
-  # `TutorialLinearize` (step 2) linearizes the same model.
+  # Steps 2 and 3 use this model. Run `TutorialLQG` to design the controller.
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.LQGDemo(; name=:LQGDemo)
   __system::System = TutorialLQGExport__System(; name, var"design"=var"design", var"file"=var"file", var"add_trim"=var"add_trim")
 end

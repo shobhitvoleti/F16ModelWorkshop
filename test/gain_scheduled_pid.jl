@@ -1,7 +1,7 @@
 using Test
 using F16ModelWorkshop
 using F16ModelWorkshop.ScheduledPID
-using F16ModelWorkshop.VelocityMPC: KNOTS, ALTITUDE
+using F16ModelWorkshop.VelocityMPC: KNOTS, ALTITUDE, trim_command, trim_states
 using DyadInterface
 using SciMLBase
 import ControlSystemsBase as CS
@@ -16,6 +16,29 @@ function hat_weights(knots, x)
     w[j], w[j + 1] = 1 - t, t
     return w
 end
+
+@testset "Dyad pressure weights at knots, midpoints and limits" begin
+    knots = knot_pressures()
+    cases = [
+        (knots[1] - 1000, [1.0, 0.0, 0.0]),
+        (knots[1], [1.0, 0.0, 0.0]),
+        ((knots[1] + knots[2]) / 2, [0.5, 0.5, 0.0]),
+        (knots[2], [0.0, 1.0, 0.0]),
+        ((knots[2] + knots[3]) / 2, [0.0, 0.5, 0.5]),
+        (knots[3], [0.0, 0.0, 1.0]),
+        (knots[3] + 1000, [0.0, 0.0, 1.0]),
+    ]
+    for (pressure, expected) in cases
+        result = F16ModelWorkshop.Tests.PressureWeightsTransient(; pressure)
+        model = symbolic_container(result)
+        weights = [result.sol[model.weights[j]][end] for j in 1:3]
+        @test SciMLBase.successful_retcode(result.sol)
+        @test weights ≈ expected atol = 1e-12
+        @test sum(weights) ≈ 1.0 atol = 1e-12
+        @test all(0.0 .<= weights .<= 1.0)
+    end
+end
+
 
 # The scheduled PID must behave as the library's standard PID whenever
 # its gains are constant, including while the output saturates.
@@ -93,8 +116,8 @@ end
 @testset "schedule interpolates on dynamic pressure" begin
     table = gain_table()
     knots = knot_pressures()
-    # Between two design points, on one, and below the first (held at the end column).
-    for velocity in (160.0, 152.4, 130.0)
+    # All saved columns, both interpolation intervals, and both clamped ends.
+    for velocity in (130.0, 140.0, 146.0, 152.4, 160.0, 170.0, 180.0)
         model = F16ModelWorkshop.Tests.GainScheduleInterpolates(; name = :schedule, velocity)
         sol = DyadInterface.run_analysis(DyadInterface.TransientAnalysisSpec(; model, stop = 0.5)).sol
         @test SciMLBase.successful_retcode(sol.retcode)
@@ -104,7 +127,9 @@ end
     end
 end
 
-# Step 8's manoeuvre, so both controllers are held to the same tolerances.
+# Step 8's maneuver. The tracking bounds (final airspeed and altitude, roll, pitch) are
+# those of step 8's test; the whole-flight altitude bound is each step's README number
+# (7 m here, 8 m in step 8).
 @testset "gain-scheduled PID tracks the airspeed ramp" begin
     result = F16ModelWorkshop.Tutorial.TutorialGainScheduledPID()
     sol = result.sol
@@ -114,15 +139,33 @@ end
     @test SciMLBase.successful_retcode(sol.retcode)
     @test sol.t[end] ≈ 25.0
 
+    # The saved trim is that of 148 m/s at 3000 m, and the flight starts 2° nose-up of it.
+    x_trim, u_trim = trim_states(148.0, 3000.0), trim_command(148.0, 3000.0)
+    @test sol.ps[p.x0] ≈ x_trim rtol = 1e-10
+    @test sol.ps[loop.autothrottle.initialization__y0] ≈ u_trim[1] rtol = 1e-10
+    @test sol.ps[loop.pitch.initialization__y0] ≈ u_trim[2] rtol = 1e-10
+    @test sol[p.theta][1] ≈ x_trim[5] + deg2rad(2.0) rtol = 1e-10
+
     # The schedule's dynamic pressure is the plant's.
     @test sol[p.qbar] ≈ dynamic_pressure.(sol[p.alt], sol[p.vt]) rtol = 1e-12
+
+    # Check interpolation throughout the flight, not only at fixed test points.
+    weights = hcat([sol[loop.schedule.scheduler.w[j]] for j in 1:3]...)
+    pressures = sol[loop.schedule.pressure.qbar]
+    expected_weights = reduce(vcat, [permutedims(hat_weights(knot_pressures(), q)) for q in pressures])
+    @test size(weights) == (500, 3)
+    @test all(0.0 .<= weights .<= 1.0)
+    @test maximum(abs, sum(weights; dims = 2) .- 1) < 1e-12
+    @test weights ≈ expected_weights atol = 1e-12
 
     # Commanded 160 m/s, holding altitude and wings level.
     @test sol[p.vt][end] ≈ 160.0 atol = 0.5
     @test sol[p.alt][end] ≈ 3000.0 atol = 10.0
+    # The README's "altitude stays within 7 m of 3000 m", over the whole flight.
+    @test maximum(abs, sol[p.alt] .- 3000.0) < 7.0
     @test maximum(abs, sol[p.phi]) < 0.02
     @test maximum(abs, sol[p.theta]) < 0.25
-    # The ramp crosses the middle design point, so both neighbouring columns are scheduled in.
+    # The ramp crosses the middle design point, so both neighboring columns are scheduled in.
     @test maximum(sol[p.vt]) > 153.0
 
     # Held commands stay inside the controllers' output limits (thrust in newtons here).

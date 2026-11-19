@@ -94,21 +94,16 @@ export TutorialGainScheduleDesign__System
   var"altitude"::Float64 = 3000.0
   # Design point whose gains the fixed-gain comparison uses at every design point.
   var"fixed_point"::Int = 2
-  # Gain schedule of the step-7 autopilot, interpolated in dynamic pressure.
+  # At each tick: sampled altitude and airspeed -> dynamic pressure -> three weights -> gains.
+  # For every row, the table output is w[1]*column1 + w[2]*column2 + w[3]*column3.
+  # Only neighboring columns are blended; outside the table the nearest end column is used.
   # 
-  # The gain-scheduling procedure of Stevens & Lewis, *Aircraft Control and Simulation*:
-  # `F16ModelWorkshop.ScheduledPID.loop_design` designs the loops at straight-and-level design
-  # points, one per airspeed of `velocities` at `altitude`; `gains` holds one column per point;
-  # the table is interpolated linearly in the ``q̄`` of the sampled altitude and airspeed, and
-  # held at its end columns outside the design points.
-  # 
-  # ``q̄`` is the scheduling variable because every aerodynamic force and moment, and so every
-  # control's effectiveness, is proportional to it. From the first design point to the last,
-  # ``q̄`` grows by 47 % and the pitch gain falls by 26 %, keeping the pitch loop's crossover
-  # frequency and phase margin.
-  # 
-  # Outputs, in the order of `ScheduledPID.SCHEDULE_ROWS`: the standard-form gains of
-  # `GainScheduledPIDDemo`'s three PID controllers, and the trims they add as feed-forward.
+  # Saved design: 140, 152.4 and 170 m/s at 3000 m. No Julia design calls at model setup.
+  # Rows: K_pitch, Td_pitch, K_alt, Ti_alt, Td_alt, K_speed, Ti_speed, theta_trim, el_trim, T_trim.
+  # To fly other design points, set `gains` to `F16ModelWorkshop.ScheduledPID.gain_table(velocities, altitude)`
+  # and `qbar_knots` to `F16ModelWorkshop.ScheduledPID.knot_pressures(velocities, altitude)`,
+  # evaluated in Julia. `velocities` must be three increasing airspeeds: `PressureScheduleWeights`
+  # takes three knots.
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.AutopilotGainSchedule(; name=:AutopilotGainSchedule)
   __system::System = TutorialGainScheduleDesign__System(; name, var"velocities"=var"velocities", var"altitude"=var"altitude", var"fixed_point"=var"fixed_point")
 end

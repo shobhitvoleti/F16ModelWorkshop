@@ -100,20 +100,12 @@ export TutorialDiscreteClosedLoop__System
   var"abstol"::Float64 = 0.000001
   # Relative tolerance of the ODE solver.
   var"reltol"::Float64 = 0.000001
-  # Tutorial 4 — Discrete (sampled-data) closed-loop LQG.
+  # Tutorial 4 — Run the 100 Hz LQG controller.
   # 
-  # Sampled version of `LQGDemo` (step 3): the controller is the clocked `DiscreteStateSpace`
-  # with the ZOH-discretized matrices of `discrete_controller.toml` (designed by
-  # `TutorialDiscreteLQG` at Ts = ControllerTs). That asset also carries the trim as the
-  # output operating point `y0`, so `controller.y` is the absolute control command.
-  # 
-  # Signal flow (all vector ports):
-  #   ref - measurement --> err (12 ch)
-  #   err --> sample (100 Hz) --> controller       continuous -> clocked (12 ch)
-  #   controller --> zoh --> f16plant.u_in         clocked -> continuous (5 ch)
-  # 
-  # The 100 Hz clock is planted on one controller input; the controller's block clock
-  # carries it to the other eleven, and clock inference to the sampler and hold.
+  # Load the controller designed in step 3 from `discrete_controller.toml`.
+  # Sample the tracking error every 0.01 seconds. Hold each control command between updates.
+  # The saved controller includes the trim controls in its output offset `y0`.
+  # One clock sets the update rate for the controller, sampler and hold.
   var"model"::Union{Nothing, System} = F16ModelWorkshop.Tutorial.DiscreteClosedLoopDemo(; name=:DiscreteClosedLoopDemo)
   __system::System = TutorialDiscreteClosedLoop__System(; name, var"stop"=var"stop", var"panels"=var"panels", var"abstol"=var"abstol", var"reltol"=var"reltol")
 end

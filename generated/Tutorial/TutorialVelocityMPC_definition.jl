@@ -118,6 +118,8 @@ export TutorialVelocityMPC__System
   #   scheduler.w --> ref_map.u[2:4]                       member weights
   #   ref_map (10) + ref_bias (10) --> ref_sum --> optimizer.r
   #   optimizer.u (4) --> zoh --> cmd_map (5) --> f16plant.u_in
+  #   optimizer.u (4) --> observer.u                       applied command, for the prediction
+  #   optimizer.exitflag --> zoh_flag                      solver status
   # 
   # Design (`F16ModelWorkshop.VelocityMPC.bank`):
   # 
